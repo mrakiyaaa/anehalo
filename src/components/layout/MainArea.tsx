@@ -1,7 +1,18 @@
-export function MainArea() {
+import type { RefObject } from 'react';
+import { CaptureCard } from '@/features/editor/CaptureCard';
+import { HomeGreeting } from '@/features/notes/HomeGreeting';
+import { RecentNotes } from '@/features/notes/RecentNotes';
+
+interface MainAreaProps {
+  captureReference: RefObject<HTMLTextAreaElement | null>;
+}
+
+export function MainArea({ captureReference }: MainAreaProps) {
   return (
-    <main aria-label="Workspace" className="min-h-0 min-w-0 p-5">
-      <div className="h-full rounded-2xl border border-border bg-surface" />
+    <main aria-label="Workspace" className="home-panel">
+      <HomeGreeting />
+      <CaptureCard captureReference={captureReference} />
+      <RecentNotes />
     </main>
   );
 }

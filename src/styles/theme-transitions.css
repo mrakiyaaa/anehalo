@@ -1,0 +1,20 @@
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+.theme-fade,
+.theme-fade * {
+  transition:
+    background-color var(--theme-fade-duration, 400ms) ease,
+    color var(--theme-fade-duration, 400ms) ease,
+    border-color var(--theme-fade-duration, 400ms) ease !important;
+}

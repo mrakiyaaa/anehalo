@@ -1,0 +1,1186 @@
+<title>Anehalo Home Screen</title>
+<meta name="claude:viewport-fit-sides" content="cover" />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Figtree:wght@400;500;600&display=swap"
+/>
+<style>
+  /* Layout: a Windows 11 style window floating on a soft pastel wallpaper.
+   Mica-like sidebar of colored folders on the left, an inset home panel on the right
+   with quick capture on top and tinted note cards below. iOS cues: big radii, squircle icons, pill controls. */
+  :root {
+    --font-display: 'Fredoka', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+    --font-body: 'Figtree', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+
+    --bg: #e7ecf9;
+    --wp-a: #cfe2ff;
+    --wp-b: #d3f4e4;
+    --wp-c: #ffe2d1;
+    --side-bg: #edf0fb;
+    --win-bg: #f8faff;
+    --surface: #ffffff;
+    --line: #e1e6f5;
+    --ink: #1b2038;
+    --ink-2: #565d7c;
+    --ink-3: #6f7696;
+    --accent: #2f6bf0;
+    --accent-ink: #ffffff;
+    --shadow-win: 0 40px 90px -30px rgba(33, 46, 110, 0.45);
+    --shadow-soft: rgba(33, 46, 110, 0.4);
+    --close: #c42b1c;
+    --toggle-track: #dae5ff;
+    --sun: #f0a020;
+    --moon: #9db8ff;
+    --ok-bg: #d5f5e6;
+    --ok-fg: #1e7a4f;
+
+    --sky-bg: #ddebff;
+    --sky-fg: #2457b8;
+    --mint-bg: #d6f5e7;
+    --mint-fg: #1a7a4f;
+    --peach-bg: #ffe4d3;
+    --peach-fg: #b4521d;
+    --lilac-bg: #e9e1ff;
+    --lilac-fg: #5f45c4;
+    --butter-bg: #fff2c6;
+    --butter-fg: #8a6a00;
+    --rose-bg: #ffdfe8;
+    --rose-fg: #b83763;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #050506;
+      --wp-a: #26262b;
+      --wp-b: #1b2420;
+      --wp-c: #2a211c;
+      --side-bg: #1a1a1c;
+      --win-bg: #0c0c0d;
+      --surface: #202023;
+      --line: #2e2e33;
+      --ink: #f2f2f4;
+      --ink-2: #a8a8b0;
+      --ink-3: #8c8c95;
+      --accent: #7ba3ff;
+      --accent-ink: #0a1230;
+      --shadow-win: 0 40px 90px -30px rgba(0, 0, 0, 0.8);
+      --shadow-soft: rgba(0, 0, 0, 0.6);
+      --toggle-track: #3a3a40;
+      --sun: #f0a020;
+      --moon: #b9ccff;
+      --ok-bg: #16302a;
+      --ok-fg: #7fe0b0;
+      --sky-bg: #1c2a44;
+      --sky-fg: #9cc2ff;
+      --mint-bg: #16302a;
+      --mint-fg: #7fe0b0;
+      --peach-bg: #392619;
+      --peach-fg: #ffb58c;
+      --lilac-bg: #29244a;
+      --lilac-fg: #bfaeff;
+      --butter-bg: #352d10;
+      --butter-fg: #ffd866;
+      --rose-bg: #3c1d29;
+      --rose-fg: #ff9fbd;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #050506;
+    --wp-a: #26262b;
+    --wp-b: #1b2420;
+    --wp-c: #2a211c;
+    --side-bg: #1a1a1c;
+    --win-bg: #0c0c0d;
+    --surface: #202023;
+    --line: #2e2e33;
+    --ink: #f2f2f4;
+    --ink-2: #a8a8b0;
+    --ink-3: #8c8c95;
+    --accent: #7ba3ff;
+    --accent-ink: #0a1230;
+    --shadow-win: 0 40px 90px -30px rgba(0, 0, 0, 0.8);
+    --shadow-soft: rgba(0, 0, 0, 0.6);
+    --toggle-track: #3a3a40;
+    --sun: #f0a020;
+    --moon: #b9ccff;
+    --ok-bg: #16302a;
+    --ok-fg: #7fe0b0;
+    --sky-bg: #1c2a44;
+    --sky-fg: #9cc2ff;
+    --mint-bg: #16302a;
+    --mint-fg: #7fe0b0;
+    --peach-bg: #392619;
+    --peach-fg: #ffb58c;
+    --lilac-bg: #29244a;
+    --lilac-fg: #bfaeff;
+    --butter-bg: #352d10;
+    --butter-fg: #ffd866;
+    --rose-bg: #3c1d29;
+    --rose-fg: #ff9fbd;
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    padding-block: 24px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--ink);
+    background:
+      radial-gradient(60% 50% at 12% 10%, var(--wp-a), transparent 70%),
+      radial-gradient(50% 45% at 90% 20%, var(--wp-c), transparent 70%),
+      radial-gradient(60% 55% at 70% 95%, var(--wp-b), transparent 70%), var(--bg);
+  }
+  button,
+  input,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2.5px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .ico {
+    width: 1em;
+    height: 1em;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Tones: each folder owns one pastel */
+  .tone-sky {
+    --t-bg: var(--sky-bg);
+    --t-fg: var(--sky-fg);
+  }
+  .tone-mint {
+    --t-bg: var(--mint-bg);
+    --t-fg: var(--mint-fg);
+  }
+  .tone-peach {
+    --t-bg: var(--peach-bg);
+    --t-fg: var(--peach-fg);
+  }
+  .tone-lilac {
+    --t-bg: var(--lilac-bg);
+    --t-fg: var(--lilac-fg);
+  }
+  .tone-butter {
+    --t-bg: var(--butter-bg);
+    --t-fg: var(--butter-fg);
+  }
+  .tone-rose {
+    --t-bg: var(--rose-bg);
+    --t-fg: var(--rose-fg);
+  }
+  .tone-all {
+    --t-bg: var(--line);
+    --t-fg: var(--ink);
+  }
+
+  /* Window shell */
+  .win {
+    display: grid;
+    grid-template-columns: 272px minmax(0, 1fr);
+    grid-template-rows: 44px minmax(0, 1fr) 34px;
+    max-width: 1180px;
+    margin-inline: auto;
+    background: var(--side-bg);
+    border-radius: 14px;
+    box-shadow:
+      0 24px 48px -36px var(--shadow-soft),
+      0 0 0 1px var(--line);
+    overflow: hidden;
+  }
+
+  /* Title bar (Windows: controls on the right) */
+  .titlebar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 14px;
+    background: var(--side-bg);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .logo {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 13px;
+  }
+  .title-right {
+    display: flex;
+    align-items: center;
+  }
+  .theme {
+    position: relative;
+    width: 56px;
+    height: 30px;
+    margin-right: 10px;
+    border: 0;
+    border-radius: 999px;
+    padding: 0;
+    background: var(--toggle-track);
+    transition: background-color 0.35s ease;
+  }
+  .theme .knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--surface);
+    transition:
+      transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1),
+      background-color 0.35s ease;
+  }
+  .theme .knob .ico {
+    position: absolute;
+    font-size: 14px;
+    transition:
+      transform 0.45s ease,
+      opacity 0.3s ease;
+  }
+  .theme .sun {
+    color: var(--sun);
+  }
+  .theme .moon {
+    color: var(--moon);
+    opacity: 0;
+    transform: rotate(-70deg) scale(0.6);
+  }
+  .theme[aria-checked='true'] .knob {
+    transform: translateX(26px);
+  }
+  .theme[aria-checked='true'] .sun {
+    opacity: 0;
+    transform: rotate(70deg) scale(0.6);
+  }
+  .theme[aria-checked='true'] .moon {
+    opacity: 1;
+    transform: none;
+  }
+  .wbtn {
+    width: 46px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 14px;
+  }
+  .wbtn:hover {
+    background: color-mix(in srgb, var(--ink) 9%, transparent);
+  }
+  .wbtn.close:hover {
+    background: var(--close);
+    color: #ffffff;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 6px 14px 16px;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .search {
+    position: relative;
+  }
+  .search .ico {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--ink-3);
+  }
+  .search input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    outline: none;
+    font-size: 14px;
+  }
+  .search input::placeholder {
+    color: var(--ink-3);
+  }
+  .search input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .quick {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    font-size: 15px;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .quick:hover {
+    transform: translateY(-1px);
+  }
+  .quick:active {
+    transform: scale(0.98);
+  }
+  .quick .l {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .quick .ico {
+    font-size: 17px;
+    stroke-width: 2.3;
+  }
+  .quick .keys {
+    font-size: 11.5px;
+    font-weight: 600;
+    opacity: 0.85;
+    white-space: nowrap;
+  }
+  .label {
+    margin: 4px 6px 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .folders {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .folder {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    text-align: left;
+    font-weight: 500;
+    font-size: 15px;
+    transition:
+      background-color 0.2s ease,
+      transform 0.2s ease;
+  }
+  .folder:hover {
+    background: color-mix(in srgb, var(--surface) 55%, transparent);
+  }
+  .folder[aria-pressed='true'] {
+    background: var(--surface);
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .ficon {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    background: var(--t-bg);
+    color: var(--t-fg);
+    font-size: 16px;
+  }
+  .fname {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .count {
+    font-size: 13px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+  .folder.ghost {
+    color: var(--ink-2);
+  }
+  .folder.ghost .ficon {
+    background: transparent;
+    border: 1.5px dashed var(--ink-3);
+    color: var(--ink-2);
+  }
+  .vault {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+    padding: 10px 12px;
+    border: 1.5px dashed var(--line);
+    border-radius: 18px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .vault .ficon {
+    width: 28px;
+    height: 28px;
+    flex: none;
+  }
+  .vault b {
+    display: block;
+    color: var(--ink);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  /* Home panel */
+  .home {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 28px 32px 24px;
+    background: var(--win-bg);
+    border-top-left-radius: 22px;
+    overflow-y: auto;
+  }
+  .hello h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(26px, 3.4vw, 36px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .hello p {
+    margin: 6px 0 0;
+    color: var(--ink-2);
+  }
+  .capture {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 18px 14px;
+    border: 1.5px solid var(--line);
+    border-radius: 26px;
+    background: var(--surface);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .capture:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .capture textarea {
+    width: 100%;
+    min-height: 84px;
+    padding: 0;
+    border: 0;
+    outline: none;
+    resize: none;
+    background: transparent;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+  .capture textarea::placeholder {
+    color: var(--ink-3);
+  }
+  .capture-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--win-bg);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  kbd {
+    padding: 1px 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+    font: 600 11.5px var(--font-body);
+  }
+  .status {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ok-fg);
+  }
+  .status .dot {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--ok-bg);
+    font-size: 11px;
+  }
+  .status[data-state='saving'] {
+    color: var(--ink-2);
+  }
+  .status[data-state='saving'] .dot {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    color: var(--accent);
+    animation: pulse 0.9s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    50% {
+      transform: scale(0.82);
+      opacity: 0.7;
+    }
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .section-head h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 21px;
+  }
+  .section-head span {
+    font-size: 13px;
+    color: var(--ink-3);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+    gap: 14px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 16px 16px 14px;
+    border-radius: 22px;
+    background: var(--t-bg);
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease;
+  }
+  .card:hover {
+    transform: translateY(-2px);
+  }
+  .card h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+  .card p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--t-fg);
+  }
+  .link span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 6px;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    color: var(--t-fg);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .when {
+    font-size: 12.5px;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .empty {
+    grid-column: 1 / -1;
+    padding: 28px 12px;
+    text-align: center;
+    color: var(--ink-2);
+  }
+
+  /* Status bar */
+  .statusbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 16px;
+    font-size: 12px;
+    color: var(--ink-2);
+    background: var(--side-bg);
+  }
+
+  /* Theme change: circular reveal where supported, soft fade elsewhere */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+  ::view-transition-old(root) {
+    z-index: 1;
+  }
+  ::view-transition-new(root) {
+    z-index: 2;
+  }
+  .theme-fade,
+  .theme-fade * {
+    transition:
+      background-color 0.4s ease,
+      color 0.4s ease,
+      border-color 0.4s ease,
+      box-shadow 0.4s ease !important;
+  }
+
+  @media (min-width: 900px) {
+    .win {
+      height: min(780px, calc(100dvh - 48px));
+      min-height: 600px;
+    }
+  }
+  @media (max-width: 899px) {
+    .win {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: 44px auto auto 34px;
+    }
+    .home {
+      padding: 22px 16px 20px;
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+      overflow: visible;
+    }
+    .sidebar {
+      overflow: visible;
+    }
+    .folders {
+      flex-direction: row;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .folder {
+      width: auto;
+      white-space: nowrap;
+      flex: none;
+    }
+    .vault,
+    .quick .keys,
+    .hint.desk-only {
+      display: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+</style>
+<script>
+  try {
+    var saved = localStorage.getItem('anehalo-theme');
+    if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+  } catch (e) {}
+</script>
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24">
+    <circle cx="11" cy="11" r="7" />
+    <path d="M20 20l-3.5-3.5" />
+  </symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24">
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+  </symbol>
+  <symbol id="i-all" viewBox="0 0 24 24">
+    <rect x="4" y="4" width="16" height="16" rx="4" />
+    <path d="M8 9h8M8 13h5" />
+  </symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="4" />
+    <path
+      d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+    />
+  </symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24">
+    <path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z" />
+  </symbol>
+  <symbol id="i-link" viewBox="0 0 24 24">
+    <path
+      d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"
+    />
+  </symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24">
+    <path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" />
+  </symbol>
+  <symbol id="i-min" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" /></symbol>
+</svg>
+
+<div class="win">
+  <header class="titlebar">
+    <div class="brand">
+      <span class="logo"
+        ><svg class="ico"><use href="#i-pen" /></svg
+      ></span>
+      Anehalo
+    </div>
+    <div class="title-right">
+      <button class="theme" id="theme" role="switch" aria-checked="false" aria-label="Dark mode">
+        <span class="knob">
+          <svg class="ico sun"><use href="#i-sun" /></svg>
+          <svg class="ico moon"><use href="#i-moon" /></svg>
+        </span>
+      </button>
+      <button class="wbtn" aria-label="Minimize">
+        <svg class="ico"><use href="#i-min" /></svg>
+      </button>
+      <button class="wbtn" aria-label="Maximize">
+        <svg class="ico"><use href="#i-max" /></svg>
+      </button>
+      <button class="wbtn close" aria-label="Close">
+        <svg class="ico"><use href="#i-x" /></svg>
+      </button>
+    </div>
+  </header>
+
+  <aside class="sidebar" aria-label="Folders">
+    <div class="search">
+      <svg class="ico"><use href="#i-search" /></svg>
+      <label class="sr-only" for="search">Search notes</label>
+      <input id="search" type="search" placeholder="Search notes" autocomplete="off" />
+    </div>
+    <button class="quick" id="quick">
+      <span class="l"
+        ><svg class="ico"><use href="#i-plus" /></svg>Quick note</span
+      >
+      <span class="keys">Ctrl Alt N</span>
+    </button>
+    <div class="label">Folders</div>
+    <div class="folders" id="folders"></div>
+    <div class="vault">
+      <span class="ficon tone-mint"
+        ><svg class="ico"><use href="#i-folder" /></svg
+      ></span>
+      <span>Saved on this PC<b>Documents\Anehalo</b></span>
+    </div>
+  </aside>
+
+  <main class="home">
+    <div class="hello">
+      <h1 id="greeting">Good afternoon, Akila</h1>
+      <p id="today">Wednesday, 4 November</p>
+    </div>
+
+    <div class="capture">
+      <label class="sr-only" for="capture">Quick capture</label>
+      <textarea
+        id="capture"
+        rows="3"
+        placeholder="Start typing. It saves itself. Type /page to link another note."
+      ></textarea>
+      <div class="capture-foot">
+        <span class="hint"><kbd>/page</kbd> link a note</span>
+        <span class="hint desk-only"><kbd>/</kbd> text color, size, lists</span>
+        <span class="status" id="status" data-state="saved">
+          <span class="dot"
+            ><svg class="ico"><use href="#i-check" /></svg
+          ></span>
+          <span id="statusText">Saved automatically</span>
+        </span>
+      </div>
+    </div>
+
+    <section aria-labelledby="listTitle">
+      <div class="section-head">
+        <h2 id="listTitle">Recent notes</h2>
+        <span id="listMeta">Last edited first</span>
+      </div>
+      <div class="grid" id="notes" style="margin-top: 14px"></div>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span id="totals">8 notes · 6 folders</span>
+    <span>Stored as .md files</span>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    var TONES = ['sky', 'mint', 'lilac', 'peach', 'rose', 'butter'];
+    var folders = [
+      { id: 'work', name: 'Work', tone: 'sky' },
+      { id: 'study', name: 'Study', tone: 'mint' },
+      { id: 'projects', name: 'Projects', tone: 'lilac' },
+      { id: 'personal', name: 'Personal', tone: 'peach' },
+      { id: 'gym', name: 'Gym', tone: 'rose' },
+      { id: 'ideas', name: 'Ideas', tone: 'butter' },
+    ];
+    var notes = [
+      {
+        title: 'Login flow test cases',
+        body: 'Valid, invalid and locked-account paths. Add boundary checks for the password field.',
+        folder: 'work',
+        when: '12 min ago',
+        link: 'Playwright locators',
+      },
+      {
+        title: 'Playwright locators',
+        body: 'getByRole first, then getByTestId. Avoid XPath unless there is no other way.',
+        folder: 'work',
+        when: 'Yesterday',
+      },
+      {
+        title: 'ISTQB revision',
+        body: 'Equivalence partitioning, boundary values, decision tables. Redo mock paper 2.',
+        folder: 'study',
+        when: 'Yesterday',
+      },
+      {
+        title: 'Anehalo feature list',
+        body: 'Auto-save, /page links, PDF export, dark mode with a smooth switch.',
+        folder: 'projects',
+        when: '2 days ago',
+        link: 'Anehalo build phases',
+      },
+      {
+        title: 'Anehalo build phases',
+        body: 'Setup, UI shell, storage, editor, linking, export, polish.',
+        folder: 'projects',
+        when: '2 days ago',
+      },
+      {
+        title: 'Weekend plan',
+        body: 'Laundry, call home, buy a new notebook.',
+        folder: 'personal',
+        when: 'Monday',
+      },
+      {
+        title: 'Push day',
+        body: 'Bench 4x8, incline press 3x10, lateral raises 3x15.',
+        folder: 'gym',
+        when: 'Sunday',
+      },
+      {
+        title: 'App name ideas',
+        body: 'Short, soft, easy to type.',
+        folder: 'ideas',
+        when: '31 Oct',
+      },
+    ];
+    var active = 'all',
+      query = '',
+      draft = null,
+      saveTimer = null;
+
+    var $ = function (id) {
+      return document.getElementById(id);
+    };
+    function icon(name) {
+      var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      s.setAttribute('class', 'ico');
+      var u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      u.setAttribute('href', '#i-' + name);
+      s.appendChild(u);
+      return s;
+    }
+    function el(tag, cls, text) {
+      var e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text !== undefined) e.textContent = text;
+      return e;
+    }
+    function folderById(id) {
+      return folders.filter(function (f) {
+        return f.id === id;
+      })[0];
+    }
+
+    function renderFolders() {
+      var box = $('folders');
+      box.textContent = '';
+      var all = [{ id: 'all', name: 'All notes', tone: 'all' }].concat(folders);
+      all.forEach(function (f) {
+        var b = el('button', 'folder');
+        b.setAttribute('aria-pressed', String(active === f.id));
+        var ic = el('span', 'ficon tone-' + f.tone);
+        ic.appendChild(icon(f.id === 'all' ? 'all' : 'folder'));
+        var n =
+          f.id === 'all'
+            ? notes.length
+            : notes.filter(function (x) {
+                return x.folder === f.id;
+              }).length;
+        b.append(ic, el('span', 'fname', f.name), el('span', 'count', String(n)));
+        b.addEventListener('click', function () {
+          active = f.id;
+          render();
+        });
+        box.appendChild(b);
+      });
+      var g = el('button', 'folder ghost');
+      var gi = el('span', 'ficon');
+      gi.appendChild(icon('plus'));
+      g.append(gi, el('span', 'fname', 'New folder'));
+      g.addEventListener('click', function () {
+        var i = folders.length;
+        folders.push({
+          id: 'f' + Date.now(),
+          name: 'Folder ' + (i + 1),
+          tone: TONES[i % TONES.length],
+        });
+        render();
+      });
+      box.appendChild(g);
+    }
+
+    function renderNotes() {
+      var q = query.trim().toLowerCase();
+      var list = notes.filter(function (n) {
+        var inFolder = active === 'all' || n.folder === active;
+        var hit = !q || (n.title + ' ' + n.body).toLowerCase().indexOf(q) !== -1;
+        return inFolder && hit;
+      });
+      var grid = $('notes');
+      grid.textContent = '';
+      list.forEach(function (n) {
+        var f = folderById(n.folder);
+        var c = el('article', 'card tone-' + f.tone);
+        c.appendChild(el('h3', '', n.title));
+        if (n.body) c.appendChild(el('p', '', n.body));
+        if (n.link) {
+          var l = el('div', 'link');
+          l.append(icon('link'), el('span', '', n.link));
+          c.appendChild(l);
+        }
+        var foot = el('div', 'card-foot');
+        foot.append(el('span', 'chip', f.name), el('span', 'when', n.when));
+        c.appendChild(foot);
+        grid.appendChild(c);
+      });
+      if (!list.length)
+        grid.appendChild(el('div', 'empty', 'No notes here yet. Start typing above to add one.'));
+      $('listTitle').textContent = active === 'all' ? 'Recent notes' : folderById(active).name;
+      $('listMeta').textContent =
+        list.length + (list.length === 1 ? ' note' : ' notes') + ' · last edited first';
+      $('totals').textContent = notes.length + ' notes · ' + folders.length + ' folders';
+    }
+    function render() {
+      renderFolders();
+      renderNotes();
+    }
+
+    /* Greeting */
+    var now = new Date(),
+      h = now.getHours();
+    $('greeting').textContent =
+      (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + ', Akila';
+    $('today').textContent = now.toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    });
+
+    /* Search */
+    $('search').addEventListener('input', function (e) {
+      query = e.target.value;
+      renderNotes();
+    });
+
+    /* Capture with auto-save feedback */
+    function setStatus(state, text) {
+      $('status').dataset.state = state;
+      $('statusText').textContent = text;
+    }
+    $('capture').addEventListener('input', function (e) {
+      var value = e.target.value;
+      if (!value.trim()) {
+        if (draft) {
+          notes.splice(notes.indexOf(draft), 1);
+          draft = null;
+          render();
+        }
+        setStatus('saved', 'Saved automatically');
+        return;
+      }
+      if (!draft) {
+        draft = {
+          title: '',
+          body: '',
+          folder: active === 'all' ? 'personal' : active,
+          when: 'Just now',
+        };
+        notes.unshift(draft);
+      }
+      var lines = value.split('\n');
+      draft.title = lines[0].trim() || 'Untitled note';
+      draft.body = lines.slice(1).join(' ').trim();
+      render();
+      setStatus('saving', 'Saving…');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(function () {
+        setStatus('saved', 'Saved just now');
+      }, 700);
+    });
+    $('quick').addEventListener('click', function () {
+      draft = null;
+      $('capture').value = '';
+      setStatus('saved', 'Ready for a new note');
+      $('capture').focus();
+    });
+
+    /* Theme switch */
+    function effective() {
+      return (
+        root.dataset.theme ||
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      );
+    }
+    function syncToggle() {
+      $('theme').setAttribute('aria-checked', String(effective() === 'dark'));
+    }
+    function applyTheme(next) {
+      root.dataset.theme = next;
+      try {
+        localStorage.setItem('anehalo-theme', next);
+      } catch (e) {}
+      syncToggle();
+    }
+    $('theme').addEventListener('click', function (e) {
+      var next = effective() === 'dark' ? 'light' : 'dark';
+      var r = e.currentTarget.getBoundingClientRect();
+      var x = r.left + r.width / 2,
+        y = r.top + r.height / 2;
+      if (document.startViewTransition && !reduced) {
+        var radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+        var t = document.startViewTransition(function () {
+          applyTheme(next);
+        });
+        t.ready
+          .then(function () {
+            root.animate(
+              {
+                clipPath: [
+                  'circle(0px at ' + x + 'px ' + y + 'px)',
+                  'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)',
+                ],
+              },
+              {
+                duration: 650,
+                easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+                pseudoElement: '::view-transition-new(root)',
+              },
+            );
+          })
+          .catch(function () {});
+      } else {
+        root.classList.add('theme-fade');
+        applyTheme(next);
+        setTimeout(function () {
+          root.classList.remove('theme-fade');
+        }, 450);
+      }
+    });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncToggle);
+
+    syncToggle();
+    render();
+  })();
+</script>

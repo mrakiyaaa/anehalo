@@ -2,6 +2,8 @@
 @import '@fontsource-variable/figtree';
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './shell.css';
+@import './theme-transitions.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
@@ -14,21 +16,28 @@
   --line: #e1e6f5;
   --ink: #1b2038;
   --accent: #2f6bf0;
-  --muted-ink: #626a83;
+  --muted-ink: #565d7c;
+  --subtle-ink: #6f7696;
   --accent-ink: #ffffff;
   --danger: #ba3346;
-  --sky-bg: #e3f1ff;
-  --sky-fg: #285b85;
-  --mint-bg: #e0f3e9;
-  --mint-fg: #28624a;
-  --peach-bg: #ffeadb;
-  --peach-fg: #8b4a27;
-  --lilac-bg: #eee5fb;
-  --lilac-fg: #67458b;
-  --butter-bg: #fff3cc;
-  --butter-fg: #76601e;
-  --rose-bg: #fbe3eb;
-  --rose-fg: #8e405c;
+  --sky-bg: #ddebff;
+  --sky-fg: #2457b8;
+  --mint-bg: #d6f5e7;
+  --mint-fg: #1a7a4f;
+  --peach-bg: #ffe4d3;
+  --peach-fg: #b4521d;
+  --lilac-bg: #e9e1ff;
+  --lilac-fg: #5f45c4;
+  --butter-bg: #fff2c6;
+  --butter-fg: #8a6a00;
+  --rose-bg: #ffdfe8;
+  --rose-fg: #b83763;
+  --toggle-track: #dae5ff;
+  --sun: #f0a020;
+  --moon: #9db8ff;
+  --success-bg: #d5f5e6;
+  --success-fg: #1e7a4f;
+  --window-close: #c42b1c;
   --radius: 1rem;
 }
 
@@ -40,21 +49,26 @@
   --line: #2e2e33;
   --ink: #f2f2f4;
   --accent: #7ba3ff;
-  --muted-ink: #a4a4ae;
-  --accent-ink: #0c0c0d;
+  --muted-ink: #a8a8b0;
+  --subtle-ink: #8c8c95;
+  --accent-ink: #0a1230;
   --danger: #ff8b9b;
-  --sky-bg: #1b2a36;
-  --sky-fg: #add6fa;
-  --mint-bg: #1c3029;
-  --mint-fg: #a8dfc1;
-  --peach-bg: #34271f;
-  --peach-fg: #f3bf9b;
-  --lilac-bg: #2b2438;
-  --lilac-fg: #d2b7f3;
-  --butter-bg: #322e1d;
-  --butter-fg: #ebd78d;
-  --rose-bg: #35242a;
-  --rose-fg: #f2b2c8;
+  --sky-bg: #1c2a44;
+  --sky-fg: #9cc2ff;
+  --mint-bg: #16302a;
+  --mint-fg: #7fe0b0;
+  --peach-bg: #392619;
+  --peach-fg: #ffb58c;
+  --lilac-bg: #29244a;
+  --lilac-fg: #bfaeff;
+  --butter-bg: #352d10;
+  --butter-fg: #ffd866;
+  --rose-bg: #3c1d29;
+  --rose-fg: #ff9fbd;
+  --toggle-track: #3a3a40;
+  --moon: #b9ccff;
+  --success-bg: #16302a;
+  --success-fg: #7fe0b0;
 }
 
 :root {
@@ -155,6 +169,8 @@
     @apply bg-background font-sans text-foreground antialiased;
 
     overflow: hidden;
+    font-size: 15px;
+    line-height: normal;
   }
 
   h1,

@@ -1,16 +1,19 @@
+import { useRef } from 'react';
 import { MainArea } from '@/components/layout/MainArea';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { StatusBar } from '@/components/layout/StatusBar';
 import { TitleBar } from '@/components/layout/TitleBar';
+import { useQuickCaptureShortcut } from '@/features/editor/use-quick-capture-shortcut';
 
 export function AppShell() {
+  const captureReference = useRef<HTMLTextAreaElement>(null);
+  useQuickCaptureShortcut(captureReference);
+
   return (
-    <div className="grid h-dvh grid-rows-[3.75rem_minmax(0,1fr)_1.75rem] overflow-hidden bg-background text-foreground">
+    <div className="app-shell">
       <TitleBar />
-      <div className="grid min-h-0 grid-cols-[15rem_minmax(0,1fr)]">
-        <Sidebar />
-        <MainArea />
-      </div>
+      <Sidebar onQuickNote={() => captureReference.current?.focus()} />
+      <MainArea captureReference={captureReference} />
       <StatusBar />
     </div>
   );
