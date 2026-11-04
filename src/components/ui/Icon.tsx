@@ -16,6 +16,18 @@ const iconPaths = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M3 6h18M9 6V4h6v2M6 6l1 14h10l1-14M10 10v6m4-6v6" />
+    </>
+  ),
   sun: (
     <>
       <circle cx="12" cy="12" r="4" />

@@ -1,5 +1,5 @@
 import { Icon } from '@/components/ui/Icon';
-import { useWorkspaceStore } from '@/store/workspace-store';
+import { useWorkspaceStore } from '@/store/use-workspace-store';
 
 export function NoteSearch() {
   const searchText = useWorkspaceStore((state) => state.searchText);

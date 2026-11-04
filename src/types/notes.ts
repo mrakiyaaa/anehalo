@@ -1,16 +1,26 @@
 export type PastelTone = 'sky' | 'mint' | 'peach' | 'lilac' | 'butter' | 'rose';
 
 export interface Folder {
-  readonly id: string;
   readonly name: string;
-  readonly tone: PastelTone;
+  readonly relativePath: string;
+  readonly parent: string | null;
 }
 
-export interface Note {
-  readonly id: string;
+export interface NoteSummary {
   readonly title: string;
-  readonly text: string;
-  readonly folderId: string;
-  readonly editedLabel: string;
-  readonly linkedNoteTitle?: string;
+  readonly folder: string | null;
+  readonly relativePath: string;
+  readonly modifiedAt: number;
+  readonly snippet: string;
+  readonly searchText: string;
+}
+
+export interface Note extends NoteSummary {
+  readonly content: string;
+}
+
+export interface VaultTree {
+  readonly vaultPath: string;
+  readonly folders: readonly Folder[];
+  readonly notes: readonly NoteSummary[];
 }

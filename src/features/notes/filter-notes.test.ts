@@ -1,47 +1,34 @@
 import { describe, expect, it } from 'vitest';
 import { filterNotes } from '@/features/notes/filter-notes';
-import { mockNotes } from '@/lib/mock-data';
+import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
+import { unwrapResult } from '@/test/repository-helpers';
 
 describe('filterNotes', () => {
-  it('returns all notes in their original recent order without filters', () => {
-    expect(filterNotes(mockNotes, { activeFolderId: null, searchText: '' })).toEqual(mockNotes);
-  });
-
-  it('filters by folder', () => {
+  it('filters folders, nested paths, title, and full text beyond the snippet', async () => {
+    const repository = new InMemoryNoteRepository([
+      { relativePath: 'Work/Login.md', type: 'file', content: 'Boundary password cases' },
+      { relativePath: 'Work/Nested/Revision.md', type: 'file', content: 'Decision tables' },
+      { relativePath: 'Workspace/Elsewhere.md', type: 'file', content: 'Unrelated' },
+      { relativePath: 'Root.md', type: 'file', content: `${'Beginning '.repeat(30)}unique-token` },
+    ]);
+    const notes = unwrapResult(await repository.listTree()).notes;
+    expect(filterNotes(notes, { activeFolderPath: 'Work', searchText: '' })).toHaveLength(2);
     expect(
-      filterNotes(mockNotes, { activeFolderId: 'projects', searchText: '' }).map((note) => note.id),
-    ).toEqual(['anehalo-features', 'anehalo-phases']);
-  });
-
-  it('matches titles regardless of case or surrounding whitespace', () => {
-    expect(
-      filterNotes(mockNotes, { activeFolderId: null, searchText: '  PLAYWRIGHT  ' }).map(
-        (note) => note.id,
+      filterNotes(notes, { activeFolderPath: 'Work', searchText: '  PASSWORD ' }).map(
+        (note) => note.title,
       ),
-    ).toEqual(['playwright-locators']);
-  });
-
-  it('matches note text', () => {
+    ).toEqual(['Login']);
     expect(
-      filterNotes(mockNotes, { activeFolderId: null, searchText: 'boundary' }).map(
-        (note) => note.id,
+      filterNotes(notes, { activeFolderPath: null, searchText: 'revision' }).map(
+        (note) => note.title,
       ),
-    ).toEqual(['login-flow', 'istqb-revision']);
-  });
-
-  it('requires both folder and search to match', () => {
+    ).toEqual(['Revision']);
     expect(
-      filterNotes(mockNotes, { activeFolderId: 'study', searchText: 'boundary' }).map(
-        (note) => note.id,
+      filterNotes(notes, { activeFolderPath: null, searchText: 'unique-token' }).map(
+        (note) => note.title,
       ),
-    ).toEqual(['istqb-revision']);
-    expect(filterNotes(mockNotes, { activeFolderId: 'work', searchText: 'laundry' })).toEqual([]);
-  });
-
-  it('returns no matches without changing the source notes', () => {
-    expect(filterNotes(mockNotes, { activeFolderId: null, searchText: 'no-such-note' })).toEqual(
-      [],
-    );
-    expect(mockNotes).toHaveLength(8);
+    ).toEqual(['Root']);
+    expect(filterNotes(notes, { activeFolderPath: 'Work', searchText: 'Unrelated' })).toEqual([]);
+    expect(filterNotes(notes, { activeFolderPath: null, searchText: '' })).toHaveLength(4);
   });
 });

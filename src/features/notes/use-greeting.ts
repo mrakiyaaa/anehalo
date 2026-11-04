@@ -1,12 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCurrentTime } from '@/lib/use-current-time';
 
 export function useGreeting() {
-  const [currentTime, setCurrentTime] = useState(() => new Date());
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => window.clearInterval(interval);
-  }, []);
+  const currentTime = useCurrentTime();
 
   const hour = currentTime.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';

@@ -1,26 +1,37 @@
-import { Icon } from '@/components/ui/Icon';
-import type { Folder, Note } from '@/types/notes';
+import { ItemMenu } from '@/components/ui/ItemMenu';
+import { pathName } from '@/features/storage/storage-paths';
+import { folderTone } from '@/lib/folder-tone';
+import { formatRelativeTime } from '@/lib/relative-time';
+import { useWorkspaceStore } from '@/store/use-workspace-store';
+import type { NoteSummary } from '@/types/notes';
 
 interface NoteCardProps {
-  note: Note;
-  folder: Folder;
+  note: NoteSummary;
+  currentTime: number;
 }
 
-export function NoteCard({ note, folder }: NoteCardProps) {
+export function NoteCard({ note, currentTime }: NoteCardProps) {
+  const renameNote = useWorkspaceStore((state) => state.renameNote);
+  const deleteNote = useWorkspaceStore((state) => state.deleteNote);
   return (
-    <article className={`note-card tone-${folder.tone}`}>
-      <h3>{note.title}</h3>
-      <p>{note.text}</p>
-      {note.linkedNoteTitle && (
-        <div className="note-link">
-          <Icon name="link" />
-          <span>{note.linkedNoteTitle}</span>
+    <ItemMenu
+      kind="note"
+      name={note.title}
+      onRename={(name) => renameNote(note.relativePath, name)}
+      onDelete={() => deleteNote(note.relativePath)}
+    >
+      <article className={`note-card tone-${folderTone(note.folder)}`} title={note.relativePath}>
+        <h3>{note.title}</h3>
+        <p>{note.snippet || 'An empty note, ready for a thought.'}</p>
+        <div className="note-card-footer">
+          <span className="folder-chip" title={note.folder ?? 'Vault root'}>
+            {note.folder ? pathName(note.folder) : 'Vault root'}
+          </span>
+          <span className="note-edited-time">
+            {formatRelativeTime(note.modifiedAt, currentTime)}
+          </span>
         </div>
-      )}
-      <div className="note-card-footer">
-        <span className="folder-chip">{folder.name}</span>
-        <span className="note-edited-time">{note.editedLabel}</span>
-      </div>
-    </article>
+      </article>
+    </ItemMenu>
   );
 }

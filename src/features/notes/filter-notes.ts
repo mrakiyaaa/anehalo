@@ -1,16 +1,21 @@
-import type { Note } from '@/types/notes';
+import type { NoteSummary } from '@/types/notes';
+import { isInsideFolder } from '@/features/storage/storage-paths';
 
 interface NoteFilters {
-  activeFolderId: string | null;
+  activeFolderPath: string | null;
   searchText: string;
 }
 
-export function filterNotes(notes: readonly Note[], { activeFolderId, searchText }: NoteFilters) {
+export function filterNotes(
+  notes: readonly NoteSummary[],
+  { activeFolderPath, searchText }: NoteFilters,
+) {
   const normalizedSearch = searchText.trim().toLocaleLowerCase();
 
   return notes.filter((note) => {
-    const matchesFolder = activeFolderId === null || note.folderId === activeFolderId;
-    const matchesSearch = `${note.title} ${note.text}`
+    const matchesFolder =
+      activeFolderPath === null || isInsideFolder(note.relativePath, activeFolderPath);
+    const matchesSearch = `${note.title} ${note.searchText}`
       .toLocaleLowerCase()
       .includes(normalizedSearch);
     return matchesFolder && matchesSearch;

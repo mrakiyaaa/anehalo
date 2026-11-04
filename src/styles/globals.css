@@ -4,6 +4,7 @@
 @import 'tw-animate-css';
 @import './shell.css';
 @import './theme-transitions.css';
+@import './storage.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
