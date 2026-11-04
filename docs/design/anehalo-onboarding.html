@@ -1,0 +1,558 @@
+<title>Anehalo Onboarding</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: same Windows 11 window as the home screen. Below the title bar, two inset cards:
+   a tinted illustration card that changes color per step, and a calm white card with the step content.
+   Flat, border-led, minimal shadows, pastel tones, large radii. */
+:root {
+  --font-display: 'Fredoka', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Figtree', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+
+  --bg: #E7ECF9; --wp-a: #CFE2FF; --wp-b: #D3F4E4; --wp-c: #FFE2D1;
+  --side-bg: #EDF0FB; --win-bg: #F8FAFF; --surface: #FFFFFF; --line: #E1E6F5;
+  --ink: #1B2038; --ink-2: #565D7C; --ink-3: #6F7696;
+  --accent: #2F6BF0; --accent-ink: #FFFFFF;
+  --shadow-soft: rgba(33, 46, 110, 0.4);
+  --close: #C42B1C;
+  --toggle-track: #DAE5FF; --sun: #F0A020; --moon: #9DB8FF;
+  --ok-bg: #D5F5E6; --ok-fg: #1E7A4F;
+
+  --sky-bg: #DDEBFF; --sky-fg: #2457B8;
+  --mint-bg: #D6F5E7; --mint-fg: #1A7A4F;
+  --peach-bg: #FFE4D3; --peach-fg: #B4521D;
+  --lilac-bg: #E9E1FF; --lilac-fg: #5F45C4;
+  --butter-bg: #FFF2C6; --butter-fg: #8A6A00;
+  --rose-bg: #FFDFE8; --rose-fg: #B83763;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #050506; --wp-a: #26262B; --wp-b: #1B2420; --wp-c: #2A211C;
+    --side-bg: #1A1A1C; --win-bg: #0C0C0D; --surface: #202023; --line: #2E2E33;
+    --ink: #F2F2F4; --ink-2: #A8A8B0; --ink-3: #8C8C95;
+    --accent: #7BA3FF; --accent-ink: #0A1230;
+    --shadow-soft: rgba(0, 0, 0, 0.6);
+    --toggle-track: #3A3A40; --sun: #F0A020; --moon: #B9CCFF;
+    --ok-bg: #16302A; --ok-fg: #7FE0B0;
+    --sky-bg: #1C2A44; --sky-fg: #9CC2FF;
+    --mint-bg: #16302A; --mint-fg: #7FE0B0;
+    --peach-bg: #392619; --peach-fg: #FFB58C;
+    --lilac-bg: #29244A; --lilac-fg: #BFAEFF;
+    --butter-bg: #352D10; --butter-fg: #FFD866;
+    --rose-bg: #3C1D29; --rose-fg: #FF9FBD;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #050506; --wp-a: #26262B; --wp-b: #1B2420; --wp-c: #2A211C;
+  --side-bg: #1A1A1C; --win-bg: #0C0C0D; --surface: #202023; --line: #2E2E33;
+  --ink: #F2F2F4; --ink-2: #A8A8B0; --ink-3: #8C8C95;
+  --accent: #7BA3FF; --accent-ink: #0A1230;
+  --shadow-soft: rgba(0, 0, 0, 0.6);
+  --toggle-track: #3A3A40; --sun: #F0A020; --moon: #B9CCFF;
+  --ok-bg: #16302A; --ok-fg: #7FE0B0;
+  --sky-bg: #1C2A44; --sky-fg: #9CC2FF;
+  --mint-bg: #16302A; --mint-fg: #7FE0B0;
+  --peach-bg: #392619; --peach-fg: #FFB58C;
+  --lilac-bg: #29244A; --lilac-fg: #BFAEFF;
+  --butter-bg: #352D10; --butter-fg: #FFD866;
+  --rose-bg: #3C1D29; --rose-fg: #FF9FBD;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--ink);
+  background:
+    radial-gradient(60% 50% at 12% 10%, var(--wp-a), transparent 70%),
+    radial-gradient(50% 45% at 90% 20%, var(--wp-c), transparent 70%),
+    radial-gradient(60% 55% at 70% 95%, var(--wp-b), transparent 70%),
+    var(--bg);
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ico { width: 1em; height: 1em; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+.tone-sky { --t-bg: var(--sky-bg); --t-fg: var(--sky-fg); }
+.tone-mint { --t-bg: var(--mint-bg); --t-fg: var(--mint-fg); }
+.tone-peach { --t-bg: var(--peach-bg); --t-fg: var(--peach-fg); }
+.tone-lilac { --t-bg: var(--lilac-bg); --t-fg: var(--lilac-fg); }
+.tone-butter { --t-bg: var(--butter-bg); --t-fg: var(--butter-fg); }
+.tone-rose { --t-bg: var(--rose-bg); --t-fg: var(--rose-fg); }
+
+/* Window shell */
+.win {
+  display: grid; grid-template-rows: 44px minmax(0, 1fr);
+  max-width: 1180px; margin-inline: auto;
+  background: var(--side-bg); border-radius: 14px; overflow: hidden;
+  box-shadow: 0 24px 48px -36px var(--shadow-soft), 0 0 0 1px var(--line);
+}
+.titlebar { display: flex; align-items: center; justify-content: space-between; padding-left: 14px; background: var(--side-bg); }
+.brand { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; }
+.logo { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--accent); color: var(--accent-ink); font-size: 13px; }
+.title-right { display: flex; align-items: center; }
+.theme { position: relative; width: 56px; height: 30px; margin-right: 10px; border: 0; border-radius: 999px; padding: 0; background: var(--toggle-track); transition: background-color 0.35s ease; }
+.theme .knob { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1), background-color 0.35s ease; }
+.theme .knob .ico { position: absolute; font-size: 14px; transition: transform 0.45s ease, opacity 0.3s ease; }
+.theme .sun { color: var(--sun); }
+.theme .moon { color: var(--moon); opacity: 0; transform: rotate(-70deg) scale(0.6); }
+.theme[aria-checked="true"] .knob { transform: translateX(26px); }
+.theme[aria-checked="true"] .sun { opacity: 0; transform: rotate(70deg) scale(0.6); }
+.theme[aria-checked="true"] .moon { opacity: 1; transform: none; }
+.wbtn { width: 46px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--ink); font-size: 14px; }
+.wbtn:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); }
+.wbtn.close:hover { background: var(--close); color: #FFFFFF; }
+
+/* Stage: illustration card + content card */
+.stage { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 10px; padding: 0 10px 10px; min-height: 0; }
+.visual {
+  position: relative; display: grid; place-items: center; overflow: hidden;
+  border-radius: 22px; background: var(--t-bg);
+  transition: background-color 0.5s ease;
+}
+.scene { position: relative; width: min(340px, 78%); aspect-ratio: 1 / 1; display: grid; place-items: center; }
+.hero-icon {
+  display: grid; place-items: center; width: 132px; height: 132px; border-radius: 38px;
+  background: var(--surface); color: var(--t-fg); font-size: 62px;
+  border: 1px solid var(--line);
+}
+.hero-icon.pop { animation: pop 0.55s cubic-bezier(0.34, 1.5, 0.5, 1); }
+@keyframes pop { from { transform: scale(0.7) rotate(-8deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.float {
+  position: absolute; display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 14px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line);
+  font-size: 13px; font-weight: 600; white-space: nowrap; color: var(--ink);
+  animation: bob 6s ease-in-out infinite;
+}
+.float .ico { font-size: 15px; color: var(--t-fg); }
+.f1 { top: 6%; left: -2%; }
+.f2 { top: 42%; right: -8%; animation-delay: -2s; }
+.f3 { bottom: 4%; left: 6%; animation-delay: -4s; }
+@keyframes bob { 50% { transform: translateY(-8px); } }
+
+.panel { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; padding: 26px 40px 28px; border-radius: 22px; background: var(--win-bg); overflow-y: auto; }
+.progress { display: flex; align-items: center; gap: 14px; min-height: 12px; }
+.dots { display: flex; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 999px; background: var(--line); transition: width 0.35s ease, background-color 0.35s ease; }
+.dot.done { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.dot.now { width: 26px; background: var(--accent); }
+.progress .count { font-size: 12.5px; color: var(--ink-3); }
+
+.content { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 20px; padding-block: 18px; animation: enter 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes enter { from { opacity: 0; transform: translateX(var(--dx, 18px)); } to { opacity: 1; transform: none; } }
+.title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.1; letter-spacing: -0.01em; text-wrap: balance; outline: none; }
+.lead { margin: 0; max-width: 46ch; font-size: 16.5px; line-height: 1.55; color: var(--ink-2); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px; background: var(--t-bg); color: var(--t-fg); font-size: 13.5px; font-weight: 600; }
+
+.field label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); }
+.field input { width: 100%; padding: 14px 18px; border: 1.5px solid var(--line); border-radius: 18px; background: var(--surface); font-size: 17px; font-weight: 500; outline: none; }
+.field input::placeholder { color: var(--ink-3); }
+.field input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent); }
+.hello-preview { padding: 14px 18px 16px; border-radius: 20px; background: var(--t-bg); }
+.hello-preview small { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.hello-preview strong { font-family: var(--font-display); font-weight: 600; font-size: 23px; overflow-wrap: anywhere; }
+
+.choices { display: grid; gap: 10px; }
+.choice { position: relative; display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px; border: 1.5px solid var(--line); border-radius: 20px; background: var(--surface); cursor: pointer; transition: border-color 0.2s ease, background-color 0.2s ease; }
+.choice input { position: absolute; opacity: 0; pointer-events: none; }
+.choice:focus-within { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+.choice.is-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.mark { flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-top: 2px; border: 2px solid var(--ink-3); border-radius: 50%; }
+.is-on .mark { border-color: var(--accent); }
+.is-on .mark::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.choice-body { min-width: 0; flex: 1; }
+.choice-title { font-weight: 600; }
+.rec { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--ok-bg); color: var(--ok-fg); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.choice-sub { margin-top: 3px; font-size: 13.5px; color: var(--ink-2); }
+.path { display: inline-block; margin-top: 6px; padding: 3px 9px; border-radius: 8px; background: var(--win-bg); font: 13px Consolas, 'Cascadia Mono', monospace; overflow-wrap: anywhere; }
+.note { margin: 0; font-size: 13.5px; color: var(--ink-3); }
+
+.themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.theme-card { flex-direction: column; align-items: stretch; gap: 10px; padding: 10px 10px 12px; }
+.theme-card .label { display: flex; align-items: center; gap: 8px; padding-inline: 4px; font-weight: 600; font-size: 14px; }
+.theme-card .mark { margin-top: 0; width: 18px; height: 18px; }
+/* Fixed swatches: these always show their own theme, whichever theme the page is in */
+.pv-light { --pv-win: #F8FAFF; --pv-side: #EDF0FB; --pv-a: #DDEBFF; --pv-b: #FFE4D3; --pv-c: #D6F5E7; }
+.pv-dark { --pv-win: #0C0C0D; --pv-side: #1A1A1C; --pv-a: #1C2A44; --pv-b: #392619; --pv-c: #16302A; }
+.pv { display: grid; height: 82px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; }
+.pv.split { grid-template-columns: 1fr 1fr; }
+.mini { display: grid; grid-template-columns: 30% 1fr; gap: 6px; padding: 8px; background: var(--pv-win); }
+.mini .s { border-radius: 8px; background: var(--pv-side); }
+.mini .m { display: grid; gap: 6px; align-content: start; }
+.mini .m b { height: 14px; border-radius: 7px; background: var(--pv-a); }
+.mini .m b:nth-child(2) { background: var(--pv-b); width: 80%; }
+.mini .m b:nth-child(3) { background: var(--pv-c); width: 60%; }
+.split .mini { grid-template-columns: 1fr; }
+.split .mini .s { display: none; }
+
+.tips { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tip { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 20px; background: var(--t-bg); }
+.ficon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; background: var(--surface); color: var(--t-fg); font-size: 17px; }
+.tip h3 { margin: 4px 0 0; font-family: var(--font-display); font-weight: 500; font-size: 17px; }
+.tip p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+kbd { padding: 1px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 600 11.5px var(--font-body); }
+
+.summary { display: grid; gap: 8px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.row span { color: var(--ink-2); }
+.row b { min-width: 0; text-align: right; overflow-wrap: anywhere; }
+
+.actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.spacer { flex: 1; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 22px; border: 1.5px solid transparent; border-radius: 999px; font-weight: 600; font-size: 15px; transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease; }
+.btn .ico { font-size: 16px; stroke-width: 2.2; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { transform: translateY(-1px); }
+.btn.primary:active { transform: scale(0.98); }
+.btn.line { border-color: var(--line); background: transparent; }
+.btn.line:hover { background: var(--surface); }
+.btn.text { padding-inline: 12px; background: transparent; color: var(--ink-2); }
+.btn.text:hover { color: var(--ink); }
+.btn.small { padding: 7px 14px; font-size: 13.5px; }
+
+::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+.theme-fade, .theme-fade * { transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease !important; }
+
+@media (min-width: 900px) {
+  .win { height: min(760px, calc(100dvh - 48px)); min-height: 600px; }
+}
+@media (max-width: 899px) {
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .visual { min-height: 230px; }
+  .scene { width: min(250px, 70%); }
+  .hero-icon { width: 96px; height: 96px; border-radius: 30px; font-size: 46px; }
+  .f1 { left: -14%; } .f2 { right: -16%; } .f3 { left: -4%; }
+  .panel { padding: 22px 18px 24px; overflow: visible; }
+}
+@media (max-width: 520px) {
+  .tips { grid-template-columns: minmax(0, 1fr); }
+  .float { font-size: 12px; padding: 7px 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+<script>
+try {
+  var saved = localStorage.getItem('anehalo-theme');
+  if (saved === 'dark' || saved === 'light') document.documentElement.dataset.theme = saved;
+} catch (e) {}
+</script>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l2.2 5.6L20 11l-5.8 2.4L12 19l-2.2-5.6L4 11l5.8-2.4z"/></symbol>
+  <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 4v10M8 10l4 4 4-4M5 20h14"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-min" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
+
+<div class="win">
+  <header class="titlebar">
+    <div class="brand"><span class="logo"><svg class="ico"><use href="#i-pen"/></svg></span>Anehalo</div>
+    <div class="title-right">
+      <button class="theme" id="themeSwitch" role="switch" aria-checked="false" aria-label="Dark mode">
+        <span class="knob"><svg class="ico sun"><use href="#i-sun"/></svg><svg class="ico moon"><use href="#i-moon"/></svg></span>
+      </button>
+      <button class="wbtn" aria-label="Minimize"><svg class="ico"><use href="#i-min"/></svg></button>
+      <button class="wbtn" aria-label="Maximize"><svg class="ico"><use href="#i-max"/></svg></button>
+      <button class="wbtn close" aria-label="Close"><svg class="ico"><use href="#i-x"/></svg></button>
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="visual tone-sky" id="visual" aria-hidden="true">
+      <div class="scene">
+        <div class="hero-icon" id="heroIcon"></div>
+        <div class="float f1" id="float1"></div>
+        <div class="float f2" id="float2"></div>
+        <div class="float f3" id="float3"></div>
+      </div>
+    </div>
+    <section class="panel" id="panel"></section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var DEFAULT_PATH = 'Documents\\Anehalo';
+  var ALT_PATH = 'D:\\Notes\\Anehalo';
+
+  var state = { step: 0, direction: 1, finished: false, skipped: false, interacted: false,
+                name: 'Akila', location: 'default', theme: 'system' };
+
+  function $(id) { return document.getElementById(id); }
+  function icon(name) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ico');
+    var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#i-' + name);
+    svg.appendChild(use);
+    return svg;
+  }
+  function appendKids(node, kid) {
+    if (kid == null || kid === false) return;
+    if (Array.isArray(kid)) { kid.forEach(function (item) { appendKids(node, item); }); return; }
+    node.append(kid.nodeType ? kid : document.createTextNode(kid));
+  }
+  function h(tag, props) {
+    var node = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (key) {
+      var value = props[key];
+      if (value === false || value == null) return;
+      if (key === 'class') node.className = value;
+      else if (key === 'text') node.textContent = value;
+      else if (key.slice(0, 2) === 'on') node.addEventListener(key.slice(2), value);
+      else node.setAttribute(key, value === true ? '' : value);
+    });
+    for (var i = 2; i < arguments.length; i++) appendKids(node, arguments[i]);
+    return node;
+  }
+  function greetingWord() {
+    var hour = new Date().getHours();
+    return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  }
+  function chosenPath() { return state.location === 'default' ? DEFAULT_PATH : ALT_PATH; }
+
+  /* ---------- Theme ---------- */
+  function effectiveTheme() {
+    return root.dataset.theme || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  function syncThemeCards() {
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="theme"]'), function (input) {
+      var isOn = input.value === state.theme;
+      input.checked = isOn;
+      input.closest('.choice').classList.toggle('is-on', isOn);
+    });
+  }
+  function syncSwitch() { $('themeSwitch').setAttribute('aria-checked', String(effectiveTheme() === 'dark')); }
+  function applyTheme(mode) {
+    if (mode === 'system') delete root.dataset.theme; else root.dataset.theme = mode;
+    try { localStorage.setItem('anehalo-theme', mode); } catch (e) {}
+    syncSwitch();
+  }
+  function changeTheme(mode, x, y) {
+    state.theme = mode;
+    if (document.startViewTransition && !reduced) {
+      var radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+      var transition = document.startViewTransition(function () { applyTheme(mode); });
+      transition.ready.then(function () {
+        root.animate(
+          { clipPath: ['circle(0px at ' + x + 'px ' + y + 'px)', 'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)'] },
+          { duration: 650, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }
+        );
+      }).catch(function () {});
+    } else {
+      root.classList.add('theme-fade');
+      applyTheme(mode);
+      setTimeout(function () { root.classList.remove('theme-fade'); }, 450);
+    }
+  }
+  $('themeSwitch').addEventListener('click', function (event) {
+    var rect = event.currentTarget.getBoundingClientRect();
+    changeTheme(effectiveTheme() === 'dark' ? 'light' : 'dark', rect.left + rect.width / 2, rect.top + rect.height / 2);
+    syncThemeCards();
+  });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncSwitch);
+
+  /* ---------- Reusable pieces ---------- */
+  function radioCard(group, value, isOn, className, onPick, children, noMark) {
+    var input = h('input', { type: 'radio', name: group, value: value, checked: isOn });
+    var card = h('label', { class: 'choice ' + className + (isOn ? ' is-on' : '') },
+      input, noMark ? null : h('span', { class: 'mark' }), children);
+    input.addEventListener('change', function (event) {
+      var siblings = card.parentNode.querySelectorAll('.choice');
+      Array.prototype.forEach.call(siblings, function (node) { node.classList.remove('is-on'); });
+      card.classList.add('is-on');
+      onPick(event);
+    });
+    return card;
+  }
+  function pill(text) { return h('span', { class: 'pill' }, icon('check'), text); }
+  function miniWindow(mode) { return h('div', { class: 'mini pv-' + mode }, h('span', { class: 's' }), h('div', { class: 'm' }, h('b'), h('b'), h('b'))); }
+  function themePreview(mode) {
+    if (mode === 'system') return h('div', { class: 'pv split' }, miniWindow('light'), miniWindow('dark'));
+    return h('div', { class: 'pv' }, miniWindow(mode));
+  }
+  function tip(tone, iconName, title, body) {
+    return h('div', { class: 'tip tone-' + tone }, h('span', { class: 'ficon' }, icon(iconName)), h('h3', { text: title }), body);
+  }
+
+  /* ---------- Steps ---------- */
+  var STEPS = [
+    { id: 'welcome', tone: 'sky', hero: 'pen',
+      floaters: [['check', 'Saved just now'], ['link', '/page'], ['folder', 'Ideas']],
+      title: 'Meet Anehalo',
+      lead: 'Instant notes that save themselves. Open the app, start typing, and you are done.',
+      body: function () { return h('div', { class: 'chips tone-sky' }, pill('Auto-save'), pill('Plain .md files'), pill('Light and dark')); } },
+    { id: 'name', tone: 'peach', hero: 'user',
+      floaters: [['spark', 'Hello there'], ['pen', 'Your notes'], ['check', 'Stays on this PC']],
+      title: 'What should we call you?',
+      lead: 'We use your name for a friendly hello on the home screen. It never leaves this PC.',
+      body: function () {
+        var greeting = h('strong', { id: 'greetingText' });
+        function update() { greeting.textContent = greetingWord() + ', ' + (state.name.trim() || 'friend'); }
+        var input = h('input', { id: 'nameInput', type: 'text', maxlength: '30', autocomplete: 'off', placeholder: 'Your first name', value: state.name });
+        input.addEventListener('input', function (event) { state.name = event.target.value; update(); });
+        update();
+        return h('div', { class: 'content-stack', style: 'display:grid;gap:16px' },
+          h('div', { class: 'field' }, h('label', { for: 'nameInput', text: 'First name' }), input),
+          h('div', { class: 'hello-preview tone-peach' }, h('small', { text: 'Home screen preview' }), greeting));
+      } },
+    { id: 'folder', tone: 'mint', hero: 'folder',
+      floaters: [['folder', 'Work'], ['folder', 'Study'], ['folder', 'Projects']],
+      title: 'Where should notes live?',
+      lead: 'Every folder is a real folder and every note is a .md file. Back them up or open them anywhere.',
+      body: function () {
+        var customPath = h('span', { class: 'path', id: 'customPath', text: ALT_PATH });
+        var browse = h('button', { class: 'btn line small', type: 'button', text: 'Browse…' });
+        var customRadio;
+        browse.addEventListener('click', function (event) {
+          event.preventDefault();
+          customRadio.querySelector('input').checked = true;
+          customRadio.querySelector('input').dispatchEvent(new Event('change'));
+        });
+        var defaultCard = radioCard('location', 'default', state.location === 'default', '', function () { state.location = 'default'; },
+          h('div', { class: 'choice-body' },
+            h('div', { class: 'choice-title' }, 'Use the default', h('span', { class: 'rec', text: 'Recommended' })),
+            h('div', { class: 'choice-sub' }, 'Created for you in your Documents folder.'),
+            h('span', { class: 'path', text: DEFAULT_PATH })));
+        customRadio = radioCard('location', 'custom', state.location === 'custom', '', function () { state.location = 'custom'; },
+          h('div', { class: 'choice-body' },
+            h('div', { class: 'choice-title', text: 'Choose another folder' }),
+            h('div', { class: 'choice-sub', text: 'Pick any folder, for example on another drive.' }),
+            customPath, ' ', browse));
+        return h('div', { style: 'display:grid;gap:14px' },
+          h('div', { class: 'choices', role: 'radiogroup', 'aria-label': 'Notes folder' }, defaultCard, customRadio),
+          h('p', { class: 'note', text: 'You can change this later.' }));
+      } },
+    { id: 'theme', tone: 'lilac', hero: 'sun',
+      floaters: [['sun', 'Light'], ['moon', 'Dark'], ['spark', 'Smooth switch']],
+      title: 'Pick your look',
+      lead: 'Switch any time with the sun and moon at the top of the window.',
+      body: function () {
+        var options = [['light', 'Light'], ['dark', 'Dark'], ['system', 'Match my PC']];
+        var cards = options.map(function (option) {
+          return radioCard('theme', option[0], state.theme === option[0], 'theme-card', function (event) {
+            var rect = event.target.closest('.choice').getBoundingClientRect();
+            changeTheme(option[0], rect.left + rect.width / 2, rect.top + rect.height / 2);
+          }, [themePreview(option[0]), h('span', { class: 'label' }, h('span', { class: 'mark' }), option[1])], true);
+        });
+        return h('div', { class: 'themes', role: 'radiogroup', 'aria-label': 'Theme' }, cards);
+      } },
+    { id: 'tour', tone: 'butter', hero: 'spark',
+      floaters: [['check', 'Auto-save'], ['link', '/page'], ['export', 'Export']],
+      title: 'Four quick tips',
+      lead: 'That is all the setup. Here is what keeps Anehalo fast.',
+      body: function () {
+        return h('div', { class: 'tips' },
+          tip('sky', 'check', 'Auto-save', h('p', { text: 'Just type. Every change is saved as you go.' })),
+          tip('lilac', 'link', 'Link notes', h('p', {}, 'Type ', h('kbd', { text: '/page' }), ' and pick a note to link.')),
+          tip('mint', 'export', 'Export', h('p', { text: 'Copy or download any note as .md or PDF.' })),
+          tip('peach', 'bolt', 'Quick note', h('p', {}, 'Press ', h('kbd', { text: 'Ctrl' }), ' ', h('kbd', { text: 'Alt' }), ' ', h('kbd', { text: 'N' }), ' from anywhere.')));
+      } }
+  ];
+  var FINISH = { tone: 'mint', hero: 'check', floaters: [['folder', 'Notes ready'], ['check', 'All set'], ['pen', 'Start typing']] };
+
+  var THEME_LABELS = { light: 'Light', dark: 'Dark', system: 'Match my PC' };
+
+  /* ---------- Rendering ---------- */
+  function buildProgress() {
+    var dots = h('div', { class: 'dots', role: 'presentation' });
+    STEPS.forEach(function (_, index) {
+      dots.appendChild(h('span', { class: 'dot' + (index < state.step ? ' done' : '') + (index === state.step ? ' now' : '') }));
+    });
+    return h('div', { class: 'progress' }, dots, h('span', { class: 'count', text: 'Step ' + (state.step + 1) + ' of ' + STEPS.length }));
+  }
+  function buildContent(step) {
+    return h('div', { class: 'content', style: '--dx:' + (state.direction * 18) + 'px' },
+      h('h1', { class: 'title', tabindex: '-1', text: step.title }),
+      h('p', { class: 'lead', text: step.lead }),
+      step.body());
+  }
+  function buildFinish() {
+    var lead = state.skipped
+      ? 'Setup skipped. We used the defaults, and you can change them later.'
+      : 'Your notes are ready. Everything below can be changed later.';
+    var name = state.skipped ? '' : state.name.trim();
+    return h('div', { class: 'content', style: '--dx:18px' },
+      h('h1', { class: 'title', tabindex: '-1', text: name ? 'You are all set, ' + name : 'You are all set' }),
+      h('p', { class: 'lead', text: lead }),
+      h('div', { class: 'summary' },
+        h('div', { class: 'row' }, h('span', { text: 'Notes folder' }), h('b', { text: state.skipped ? DEFAULT_PATH : chosenPath() })),
+        h('div', { class: 'row' }, h('span', { text: 'Theme' }), h('b', { text: THEME_LABELS[state.skipped ? 'system' : state.theme] }))),
+      h('p', { class: 'note', text: 'In the app, this button opens your home screen.' }));
+  }
+  function go(delta) { state.direction = delta; state.step += delta; state.interacted = true; render(); }
+  function skip() {
+    state.skipped = true; state.finished = true; state.interacted = true;
+    state.name = ''; state.location = 'default'; state.theme = 'system';
+    applyTheme('system');
+    render();
+  }
+  function replay() {
+    state.step = 0; state.direction = 1; state.finished = false; state.skipped = false; state.name = 'Akila';
+    state.location = 'default'; render();
+  }
+  function buildActions() {
+    if (state.finished) {
+      return h('div', { class: 'actions' },
+        h('button', { class: 'btn primary', type: 'button' }, 'Open Anehalo', icon('right')),
+        h('span', { class: 'spacer' }),
+        h('button', { class: 'btn text', type: 'button', onclick: replay, text: 'Replay onboarding' }));
+    }
+    var isFirst = state.step === 0, isLast = state.step === STEPS.length - 1;
+    var nextLabel = isFirst ? 'Get started' : isLast ? 'Start writing' : 'Next';
+    return h('div', { class: 'actions' },
+      isFirst ? null : h('button', { class: 'btn line', type: 'button', onclick: function () { go(-1); } }, icon('left'), 'Back'),
+      h('span', { class: 'spacer' }),
+      isLast ? null : h('button', { class: 'btn text', type: 'button', onclick: skip, text: 'Skip setup' }),
+      h('button', { class: 'btn primary', type: 'button', onclick: isLast ? function () { state.finished = true; state.direction = 1; render(); } : function () { go(1); } },
+        nextLabel, icon('right')));
+  }
+  function renderVisual(scene) {
+    $('visual').className = 'visual tone-' + scene.tone;
+    var hero = $('heroIcon');
+    hero.replaceChildren(icon(scene.hero));
+    hero.classList.remove('pop'); void hero.offsetWidth; hero.classList.add('pop');
+    scene.floaters.forEach(function (pair, index) { $('float' + (index + 1)).replaceChildren(icon(pair[0]), pair[1]); });
+  }
+  function render() {
+    var scene = state.finished ? FINISH : STEPS[state.step];
+    renderVisual(scene);
+    var panel = $('panel');
+    panel.replaceChildren(
+      state.finished ? h('div', { class: 'progress' }) : buildProgress(),
+      state.finished ? buildFinish() : buildContent(STEPS[state.step]),
+      buildActions());
+    if (state.interacted) panel.querySelector('.title').focus({ preventScroll: true });
+  }
+
+  syncSwitch();
+  render();
+})();
+</script>
