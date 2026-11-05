@@ -12,6 +12,7 @@ interface ThemeState {
   preference: Theme | null;
   storageError: string | null;
   setTheme: (theme: Theme) => void;
+  setPreference: (preference: Theme | 'system') => void;
   toggleTheme: () => void;
   syncSystemTheme: (theme: Theme) => void;
   refreshPreference: () => void;
@@ -30,10 +31,15 @@ export function createThemeStore(options: ThemeStoreOptions = {}) {
   return create<ThemeState>((set, get) => ({
     ...initialPreference,
     theme: initialPreference.preference ?? resolveSystemTheme(),
-    setTheme: (theme) => {
-      const storageError = saveThemePreference(theme, getStorage);
-      set({ theme, preference: theme, storageError });
+    setPreference: (preference) => {
+      const storageError = saveThemePreference(preference, getStorage);
+      set({
+        theme: preference === 'system' ? resolveSystemTheme() : preference,
+        preference: preference === 'system' ? null : preference,
+        storageError,
+      });
     },
+    setTheme: (theme) => get().setPreference(theme),
     toggleTheme: () => get().setTheme(get().theme === 'dark' ? 'light' : 'dark'),
     syncSystemTheme: (theme) => {
       if (get().preference === null) set({ theme });

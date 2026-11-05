@@ -24,7 +24,7 @@ import type { Folder, Note, NoteSummary, VaultTree } from '@/types/notes';
 
 const initializationMarker = '.anehalo-initialized';
 const welcomeContent =
-  '# Welcome to Anehalo\n\nYour notes are plain Markdown files in Documents/Anehalo.\n\n- Use Quick note to capture a thought.\n- Create folders to keep your notes organized.\n- Rename notes and folders from their actions menu.\n- Deleted items can be recovered from the hidden .trash directory in your vault.\n\nYour files stay on your computer.\n';
+  '# Welcome to Anehalo\n\nYour notes are plain Markdown files in your chosen notes folder.\n\n- Use Quick note to capture a thought.\n- Create folders to keep your notes organized.\n- Rename notes and folders from their actions menu.\n- Deleted items can be recovered from the hidden .trash directory in your vault.\n\nYour files stay on your computer.\n';
 
 export class FileSystemNoteRepository implements NoteRepository {
   private readonly files: VaultFileService;
@@ -55,18 +55,28 @@ export class FileSystemNoteRepository implements NoteRepository {
   private async initialize(): Promise<void> {
     if (this.initialized) return;
     this.vaultPath = await this.files.fileSystem.initialize();
-    const marker = await this.files.fileSystem.metadata(initializationMarker);
-    if (marker && marker.type !== 'file')
-      storageFailure('invalid-type', 'The vault initialization marker is not a regular file.');
-    if (!marker) {
-      const entries = await this.files.fileSystem.readDirectory('');
-      if (entries.length === 0) {
-        await this.files.fileSystem.createDirectory('Getting started');
-        await this.files.atomicWrite('Getting started/Welcome.md', welcomeContent);
-      }
-      await this.files.atomicWrite(initializationMarker, 'Anehalo vault initialized.\n');
-    }
     this.initialized = true;
+  }
+
+  initializeVault(): Promise<RepositoryResult<void>> {
+    return this.run('Could not prepare your notes folder.', async () => {
+      const marker = await this.files.fileSystem.metadata(initializationMarker);
+      if (marker && marker.type !== 'file')
+        storageFailure('invalid-type', 'The vault initialization marker is not a regular file.');
+      if (!marker) {
+        const entries = await this.files.fileSystem.readDirectory('');
+        const unfinishedStarterFolder =
+          entries.length === 1 &&
+          entries[0]?.name === 'Getting started' &&
+          entries[0].type === 'directory' &&
+          (await this.files.fileSystem.readDirectory('Getting started')).length === 0;
+        if (entries.length === 0 || unfinishedStarterFolder) {
+          await this.files.ensureDirectory('Getting started');
+          await this.files.atomicWrite('Getting started/Welcome.md', welcomeContent);
+        }
+        await this.files.atomicWrite(initializationMarker, 'Anehalo vault initialized.\n');
+      }
+    });
   }
 
   private validateNote(path: string): string {

@@ -9,6 +9,8 @@ import { unwrapResult } from '@/test/repository-helpers';
 describe('vault initialization', () => {
   it('creates one welcome note on an empty first launch', async () => {
     const repository = new InMemoryNoteRepository();
+    expect(unwrapResult(await repository.listTree()).notes).toEqual([]);
+    unwrapResult(await repository.initializeVault());
     const tree = unwrapResult(await repository.listTree());
     expect(tree.folders.map((folder) => folder.relativePath)).toEqual(['Getting started']);
     expect(tree.notes.map((note) => note.relativePath)).toEqual(['Getting started/Welcome.md']);
@@ -30,9 +32,10 @@ describe('vault initialization', () => {
 
   it('does not recreate starter content after the user deletes it and restarts', async () => {
     const repository = new InMemoryNoteRepository();
-    unwrapResult(await repository.listTree());
+    unwrapResult(await repository.initializeVault());
     unwrapResult(await repository.deleteFolder('Getting started'));
     const restarted = new FileSystemNoteRepository(repository.memoryFileSystem);
+    unwrapResult(await restarted.initializeVault());
     expect(unwrapResult(await restarted.listTree()).notes).toEqual([]);
   });
 });

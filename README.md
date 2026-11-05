@@ -1,6 +1,6 @@
 # Anehalo
 
-A minimal desktop note-taking app built with Tauri 2, React, TypeScript, and Vite. Phase 2 stores notes as real Markdown files in a local vault. The visual reference is [the approved home screen](docs/design/anehalo-home.html).
+A minimal desktop note-taking app built with Tauri 2, React, TypeScript, and Vite. Notes are real Markdown files in a local vault. The visual references are the approved [home screen](docs/design/anehalo-home.html) and [onboarding](docs/design/anehalo-onboarding.html).
 
 ## Run
 
@@ -35,16 +35,18 @@ cargo fmt --manifest-path src-tauri/Cargo.toml --check
 - `src/test`: test setup and automatic cleanup.
 - `src-tauri`: native configuration, plugins, and capabilities.
 
-The `@/` alias resolves to `src/`. shadcn/ui uses CSS variables and the New York style. Shared controls use Radix for accessible menus and in-app dialogs. `main.tsx` injects `TauriNoteRepository`; UI and stores consume only `NoteRepository`. Tests inject `InMemoryNoteRepository`, which shares the same validation, initialization, atomic-write, and trash logic through a filesystem port.
+The `@/` alias resolves to `src/`. shadcn/ui uses CSS variables and the New York style. Shared controls use Radix for accessible menus and in-app dialogs. `main.tsx` injects settings, folder access, and a note-repository factory; UI and stores consume interfaces. Tests inject in-memory repositories, sharing the real settings parsing and storage validation, initialization, atomic-write, and trash logic through filesystem ports.
 
-Fredoka and Figtree variable fonts are bundled locally. The theme defaults to the system setting and follows system changes until the user chooses light or dark. The choice is saved under `anehalo-theme` in localStorage and applied by a blocking head script before the app paints. Root `data-theme` drives CSS tokens and Tailwind's `dark:` variant. The Motion switch uses a circular View Transition reveal, with a soft color fade for unsupported browsers or reduced motion. Storage failures keep the session usable and display a notice.
+Fredoka and Figtree variable fonts are bundled locally. Settings hold the theme preference, which defaults to Match my PC. The system theme is followed until the user chooses light or dark. A localStorage mirror under `anehalo-theme` applies the choice before first paint; settings synchronize it at startup. Root `data-theme` drives CSS tokens and Tailwind's `dark:` variant. The Motion switch uses a circular View Transition reveal, with a soft color fade for unsupported browsers or reduced motion. Storage failures keep the session usable and display a notice.
 
 The 44px custom title bar supports native dragging, minimize, maximize/restore, and close through scoped Tauri window permissions. The shell has a 272px sidebar, scrollable home panel, and 34px status bar, with a minimum native window size of 900×600.
 
-The vault is created under the user's Documents directory using Tauri's path API. An empty first launch creates `Getting started/Welcome.md`; a hidden initialization marker prevents reseeding after deletion. Directories become folders; `.md` files, including files at the root, become notes identified by vault-relative paths. Hidden directories and links are excluded. Search includes full plain text, and notes are sorted by modification time.
+First launch shows five onboarding steps and a summary. The optional name, notes folder, theme, and completion flag are saved atomically to `settings.json` in Tauri's app config directory (`%APPDATA%/me.lakshitha.anehalo` on Windows). Missing or corrupt settings restart setup with defaults. Skip resets all answers to defaults; both flows save only when Open Anehalo is pressed. Delete `settings.json` while the app is closed to test first launch again.
+
+The default vault is Documents/Anehalo, resolved with Tauri's path API. The native folder picker can select a custom vault; a temporary write-and-remove check verifies access, and the persisted-scope plugin restores that grant on restart. Completing onboarding prepares the vault and adds `Getting started/Welcome.md` if empty. A hidden initialization marker prevents reseeding after deletion. Existing notes stay intact. Directories become folders; `.md` files, including files at the root, become notes identified by vault-relative paths. Hidden directories and links are excluded. Search includes full plain text, and notes are sorted by modification time.
 
 Quick note and `Ctrl+Alt+N` create an `Untitled note.md` in the selected folder (or vault root). Capture saves after 700ms, on blur, and before closing; unsaved text is retained if saving fails. A full editor comes in Phase 3. New folder opens an inline name field. Use an item's `…` button or right-click to rename it or move it to trash after an in-app confirmation. Regaining window focus reloads external changes.
 
-Writes use exclusive temporary siblings followed by rename. Names are Windows-safe, limited to 80 Unicode characters, and duplicate creations receive numeric suffixes. Colliding renames are rejected. The filesystem plugin is scoped only to `$DOCUMENT/Anehalo` and its descendants; repository validation also rejects traversal, hidden-item access, symbolic links, and junctions.
+Writes use exclusive temporary siblings followed by rename. Names are Windows-safe, limited to 80 Unicode characters, and duplicate creations receive numeric suffixes. Colliding renames are rejected. Static filesystem permissions cover `$DOCUMENT/Anehalo`, the settings file, and its temporary siblings. Custom vault grants come from the native folder picker. Repository validation also rejects traversal, hidden-item access, symbolic links, and junctions.
 
 Deleted items retain their original relative path beneath `.trash/<timestamp-identifier>/`. To recover one, move it from that entry back to its original location in the vault, then refocus Anehalo. Deleting a folder moves all of its contents together. No note or folder is permanently removed by the UI. Filesystem failures return typed results and appear in the UI with retry controls.

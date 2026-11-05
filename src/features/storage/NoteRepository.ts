@@ -14,6 +14,7 @@ export interface TrashEntry {
 }
 
 export interface NoteRepository {
+  initializeVault(): Promise<RepositoryResult<void>>;
   listTree(): Promise<RepositoryResult<VaultTree>>;
   readNote(relativePath: string): Promise<RepositoryResult<Note>>;
   writeNote(relativePath: string, content: string): Promise<RepositoryResult<Note>>;

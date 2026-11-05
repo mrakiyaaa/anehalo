@@ -1,10 +1,13 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect } from 'react';
-import { describeStorageError } from '@/features/storage/repository-result';
+import { describeStorageError, type RepositoryResult } from '@/features/storage/repository-result';
 import type { WorkspaceStore } from '@/store/workspace-store';
 
-export function useVaultLifecycle(store: WorkspaceStore) {
+export function useVaultLifecycle(
+  store: WorkspaceStore,
+  flushSettings: () => Promise<RepositoryResult<void>>,
+) {
   useEffect(() => {
     const refresh = () => {
       void store.getState().refreshTree();
@@ -53,6 +56,8 @@ export function useVaultLifecycle(store: WorkspaceStore) {
                 )
                   break;
               }
+              const settingsResult = await flushSettings();
+              if (!settingsResult.ok) return;
               await currentWindow.destroy();
             } catch (error) {
               store
@@ -77,5 +82,5 @@ export function useVaultLifecycle(store: WorkspaceStore) {
       document.removeEventListener('visibilitychange', handleVisibility);
       for (const dispose of disposers) dispose();
     };
-  }, [store]);
+  }, [store, flushSettings]);
 }

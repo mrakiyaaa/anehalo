@@ -23,7 +23,7 @@ describe('workspace persistence', () => {
       'Flushed before starting a new note',
     );
     expect(store.getState().capture.relativePath).toBe('Untitled note 2.md');
-    expect(store.getState().tree.notes).toHaveLength(3);
+    expect(store.getState().tree.notes).toHaveLength(2);
   });
 
   it('tracks captured identities and selected folders through rename and trash', async () => {

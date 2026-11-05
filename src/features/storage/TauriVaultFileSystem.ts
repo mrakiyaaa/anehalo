@@ -1,5 +1,5 @@
 import { isTauri } from '@tauri-apps/api/core';
-import { documentDir, join, resolve } from '@tauri-apps/api/path';
+import { join, resolve } from '@tauri-apps/api/path';
 import {
   lstat,
   mkdir,
@@ -52,12 +52,14 @@ async function inspectPath(path: string): Promise<VaultMetadata | null> {
 export class TauriVaultFileSystem implements VaultFileSystem {
   private vaultPath = '';
 
+  constructor(private readonly resolveVaultPath: () => Promise<string>) {}
+
   async initialize(): Promise<string> {
     if (!isTauri())
       storageFailure('unavailable', 'Open the Anehalo desktop app to access your local vault.');
-    this.vaultPath = await resolve(await join(await documentDir(), 'Anehalo'));
+    this.vaultPath = await resolve(await this.resolveVaultPath());
     const existing = await inspectPath(this.vaultPath);
-    if (!existing) await mkdir(this.vaultPath);
+    if (!existing) await mkdir(this.vaultPath, { recursive: true });
     const root = await inspectPath(this.vaultPath);
     if (root?.type !== 'directory')
       storageFailure(

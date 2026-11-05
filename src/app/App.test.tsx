@@ -5,11 +5,22 @@ import { App } from '@/app/App';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
 import { unwrapResult } from '@/test/repository-helpers';
+import { InMemorySettingsRepository } from '@/features/settings/InMemorySettingsRepository';
+import { defaultSettings } from '@/features/settings/AppSettings';
+import { InMemoryFolderAccess } from '@/features/onboarding/InMemoryFolderAccess';
 
 async function renderWorkspace() {
   const repository = new InMemoryNoteRepository();
+  unwrapResult(await repository.initializeVault());
+  const services = {
+    settingsRepository: new InMemorySettingsRepository(
+      JSON.stringify({ ...defaultSettings('Memory/Anehalo'), onboardingCompleted: true }),
+    ),
+    folderAccess: new InMemoryFolderAccess(),
+    createNoteRepository: () => repository,
+  };
   render(
-    <AppProviders repository={repository}>
+    <AppProviders services={services}>
       <App />
     </AppProviders>,
   );

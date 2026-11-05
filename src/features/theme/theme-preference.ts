@@ -24,7 +24,7 @@ export function readThemePreference(getStorage: ThemeStorageProvider): {
   }
 }
 
-export function saveThemePreference(theme: Theme, getStorage: ThemeStorageProvider) {
+export function saveThemePreference(theme: Theme | 'system', getStorage: ThemeStorageProvider) {
   try {
     getStorage().setItem(THEME_STORAGE_KEY, theme);
     return null;

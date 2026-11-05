@@ -2,7 +2,7 @@ import { FileSystemNoteRepository } from '@/features/storage/FileSystemNoteRepos
 import { TauriVaultFileSystem } from '@/features/storage/TauriVaultFileSystem';
 
 export class TauriNoteRepository extends FileSystemNoteRepository {
-  constructor() {
-    super(new TauriVaultFileSystem());
+  constructor(vaultPath: string) {
+    super(new TauriVaultFileSystem(() => Promise.resolve(vaultPath)));
   }
 }

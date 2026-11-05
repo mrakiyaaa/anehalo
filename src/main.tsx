@@ -4,8 +4,15 @@ import { App } from '@/app/App';
 import { AppProviders } from '@/app/providers/AppProviders';
 import '@/styles/globals.css';
 import { TauriNoteRepository } from '@/features/storage/TauriNoteRepository';
+import { TauriSettingsRepository } from '@/features/settings/TauriSettingsRepository';
+import { TauriFolderAccess } from '@/features/onboarding/TauriFolderAccess';
+import type { AppServices } from '@/app/app-services';
 
-const noteRepository = new TauriNoteRepository();
+const services: AppServices = {
+  settingsRepository: new TauriSettingsRepository(),
+  folderAccess: new TauriFolderAccess(),
+  createNoteRepository: (vaultPath) => new TauriNoteRepository(vaultPath),
+};
 
 const rootElement = document.getElementById('root');
 
@@ -15,7 +22,7 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <AppProviders repository={noteRepository}>
+    <AppProviders services={services}>
       <App />
     </AppProviders>
   </StrictMode>,

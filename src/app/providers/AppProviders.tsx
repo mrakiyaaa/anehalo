@@ -1,18 +1,17 @@
 import { MotionConfig } from 'motion/react';
 import type { PropsWithChildren } from 'react';
 import { ThemeProvider } from '@/features/theme/ThemeProvider';
-import { WorkspaceProvider } from '@/features/storage/WorkspaceProvider';
-import type { NoteRepository } from '@/features/storage/NoteRepository';
+import { SettingsProvider } from '@/features/settings/SettingsProvider';
+import { AppServicesContext, type AppServices } from '@/app/app-services';
 
-export function AppProviders({
-  children,
-  repository,
-}: PropsWithChildren<{ repository: NoteRepository }>) {
+export function AppProviders({ children, services }: PropsWithChildren<{ services: AppServices }>) {
   return (
     <ThemeProvider>
-      <WorkspaceProvider repository={repository}>
-        <MotionConfig reducedMotion="user">{children}</MotionConfig>
-      </WorkspaceProvider>
+      <AppServicesContext.Provider value={services}>
+        <SettingsProvider repository={services.settingsRepository}>
+          <MotionConfig reducedMotion="user">{children}</MotionConfig>
+        </SettingsProvider>
+      </AppServicesContext.Provider>
     </ThemeProvider>
   );
 }
