@@ -13,6 +13,7 @@ interface NoteCardProps {
 export function NoteCard({ note, currentTime }: NoteCardProps) {
   const renameNote = useWorkspaceStore((state) => state.renameNote);
   const deleteNote = useWorkspaceStore((state) => state.deleteNote);
+  const openNote = useWorkspaceStore((state) => state.openNote);
   return (
     <ItemMenu
       kind="note"
@@ -21,6 +22,14 @@ export function NoteCard({ note, currentTime }: NoteCardProps) {
       onDelete={() => deleteNote(note.relativePath)}
     >
       <article className={`note-card tone-${folderTone(note.folder)}`} title={note.relativePath}>
+        <button
+          type="button"
+          className="note-card-open"
+          aria-label={`Open ${note.title}`}
+          onClick={() => {
+            void openNote(note.relativePath);
+          }}
+        />
         <h3>{note.title}</h3>
         <p>{note.snippet || 'An empty note, ready for a thought.'}</p>
         <div className="note-card-footer">

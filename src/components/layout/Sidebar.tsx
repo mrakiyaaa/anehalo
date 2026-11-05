@@ -4,6 +4,7 @@ import { StoragePathCard } from '@/components/layout/StoragePathCard';
 import { FolderList } from '@/features/folders/FolderList';
 import { NoteSearch } from '@/features/notes/NoteSearch';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { SidebarNotes } from '@/features/notes/SidebarNotes';
 
 interface SidebarProps {
   onQuickNote: () => void;
@@ -30,6 +31,7 @@ export function Sidebar({ onQuickNote }: SidebarProps) {
       </Button>
       <div className="sidebar-section-label">Folders</div>
       <FolderList />
+      <SidebarNotes />
       <StoragePathCard />
     </aside>
   );

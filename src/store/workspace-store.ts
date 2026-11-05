@@ -3,16 +3,24 @@ import type { NoteRepository } from '@/features/storage/NoteRepository';
 import {
   describeStorageError,
   failure,
+  success,
   type RepositoryResult,
 } from '@/features/storage/repository-result';
 import { isInsideFolder } from '@/features/storage/storage-paths';
-import { emptyCapture, persistCapture } from '@/store/capture-state';
-import type { WorkspaceState } from '@/store/workspace-state';
+import { NoteAutoSaver } from '@/features/editor/NoteAutoSaver';
+import type { WorkspaceOptions, WorkspaceState } from '@/store/workspace-state';
 
-export function createWorkspaceStore(repository: NoteRepository) {
-  return createStore<WorkspaceState>()((set, get) => {
-    let mutationQueue: Promise<void> = Promise.resolve();
-    let pendingMutations = 0;
+export function createWorkspaceStore(repository: NoteRepository, options: WorkspaceOptions = {}) {
+  const autoSaver = new NoteAutoSaver(repository);
+  let initialized = false;
+  let lastOpenedPath = options.lastOpenedNotePath ?? null;
+  async function rememberNote(path: string | null) {
+    lastOpenedPath = path;
+    await options.rememberNote?.(path);
+  }
+  const store = createStore<WorkspaceState>()((set, get) => {
+    let operationQueue: Promise<void> = Promise.resolve();
+    let pendingOperations = 0;
     let refreshIdentifier = 0;
 
     async function refreshTree() {
@@ -20,18 +28,17 @@ export function createWorkspaceStore(repository: NoteRepository) {
       set({ isLoading: true });
       const result = await repository.listTree();
       if (requestIdentifier === refreshIdentifier) {
-        if (result.ok) {
-          const selectedFolder = get().activeFolderPath;
+        if (result.ok)
           set({
             tree: result.value,
             isLoading: false,
             activeFolderPath: result.value.folders.some(
-              (folder) => folder.relativePath === selectedFolder,
+              (folder) => folder.relativePath === get().activeFolderPath,
             )
-              ? selectedFolder
+              ? get().activeFolderPath
               : null,
           });
-        } else set({ error: result.error, isLoading: false });
+        else set({ error: result.error, isLoading: false });
       }
       return result;
     }
@@ -39,9 +46,16 @@ export function createWorkspaceStore(repository: NoteRepository) {
     function enqueue<Value>(
       operation: () => Promise<RepositoryResult<Value>>,
     ): Promise<RepositoryResult<Value>> {
-      pendingMutations += 1;
+      if (get().isClosing)
+        return Promise.resolve(
+          failure({
+            code: 'unavailable',
+            message: 'Anehalo is finishing pending saves before closing.',
+          }),
+        );
+      pendingOperations += 1;
       set({ isMutating: true, error: null });
-      const task = mutationQueue.then(async () => {
+      const task = operationQueue.then(async () => {
         try {
           return await operation();
         } catch (error) {
@@ -49,49 +63,52 @@ export function createWorkspaceStore(repository: NoteRepository) {
           if (!result.ok) set({ error: result.error });
           return result;
         } finally {
-          pendingMutations -= 1;
-          set({ isMutating: pendingMutations > 0 });
+          pendingOperations -= 1;
+          set({ isMutating: pendingOperations > 0 });
         }
       });
-      mutationQueue = task.then(() => undefined);
+      operationQueue = task.then(() => undefined);
       return task;
     }
 
-    async function flushCapture() {
-      const result = await persistCapture(repository, get().capture);
-      if (!result.ok)
-        set({
-          error: result.error,
-          capture: { ...get().capture, status: 'error', error: result.error },
-        });
-      else if (result.value) {
-        const current = get().capture;
-        set({
-          capture: {
-            ...current,
-            relativePath: result.value.relativePath,
-            folder: result.value.folder,
-            savedContent: result.value.content,
-            status: current.draft === result.value.content ? 'saved' : 'saving',
-            error: null,
-          },
-        });
-        await refreshTree();
+    async function leaveCurrentDraft(): Promise<RepositoryResult<void>> {
+      const draft = get().openDraft;
+      if (!draft) return success(undefined);
+      const saved = await autoSaver.flush(draft.identifier);
+      if (!saved.ok && autoSaver.get(draft.identifier)?.isSerializationBlocked) return saved;
+      return success(undefined);
+    }
+
+    async function loadNote(path: string): Promise<RepositoryResult<void>> {
+      const previousIdentifier = get().openDraft?.identifier;
+      const left = await leaveCurrentDraft();
+      if (!left.ok) return left;
+      set({ isOpeningNote: true, view: 'editor', openingError: null });
+      const loaded = await autoSaver.load(path);
+      if (!loaded.ok) set({ openDraft: null, isOpeningNote: false, openingError: loaded.error });
+      else {
+        set({ openDraft: loaded.value, isOpeningNote: false });
+        await rememberNote(loaded.value.note.relativePath);
       }
-      return result;
+      if (previousIdentifier && (!loaded.ok || loaded.value.identifier !== previousIdentifier))
+        autoSaver.release(previousIdentifier);
+      return loaded.ok ? success(undefined) : loaded;
     }
 
     function mutate<Value>(
       operation: () => Promise<RepositoryResult<Value>>,
-      afterSuccess?: (value: Value) => void,
+      accept?: (value: Value) => void,
     ) {
       return enqueue(async () => {
-        const captureResult = await flushCapture();
-        if (!captureResult.ok) return captureResult;
-        const result = await operation();
+        const result = await autoSaver.withSavedNotes(operation, accept);
         if (!result.ok) set({ error: result.error });
         else {
-          afterSuccess?.(result.value);
+          const current = get().openDraft;
+          if (current && !autoSaver.get(current.identifier)) {
+            set({ openDraft: null, view: 'home' });
+            await rememberNote(null);
+          }
+          set({ pendingDrafts: autoSaver.drafts().filter((draft) => draft.dirty) });
           await refreshTree();
         }
         return result;
@@ -104,105 +121,149 @@ export function createWorkspaceStore(repository: NoteRepository) {
       searchText: '',
       isLoading: true,
       isMutating: false,
-      isCreatingNote: false,
+      isClosing: false,
       error: null,
-      capture: emptyCapture(),
+      view: 'home',
+      openDraft: null,
+      pendingDrafts: [],
+      isOpeningNote: false,
+      openingError: null,
       selectFolder: (activeFolderPath) => set({ activeFolderPath }),
       setSearchText: (searchText) => set({ searchText }),
       dismissError: () => set({ error: null }),
       reportError: (error) => set({ error }),
       refreshTree,
-      updateCaptureDraft: (draft) => {
-        const capture = get().capture;
-        set({
-          capture: {
-            ...capture,
-            draft,
-            folder:
-              !capture.relativePath && !capture.draft ? get().activeFolderPath : capture.folder,
-            status:
-              !capture.relativePath && !draft.trim()
-                ? 'idle'
-                : draft === capture.savedContent
-                  ? capture.relativePath
-                    ? 'saved'
-                    : 'idle'
-                  : 'saving',
-            error: null,
-          },
-        });
+      initialize: async () => {
+        if (initialized) return;
+        initialized = true;
+        const tree = await refreshTree();
+        if (tree.ok && options.reopenLastNote !== false && options.lastOpenedNotePath)
+          await get().openNote(options.lastOpenedNotePath);
       },
-      saveCapture: () => enqueue(flushCapture),
-      startQuickNote: () =>
+      openNote: (path) => enqueue(() => loadNote(path)),
+      goHome: () =>
         enqueue(async () => {
-          set({ isCreatingNote: true });
-          try {
-            const previousCapture = await flushCapture();
-            if (!previousCapture.ok) return previousCapture;
-            const result = await repository.createNote({ folder: get().activeFolderPath });
-            if (!result.ok) set({ error: result.error });
-            else {
-              set({
-                capture: {
-                  ...emptyCapture(),
-                  relativePath: result.value.relativePath,
-                  folder: result.value.folder,
-                  status: 'saved',
-                },
-              });
-              await refreshTree();
-            }
-            return result;
-          } finally {
-            set({ isCreatingNote: false });
-          }
+          const saved = await leaveCurrentDraft();
+          if (!saved.ok) return saved;
+          const identifier = get().openDraft?.identifier;
+          if (identifier) autoSaver.release(identifier);
+          set({ view: 'home', openDraft: null, openingError: null });
+          return success(undefined);
         }),
+      startQuickNote: (content = '') =>
+        enqueue(async () => {
+          const left = await leaveCurrentDraft();
+          if (!left.ok) return left;
+          const result = await repository.createNote({ folder: get().activeFolderPath, content });
+          if (!result.ok) set({ error: result.error });
+          else {
+            await refreshTree();
+            await loadNote(result.value.relativePath);
+          }
+          return result;
+        }),
+      updateNoteContent: (identifier, content) => autoSaver.update(identifier, { content }),
+      updateNoteTitle: (identifier, title) => autoSaver.update(identifier, { title }),
+      reportContentError: (identifier, error) => autoSaver.reportContentError(identifier, error),
+      saveNote: (identifier) => autoSaver.flush(identifier),
+      saveNoteContent: (identifier) => autoSaver.flushContent(identifier),
+      flushNotes: async () => {
+        await operationQueue;
+        return autoSaver.flushAll();
+      },
+      checkOpenNote: async () => {
+        const current = get().openDraft;
+        return current ? autoSaver.checkExternal(current.identifier) : success(undefined);
+      },
+      resolveConflict: (choice) => {
+        const draft = get().openDraft;
+        return draft
+          ? autoSaver.resolveConflict(draft.identifier, choice)
+          : Promise.resolve(success(undefined));
+      },
+      recoverNote: () => {
+        const draft = get().openDraft;
+        return draft
+          ? autoSaver.recoverAsNewNote(draft.identifier)
+          : Promise.resolve(success(undefined));
+      },
+      setClosing: (isClosing) => set({ isClosing }),
+      pauseAutoSave: () => autoSaver.pause(),
+      resumeAutoSave: () => autoSaver.resume(),
       createFolder: (name) => mutate(() => repository.createFolder(name)),
       renameNote: (path, name) =>
         mutate(
           () => repository.renameNote(path, name),
           (note) => {
-            if (get().capture.relativePath === path)
-              set({ capture: { ...get().capture, relativePath: note.relativePath } });
+            autoSaver.acceptRenamedNote(path, note);
+            if (lastOpenedPath === path) void rememberNote(note.relativePath);
           },
         ),
       deleteNote: (path) =>
         mutate(
           () => repository.deleteNote(path),
           () => {
-            if (get().capture.relativePath === path) set({ capture: emptyCapture() });
+            autoSaver.forgetDeletedPath(path);
+            if (lastOpenedPath === path) void rememberNote(null);
           },
         ),
       renameFolder: (path, name) =>
         mutate(
           () => repository.renameFolder(path, name),
           (folder) => {
-            const replacePath = (current: string | null) =>
-              current && isInsideFolder(current, path)
-                ? `${folder.relativePath}${current.slice(path.length)}`
-                : current;
-            const capture = get().capture;
-            set({
-              activeFolderPath: replacePath(get().activeFolderPath),
-              capture: {
-                ...capture,
-                relativePath: replacePath(capture.relativePath),
-                folder: replacePath(capture.folder),
-              },
-            });
+            autoSaver.relocateFolder(path, folder.relativePath);
+            if (lastOpenedPath && isInsideFolder(lastOpenedPath, path))
+              void rememberNote(`${folder.relativePath}${lastOpenedPath.slice(path.length)}`);
+            const selected = get().activeFolderPath;
+            if (selected && isInsideFolder(selected, path))
+              set({ activeFolderPath: `${folder.relativePath}${selected.slice(path.length)}` });
           },
         ),
       deleteFolder: (path) =>
         mutate(
           () => repository.deleteFolder(path),
           () => {
-            const capture = get().capture;
-            if (capture.relativePath && isInsideFolder(capture.relativePath, path))
-              set({ capture: emptyCapture() });
+            autoSaver.forgetDeletedPath(path);
+            if (lastOpenedPath && isInsideFolder(lastOpenedPath, path)) void rememberNote(null);
           },
         ),
     };
   });
+
+  autoSaver.subscribe(({ draft, previousPath }) => {
+    const state = store.getState();
+    const isCurrent = state.openDraft?.identifier === draft.identifier;
+    const existingNote = state.tree.notes.find(
+      (note) => note.relativePath === draft.note.relativePath,
+    );
+    const summaryChanged =
+      draft.isMissing ||
+      previousPath !== draft.note.relativePath ||
+      !existingNote ||
+      existingNote.modifiedAt !== draft.note.modifiedAt ||
+      existingNote.searchText !== draft.note.searchText;
+    let tree = state.tree;
+    if (summaryChanged) {
+      const notes = tree.notes.filter(
+        (note) =>
+          note.relativePath !== previousPath && note.relativePath !== draft.note.relativePath,
+      );
+      if (!draft.isMissing) notes.push(draft.note);
+      notes.sort(
+        (first, second) =>
+          second.modifiedAt - first.modifiedAt || first.title.localeCompare(second.title),
+      );
+      tree = { ...tree, notes };
+    }
+    store.setState({
+      tree,
+      ...(isCurrent ? { openDraft: draft } : {}),
+      pendingDrafts: autoSaver.drafts().filter((session) => session.dirty),
+    });
+    if (isCurrent && previousPath !== draft.note.relativePath)
+      void rememberNote(draft.note.relativePath);
+  });
+  return store;
 }
 
 export type WorkspaceStore = ReturnType<typeof createWorkspaceStore>;

@@ -1,4 +1,5 @@
 export type RepositoryErrorCode =
+  | 'conflict'
   | 'invalid-name'
   | 'invalid-path'
   | 'already-exists'

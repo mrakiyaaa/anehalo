@@ -7,6 +7,8 @@ export interface AppSettings {
   readonly userName: string;
   readonly vaultPath: string;
   readonly theme: ThemePreference;
+  readonly lastOpenedNotePath: string | null;
+  readonly reopenLastNote: boolean;
 }
 
 export const themeLabels: Record<ThemePreference, string> = {
@@ -26,7 +28,14 @@ export function normalizeUserName(name: string): string {
 }
 
 export function defaultSettings(vaultPath: string): AppSettings {
-  return { onboardingCompleted: false, userName: '', vaultPath, theme: 'system' };
+  return {
+    onboardingCompleted: false,
+    userName: '',
+    vaultPath,
+    theme: 'system',
+    lastOpenedNotePath: null,
+    reopenLastNote: true,
+  };
 }
 
 export function parseSettings(content: string, defaults: AppSettings): AppSettings {
@@ -56,5 +65,13 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
     userName: normalizeUserName(value.userName),
     vaultPath: value.vaultPath,
     theme: value.theme,
+    lastOpenedNotePath:
+      'lastOpenedNotePath' in value && typeof value.lastOpenedNotePath === 'string'
+        ? value.lastOpenedNotePath
+        : null,
+    reopenLastNote:
+      'reopenLastNote' in value && typeof value.reopenLastNote === 'boolean'
+        ? value.reopenLastNote
+        : true,
   };
 }

@@ -6,6 +6,7 @@
 @import './theme-transitions.css';
 @import './storage.css';
 @import './onboarding.css';
+@import './editor.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 

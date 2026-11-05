@@ -13,13 +13,21 @@ export interface TrashEntry {
   readonly deletedAt: number;
 }
 
+export interface RenameNoteOptions {
+  readonly suffixDuplicates?: boolean;
+}
+
 export interface NoteRepository {
   initializeVault(): Promise<RepositoryResult<void>>;
   listTree(): Promise<RepositoryResult<VaultTree>>;
   readNote(relativePath: string): Promise<RepositoryResult<Note>>;
   writeNote(relativePath: string, content: string): Promise<RepositoryResult<Note>>;
   createNote(input?: CreateNoteInput): Promise<RepositoryResult<Note>>;
-  renameNote(relativePath: string, title: string): Promise<RepositoryResult<Note>>;
+  renameNote(
+    relativePath: string,
+    title: string,
+    options?: RenameNoteOptions,
+  ): Promise<RepositoryResult<Note>>;
   deleteNote(relativePath: string): Promise<RepositoryResult<TrashEntry>>;
   createFolder(name: string, parent?: string | null): Promise<RepositoryResult<Folder>>;
   renameFolder(relativePath: string, name: string): Promise<RepositoryResult<Folder>>;

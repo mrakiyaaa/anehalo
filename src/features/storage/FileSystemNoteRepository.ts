@@ -2,6 +2,7 @@ import type {
   CreateNoteInput,
   NoteRepository,
   TrashEntry,
+  RenameNoteOptions,
 } from '@/features/storage/NoteRepository';
 import { noteTitle, sanitizeName, uniqueName } from '@/features/storage/note-names';
 import { createSnippet, markdownToPlainText } from '@/features/storage/note-snippet';
@@ -164,11 +165,26 @@ export class FileSystemNoteRepository implements NoteRepository {
     });
   }
 
-  renameNote(relativePath: string, title: string): Promise<RepositoryResult<Note>> {
+  renameNote(
+    relativePath: string,
+    title: string,
+    options: RenameNoteOptions = {},
+  ): Promise<RepositoryResult<Note>> {
     return this.run('Could not rename the note.', async () => {
       const source = this.validateNote(relativePath);
       await this.files.requireEntry(source, 'file');
-      const destination = joinRelativePath(parentPath(source), `${noteTitle(title)}.md`);
+      const directory = parentPath(source);
+      const titleName = noteTitle(title);
+      const destinationName = options.suffixDuplicates
+        ? uniqueName(
+            titleName,
+            '.md',
+            (await this.files.fileSystem.readDirectory(directory))
+              .filter((entry) => entry.name.toLowerCase() !== pathName(source).toLowerCase())
+              .map((entry) => entry.name),
+          )
+        : `${titleName}.md`;
+      const destination = joinRelativePath(directory, destinationName);
       await this.files.ensureDestinationAvailable(source, destination);
       if (source !== destination) await this.files.fileSystem.rename(source, destination);
       return this.loadNote(destination);

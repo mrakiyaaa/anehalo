@@ -17,3 +17,11 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 afterEach(cleanup);
+
+// ProseMirror reads selection geometry; jsdom does not perform layout.
+Range.prototype.getBoundingClientRect = () => new DOMRect();
+Range.prototype.getClientRects = () => {
+  const rectangles: DOMRect[] = [];
+  return Object.assign(rectangles, { item: () => null });
+};
+HTMLElement.prototype.scrollIntoView = () => undefined;

@@ -5,6 +5,39 @@ import { createSettingsStore } from '@/features/settings/settings-store';
 import { unwrapResult } from '@/test/repository-helpers';
 
 describe('settings persistence', () => {
+  it('migrates settings from before the editor without restarting onboarding', async () => {
+    const repository = new InMemorySettingsRepository(
+      JSON.stringify({
+        onboardingCompleted: true,
+        userName: 'Akila',
+        vaultPath: 'D:/Notes',
+        theme: 'dark',
+      }),
+    );
+    expect(unwrapResult(await repository.load())).toEqual({
+      ...defaultSettings('D:/Notes'),
+      onboardingCompleted: true,
+      userName: 'Akila',
+      theme: 'dark',
+    });
+  });
+
+  it('preserves the last note when theme and note settings update together', async () => {
+    const repository = new InMemorySettingsRepository(
+      JSON.stringify({ ...defaultSettings('Memory/Anehalo'), onboardingCompleted: true }),
+    );
+    const store = createSettingsStore(repository);
+    await store.getState().load();
+    await Promise.all([
+      store.getState().updateTheme('dark'),
+      store.getState().updateLastOpenedNote('Work/Plan.md'),
+    ]);
+    expect(unwrapResult(await repository.load())).toMatchObject({
+      theme: 'dark',
+      lastOpenedNotePath: 'Work/Plan.md',
+      reopenLastNote: true,
+    });
+  });
   it('loads defaults for a missing file without completing onboarding', async () => {
     const repository = new InMemorySettingsRepository();
     expect(unwrapResult(await repository.load())).toEqual(defaultSettings('Memory/Anehalo'));

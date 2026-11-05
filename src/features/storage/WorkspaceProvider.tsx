@@ -8,7 +8,15 @@ import { useSettingsStore } from '@/features/settings/use-settings-store';
 type WorkspaceProviderProps = PropsWithChildren<{ repository: NoteRepository }>;
 
 export function WorkspaceProvider({ repository, children }: WorkspaceProviderProps) {
-  const [store] = useState(() => createWorkspaceStore(repository));
+  const settings = useSettingsStore((state) => state.settings);
+  const rememberNote = useSettingsStore((state) => state.updateLastOpenedNote);
+  const [store] = useState(() =>
+    createWorkspaceStore(repository, {
+      lastOpenedNotePath: settings?.lastOpenedNotePath ?? null,
+      reopenLastNote: settings?.reopenLastNote ?? true,
+      rememberNote,
+    }),
+  );
   const flushSettings = useSettingsStore((state) => state.flushPendingSaves);
   useVaultLifecycle(store, flushSettings);
   return <WorkspaceContext.Provider value={store}>{children}</WorkspaceContext.Provider>;

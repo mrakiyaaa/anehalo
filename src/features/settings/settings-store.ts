@@ -18,6 +18,7 @@ interface SettingsState {
   load: () => Promise<void>;
   save: (settings: AppSettings) => Promise<RepositoryResult<AppSettings>>;
   updateTheme: (theme: ThemePreference) => Promise<void>;
+  updateLastOpenedNote: (path: string | null) => Promise<void>;
   flushPendingSaves: () => Promise<RepositoryResult<void>>;
 }
 
@@ -71,8 +72,13 @@ export function createSettingsStore(repository: SettingsRepository) {
       return task;
     },
     updateTheme: async (theme) => {
-      const settings = get().settings;
+      const settings = get().pendingSettings ?? get().settings;
       if (settings?.onboardingCompleted) await get().save({ ...settings, theme });
+    },
+    updateLastOpenedNote: async (lastOpenedNotePath) => {
+      const settings = get().pendingSettings ?? get().settings;
+      if (settings?.onboardingCompleted && settings.lastOpenedNotePath !== lastOpenedNotePath)
+        await get().save({ ...settings, lastOpenedNotePath });
     },
     flushPendingSaves: async () => {
       let awaitedSave: Promise<unknown>;
