@@ -2,12 +2,15 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '@/app/App';
+// Compile the lazy editor dependencies before interaction-test timeouts begin.
+import '@/features/editor/MarkdownEditor';
 import { AppProviders } from '@/app/providers/AppProviders';
 import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
 import { unwrapResult } from '@/test/repository-helpers';
 import { InMemorySettingsRepository } from '@/features/settings/InMemorySettingsRepository';
 import { defaultSettings } from '@/features/settings/AppSettings';
 import { InMemoryFolderAccess } from '@/features/onboarding/InMemoryFolderAccess';
+import { InMemoryAttachmentRepository } from '@/features/attachments/InMemoryAttachmentRepository';
 
 async function renderWorkspace() {
   const repository = new InMemoryNoteRepository();
@@ -18,6 +21,7 @@ async function renderWorkspace() {
     ),
     folderAccess: new InMemoryFolderAccess(),
     createNoteRepository: () => repository,
+    createAttachmentRepository: () => new InMemoryAttachmentRepository(),
   };
   render(
     <AppProviders services={services}>

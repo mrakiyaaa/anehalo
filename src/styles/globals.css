@@ -8,6 +8,7 @@
 @import './onboarding.css';
 @import './editor.css';
 @import './branding.css';
+@import './editor-tools.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
@@ -42,6 +43,8 @@
   --success-bg: #d5f5e6;
   --success-fg: #1e7a4f;
   --window-close: #c42b1c;
+  --editor-slate: #536780;
+  --editor-coral: #b83d38;
   --radius: 1rem;
 }
 
@@ -73,9 +76,15 @@
   --moon: #b9ccff;
   --success-bg: #16302a;
   --success-fg: #7fe0b0;
+  --editor-slate: #b7c8da;
+  --editor-coral: #ffad9f;
 }
 
 :root {
+  --editor-size-small: 0.85em;
+  --editor-size-normal: 1em;
+  --editor-size-large: 1.25em;
+  --editor-size-huge: 1.65em;
   --background: var(--bg);
   --foreground: var(--ink);
   --card: var(--surface);

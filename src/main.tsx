@@ -7,11 +7,13 @@ import { TauriNoteRepository } from '@/features/storage/TauriNoteRepository';
 import { TauriSettingsRepository } from '@/features/settings/TauriSettingsRepository';
 import { TauriFolderAccess } from '@/features/onboarding/TauriFolderAccess';
 import type { AppServices } from '@/app/app-services';
+import { TauriAttachmentRepository } from '@/features/attachments/TauriAttachmentRepository';
 
 const services: AppServices = {
   settingsRepository: new TauriSettingsRepository(),
   folderAccess: new TauriFolderAccess(),
   createNoteRepository: (vaultPath) => new TauriNoteRepository(vaultPath),
+  createAttachmentRepository: (vaultPath) => new TauriAttachmentRepository(vaultPath),
 };
 
 const rootElement = document.getElementById('root');

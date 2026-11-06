@@ -25,3 +25,18 @@ Range.prototype.getClientRects = () => {
   return Object.assign(rectangles, { item: () => null });
 };
 HTMLElement.prototype.scrollIntoView = () => undefined;
+
+vi.stubGlobal(
+  'ResizeObserver',
+  class {
+    observe() {
+      return undefined;
+    }
+    unobserve() {
+      return undefined;
+    }
+    disconnect() {
+      return undefined;
+    }
+  },
+);

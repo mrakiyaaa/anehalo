@@ -6,13 +6,19 @@ import { AppProviders } from '@/app/providers/AppProviders';
 import { InMemorySettingsRepository } from '@/features/settings/InMemorySettingsRepository';
 import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
 import { InMemoryFolderAccess } from '@/features/onboarding/InMemoryFolderAccess';
+import { InMemoryAttachmentRepository } from '@/features/attachments/InMemoryAttachmentRepository';
 import { useThemeStore } from '@/store/theme-store';
 import { unwrapResult } from '@/test/repository-helpers';
 
 function renderSetup(settingsRepository = new InMemorySettingsRepository()) {
   const vault = new InMemoryNoteRepository();
   const folderAccess = new InMemoryFolderAccess();
-  const services = { settingsRepository, folderAccess, createNoteRepository: () => vault };
+  const services = {
+    settingsRepository,
+    folderAccess,
+    createNoteRepository: () => vault,
+    createAttachmentRepository: () => new InMemoryAttachmentRepository(),
+  };
   const view = render(
     <AppProviders services={services}>
       <App />

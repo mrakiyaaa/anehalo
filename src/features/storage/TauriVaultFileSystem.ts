@@ -8,6 +8,7 @@ import {
   remove,
   rename,
   writeTextFile,
+  writeFile,
   type FileInfo,
 } from '@tauri-apps/plugin-fs';
 import { describeStorageError, storageFailure } from '@/features/storage/repository-result';
@@ -126,6 +127,10 @@ export class TauriVaultFileSystem implements VaultFileSystem {
 
   async writeText(relativePath: string, content: string): Promise<void> {
     await writeTextFile(await this.absolutePath(relativePath), content, { createNew: true });
+  }
+
+  async writeBytes(relativePath: string, content: Uint8Array): Promise<void> {
+    await writeFile(await this.absolutePath(relativePath), content, { createNew: true });
   }
 
   async createDirectory(relativePath: string): Promise<void> {
