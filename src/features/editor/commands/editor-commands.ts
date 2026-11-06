@@ -163,7 +163,7 @@ export const editorCommands: readonly EditorCommand[] = [
     label: 'Text color',
     icon: Palette,
     group: 'text',
-    shortcut: 'Mod-Shift-c',
+    shortcut: 'Mod-Alt-Shift-c',
     active: (editor) => editor.isActive('textColor'),
     run: (_editor, actions) => actions.color(),
   },

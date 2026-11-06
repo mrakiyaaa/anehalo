@@ -7,6 +7,7 @@ import { InMemorySettingsRepository } from '@/features/settings/InMemorySettings
 import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
 import { InMemoryFolderAccess } from '@/features/onboarding/InMemoryFolderAccess';
 import { InMemoryAttachmentRepository } from '@/features/attachments/InMemoryAttachmentRepository';
+import { InMemoryExportPlatform } from '@/features/export/InMemoryExportPlatform';
 import { useThemeStore } from '@/store/theme-store';
 import { unwrapResult } from '@/test/repository-helpers';
 
@@ -18,6 +19,7 @@ function renderSetup(settingsRepository = new InMemorySettingsRepository()) {
     folderAccess,
     createNoteRepository: () => vault,
     createAttachmentRepository: () => new InMemoryAttachmentRepository(),
+    createExportPlatform: () => new InMemoryExportPlatform(),
   };
   const view = render(
     <AppProviders services={services}>

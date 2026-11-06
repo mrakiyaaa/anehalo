@@ -19,6 +19,7 @@ interface SettingsState {
   save: (settings: AppSettings) => Promise<RepositoryResult<AppSettings>>;
   updateTheme: (theme: ThemePreference) => Promise<void>;
   updateLastOpenedNote: (path: string | null) => Promise<void>;
+  updateLastExportFolder: (path: string) => Promise<RepositoryResult<void>>;
   flushPendingSaves: () => Promise<RepositoryResult<void>>;
 }
 
@@ -88,6 +89,12 @@ export function createSettingsStore(repository: SettingsRepository) {
       } while (awaitedSave !== saving);
       const error = get().error;
       return error && get().pendingSettings ? failure(error) : success(undefined);
+    },
+    updateLastExportFolder: async (lastExportFolder) => {
+      const settings = get().pendingSettings ?? get().settings;
+      if (!settings) return failure({ code: 'unavailable', message: 'Settings have not loaded.' });
+      const result = await get().save({ ...settings, lastExportFolder });
+      return result.ok ? success(undefined) : result;
     },
   }));
 }

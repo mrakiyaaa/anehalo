@@ -28,6 +28,7 @@ export function SidebarNotes() {
             key={note.relativePath}
             kind="note"
             name={note.title}
+            notePath={note.relativePath}
             onRename={(name) => renameNote(note.relativePath, name)}
             onDelete={() => deleteNote(note.relativePath)}
           >

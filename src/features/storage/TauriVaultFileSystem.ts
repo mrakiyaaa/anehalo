@@ -5,6 +5,7 @@ import {
   mkdir,
   readDir,
   readTextFile,
+  readFile,
   remove,
   rename,
   writeTextFile,
@@ -123,6 +124,10 @@ export class TauriVaultFileSystem implements VaultFileSystem {
 
   async readText(relativePath: string): Promise<string> {
     return readTextFile(await this.absolutePath(relativePath));
+  }
+
+  async readBytes(relativePath: string): Promise<Uint8Array> {
+    return readFile(await this.absolutePath(relativePath));
   }
 
   async writeText(relativePath: string, content: string): Promise<void> {

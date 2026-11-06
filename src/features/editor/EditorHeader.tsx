@@ -5,6 +5,7 @@ import { folderTone } from '@/lib/folder-tone';
 import { pathName } from '@/features/storage/storage-paths';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { NoteNavigation } from '@/features/note-links/NoteNavigation';
+import { ExportMenu } from '@/features/export/ExportMenu';
 
 export function EditorHeader({ draft }: { draft: NoteDraft }) {
   const goHome = useWorkspaceStore((state) => state.goHome);
@@ -34,10 +35,13 @@ export function EditorHeader({ draft }: { draft: NoteDraft }) {
             Home
           </Button>
         </div>
-        <span role="status" className="editor-save-status" data-state={draft.status}>
-          <Icon name={draft.status === 'retrying' ? 'close' : 'check'} />
-          {statusText}
-        </span>
+        <div className="editor-export-actions">
+          <span role="status" className="editor-save-status" data-state={draft.status}>
+            <Icon name={draft.status === 'retrying' ? 'close' : 'check'} />
+            {statusText}
+          </span>
+          <ExportMenu path={draft.note.relativePath} />
+        </div>
       </div>
       <div className="editor-title-row">
         <label htmlFor="note-title" className="sr-only">

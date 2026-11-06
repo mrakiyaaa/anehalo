@@ -11,6 +11,7 @@ import { InMemorySettingsRepository } from '@/features/settings/InMemorySettings
 import { defaultSettings } from '@/features/settings/AppSettings';
 import { InMemoryFolderAccess } from '@/features/onboarding/InMemoryFolderAccess';
 import { InMemoryAttachmentRepository } from '@/features/attachments/InMemoryAttachmentRepository';
+import { InMemoryExportPlatform } from '@/features/export/InMemoryExportPlatform';
 
 async function renderWorkspace() {
   const repository = new InMemoryNoteRepository();
@@ -22,6 +23,7 @@ async function renderWorkspace() {
     folderAccess: new InMemoryFolderAccess(),
     createNoteRepository: () => repository,
     createAttachmentRepository: () => new InMemoryAttachmentRepository(),
+    createExportPlatform: () => new InMemoryExportPlatform(),
   };
   render(
     <AppProviders services={services}>

@@ -1,0 +1,127 @@
+.editor-export-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.editor-export-button {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted-ink);
+  font-size: 12px;
+  transition:
+    background 150ms,
+    color 150ms;
+}
+.editor-export-button:hover:enabled {
+  background: var(--sky-bg);
+  color: var(--sky-fg);
+}
+.editor-export-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.export-menu {
+  min-width: 250px;
+}
+.export-menu-option {
+  gap: 9px;
+}
+.export-menu-option span {
+  flex: 1;
+}
+.export-menu-option kbd {
+  font-family: var(--font-sans);
+  color: var(--subtle-ink);
+  font-size: 10px;
+}
+.export-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 52px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(620px, calc(100vw - 44px));
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+}
+.export-toast > svg {
+  color: var(--success-fg);
+  flex: none;
+}
+.export-toast[data-error] {
+  border-color: var(--rose-fg);
+  background: var(--rose-bg);
+}
+.export-toast button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  padding: 4px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.export-toast .export-toast-close {
+  color: var(--muted-ink);
+  margin-left: 4px;
+}
+.export-progress {
+  position: fixed;
+  right: 22px;
+  bottom: 52px;
+  z-index: 100;
+  display: grid;
+  gap: 8px;
+  min-width: 230px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--muted-ink);
+}
+.export-progress progress {
+  width: 100%;
+  height: 5px;
+  accent-color: var(--accent);
+}
+.export-spinner {
+  animation: export-spin 1s linear infinite;
+}
+@keyframes export-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 1000px) {
+  .editor-export-actions {
+    gap: 8px;
+  }
+  .editor-navigation {
+    gap: 8px;
+  }
+  .editor-save-status {
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .export-spinner {
+    animation: none;
+  }
+  .editor-export-button {
+    transition: none;
+  }
+}

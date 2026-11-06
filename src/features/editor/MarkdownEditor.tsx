@@ -13,6 +13,7 @@ import { SlashMenu } from './tools/SlashMenu';
 import { sanitizeEditorHtml } from './sanitize-editor-html';
 import type { EditorActions } from './commands/editor-commands';
 import { updateEditorLinks } from '@/features/note-links/update-editor-links';
+import { useNoteExport } from '@/features/export/export-context';
 
 export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   const updateContent = useWorkspaceStore((state) => state.updateNoteContent);
@@ -22,6 +23,7 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   const document = useRef<MarkdownDocument | null>(null);
   const editorReference = useRef<Editor | null>(null);
   const appliedRenames = useRef(draft.linkRenames.length);
+  const { registerEditor } = useNoteExport();
   const {
     chooseImage,
     insertFiles,
@@ -106,6 +108,10 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
       editor.off('formattingAction', handleAction);
     };
   }, [editor, actions]);
+  useLayoutEffect(() => {
+    if (!editor) return;
+    return registerEditor(draft.note.relativePath, () => editor.getMarkdown());
+  }, [editor, draft.note.relativePath, registerEditor]);
   useLayoutEffect(() => {
     editorReference.current = editor;
     if (editor && !editor.isDestroyed)

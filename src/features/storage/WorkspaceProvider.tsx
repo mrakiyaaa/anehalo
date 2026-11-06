@@ -4,6 +4,7 @@ import { useVaultLifecycle } from '@/features/storage/use-vault-lifecycle';
 import { WorkspaceContext } from '@/store/workspace-context';
 import { createWorkspaceStore } from '@/store/workspace-store';
 import { useSettingsStore } from '@/features/settings/use-settings-store';
+import { ExportProvider } from '@/features/export/ExportProvider';
 
 type WorkspaceProviderProps = PropsWithChildren<{ repository: NoteRepository }>;
 
@@ -19,5 +20,9 @@ export function WorkspaceProvider({ repository, children }: WorkspaceProviderPro
   );
   const flushSettings = useSettingsStore((state) => state.flushPendingSaves);
   useVaultLifecycle(store, flushSettings);
-  return <WorkspaceContext.Provider value={store}>{children}</WorkspaceContext.Provider>;
+  return (
+    <WorkspaceContext.Provider value={store}>
+      <ExportProvider repository={repository}>{children}</ExportProvider>
+    </WorkspaceContext.Provider>
+  );
 }

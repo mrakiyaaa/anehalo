@@ -10,6 +10,7 @@
 @import './branding.css';
 @import './editor-tools.css';
 @import './note-links.css';
+@import './export.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 

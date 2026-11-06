@@ -7,11 +7,13 @@ import { DeleteItemDialog } from '@/components/ui/DeleteItemDialog';
 import { RenameItemDialog } from '@/components/ui/RenameItemDialog';
 import type { RepositoryResult } from '@/features/storage/repository-result';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { ExportMenuItems } from '@/features/export/ExportMenu';
 
 interface MenuActions {
   onRename: () => void;
   onDelete: () => void;
   disabled: boolean;
+  notePath?: string | undefined;
 }
 
 function MenuItems({
@@ -19,6 +21,7 @@ function MenuItems({
   onRename,
   onDelete,
   disabled,
+  notePath,
 }: MenuActions & { variant: 'context' | 'dropdown' }) {
   const Item = variant === 'context' ? ContextMenu.Item : DropdownMenu.Item;
   return (
@@ -27,6 +30,7 @@ function MenuItems({
         <Icon name="pen" />
         Rename
       </Item>
+      {notePath && <ExportMenuItems path={notePath} variant={variant} />}
       <Item
         className="item-menu-option destructive-menu-option"
         disabled={disabled}
@@ -44,15 +48,17 @@ type ItemMenuProps = PropsWithChildren<{
   name: string;
   onRename: (name: string) => Promise<RepositoryResult<unknown>>;
   onDelete: () => Promise<RepositoryResult<unknown>>;
+  notePath?: string;
 }>;
 
-export function ItemMenu({ kind, name, onRename, onDelete, children }: ItemMenuProps) {
+export function ItemMenu({ kind, name, onRename, onDelete, notePath, children }: ItemMenuProps) {
   const [dialog, setDialog] = useState<'rename' | 'delete' | null>(null);
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const actions: MenuActions = {
     onRename: () => setDialog('rename'),
     onDelete: () => setDialog('delete'),
     disabled: isMutating,
+    notePath,
   };
   return (
     <>

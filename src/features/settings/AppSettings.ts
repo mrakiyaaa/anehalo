@@ -9,6 +9,7 @@ export interface AppSettings {
   readonly theme: ThemePreference;
   readonly lastOpenedNotePath: string | null;
   readonly reopenLastNote: boolean;
+  readonly lastExportFolder: string | null;
 }
 
 export const themeLabels: Record<ThemePreference, string> = {
@@ -35,6 +36,7 @@ export function defaultSettings(vaultPath: string): AppSettings {
     theme: 'system',
     lastOpenedNotePath: null,
     reopenLastNote: true,
+    lastExportFolder: null,
   };
 }
 
@@ -73,5 +75,11 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
       'reopenLastNote' in value && typeof value.reopenLastNote === 'boolean'
         ? value.reopenLastNote
         : true,
+    lastExportFolder:
+      'lastExportFolder' in value &&
+      typeof value.lastExportFolder === 'string' &&
+      value.lastExportFolder.trim()
+        ? value.lastExportFolder
+        : null,
   };
 }
