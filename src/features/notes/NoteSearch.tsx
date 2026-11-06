@@ -2,6 +2,7 @@ import { Icon } from '@/components/ui/Icon';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 
 export function NoteSearch() {
+  const setSearchOpen = useWorkspaceStore((state) => state.setSearchOpen);
   const searchText = useWorkspaceStore((state) => state.searchText);
   const setSearchText = useWorkspaceStore((state) => state.setSearchText);
 
@@ -16,6 +17,7 @@ export function NoteSearch() {
         type="search"
         placeholder="Search notes"
         autoComplete="off"
+        onFocus={() => setSearchOpen(true)}
         value={searchText}
         onChange={(event) => setSearchText(event.target.value)}
       />

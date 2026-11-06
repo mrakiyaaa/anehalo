@@ -1,3 +1,4 @@
+import { StartupTrayBridge } from '@/features/tray/StartupTrayBridge';
 import { MotionConfig } from 'motion/react';
 import type { PropsWithChildren } from 'react';
 import { ThemeProvider } from '@/features/theme/ThemeProvider';
@@ -9,7 +10,10 @@ export function AppProviders({ children, services }: PropsWithChildren<{ service
     <ThemeProvider>
       <AppServicesContext.Provider value={services}>
         <SettingsProvider repository={services.settingsRepository}>
-          <MotionConfig reducedMotion="user">{children}</MotionConfig>
+          <MotionConfig reducedMotion="user">
+            <StartupTrayBridge />
+            {children}
+          </MotionConfig>
         </SettingsProvider>
       </AppServicesContext.Provider>
     </ThemeProvider>

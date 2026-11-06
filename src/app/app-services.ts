@@ -6,6 +6,10 @@ import type { AttachmentRepository } from '@/features/attachments/AttachmentRepo
 import type { ExportPlatform } from '@/features/export/export-types';
 
 export interface AppServices {
+  desktop?: {
+    shortcuts: import('@/features/shortcuts/GlobalShortcutService').GlobalShortcutService;
+    tray: import('@/features/tray/TrayService').TrayService;
+  };
   settingsRepository: SettingsRepository;
   folderAccess: FolderAccess;
   createNoteRepository: (vaultPath: string) => NoteRepository;

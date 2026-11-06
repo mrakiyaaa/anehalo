@@ -17,6 +17,8 @@ interface SettingsState {
   pendingSettings: AppSettings | null;
   load: () => Promise<void>;
   save: (settings: AppSettings) => Promise<RepositoryResult<AppSettings>>;
+  revertPending: (keys: readonly (keyof AppSettings)[]) => void;
+  update: (patch: Partial<AppSettings>) => Promise<RepositoryResult<AppSettings>>;
   updateTheme: (theme: ThemePreference) => Promise<void>;
   updateLastOpenedNote: (path: string | null) => Promise<void>;
   updateLastExportFolder: (path: string) => Promise<RepositoryResult<void>>;
@@ -71,6 +73,22 @@ export function createSettingsStore(repository: SettingsRepository) {
       });
       saving = task;
       return task;
+    },
+    revertPending: (keys) => {
+      const { settings, pendingSettings } = get();
+      if (settings && pendingSettings) {
+        const reverted = {
+          ...pendingSettings,
+          ...Object.fromEntries(keys.map((key) => [key, settings[key]])),
+        };
+        set({ pendingSettings: reverted });
+      }
+    },
+    update: (patch) => {
+      const settings = get().pendingSettings ?? get().settings;
+      return settings
+        ? get().save({ ...settings, ...patch })
+        : Promise.resolve(failure({ code: 'unavailable', message: 'Settings have not loaded.' }));
     },
     updateTheme: async (theme) => {
       const settings = get().pendingSettings ?? get().settings;

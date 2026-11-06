@@ -20,6 +20,10 @@ export interface WorkspaceState {
   restoreLinkedNote: (path: string) => Promise<RepositoryResult<Note>>;
   activeFolderPath: string | null;
   searchText: string;
+  searchIndex: import('@/features/search/SearchIndex').SearchIndex;
+  searchRevision: number;
+  isSearchOpen: boolean;
+  setSearchOpen: (open: boolean) => void;
   isLoading: boolean;
   isMutating: boolean;
   isClosing: boolean;

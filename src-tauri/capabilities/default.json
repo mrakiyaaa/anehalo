@@ -7,6 +7,13 @@
     "core:default",
     "core:path:default",
     "core:window:allow-minimize",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-unminimize",
+    "core:window:allow-set-focus",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-destroy",
@@ -39,9 +46,7 @@
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-write-html",
     "opener:allow-reveal-item-in-dir",
-    "global-shortcut:allow-is-registered",
     "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister",
-    "global-shortcut:allow-unregister-all"
+    "global-shortcut:allow-unregister"
   ]
 }

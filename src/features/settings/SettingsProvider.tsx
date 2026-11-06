@@ -13,11 +13,11 @@ export function SettingsProvider({
     void store.getState().load();
   }, [store]);
   useEffect(() => {
-    let synchronized = false;
+    let synchronizedTheme: string | null = null;
     let applyingSavedTheme = false;
     const unsubscribeSettings = store.subscribe((state) => {
-      if (!state.settings || synchronized) return;
-      synchronized = true;
+      if (!state.settings || state.settings.theme === synchronizedTheme) return;
+      synchronizedTheme = state.settings.theme;
       applyingSavedTheme = true;
       useThemeStore.getState().setPreference(state.settings.theme);
       applyingSavedTheme = false;

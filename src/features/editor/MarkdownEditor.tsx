@@ -1,3 +1,4 @@
+import { FindBar } from '@/features/search/FindBar';
 import { EditorContent, useEditor } from '@tiptap/react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useMemo, useState } from 'react';
@@ -165,6 +166,7 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
           event.target.value = '';
         }}
       />
+      {editor && <FindBar editor={editor} />}
       <EditorContent editor={editor} className="note-editor-body" />
       {editor && <SlashMenu editor={editor} actions={actions} />}
     </>

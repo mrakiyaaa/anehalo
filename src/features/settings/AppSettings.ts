@@ -10,6 +10,10 @@ export interface AppSettings {
   readonly lastOpenedNotePath: string | null;
   readonly reopenLastNote: boolean;
   readonly lastExportFolder: string | null;
+  readonly quickNoteShortcut: string;
+  readonly keepRunningInTray: boolean;
+  readonly startWithWindows: boolean;
+  readonly trayNoticeShown: boolean;
 }
 
 export const themeLabels: Record<ThemePreference, string> = {
@@ -37,6 +41,10 @@ export function defaultSettings(vaultPath: string): AppSettings {
     lastOpenedNotePath: null,
     reopenLastNote: true,
     lastExportFolder: null,
+    quickNoteShortcut: 'Ctrl+Alt+N',
+    keepRunningInTray: true,
+    startWithWindows: false,
+    trayNoticeShown: false,
   };
 }
 
@@ -75,6 +83,22 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
       'reopenLastNote' in value && typeof value.reopenLastNote === 'boolean'
         ? value.reopenLastNote
         : true,
+    quickNoteShortcut:
+      'quickNoteShortcut' in value && typeof value.quickNoteShortcut === 'string'
+        ? value.quickNoteShortcut
+        : 'Ctrl+Alt+N',
+    keepRunningInTray:
+      'keepRunningInTray' in value && typeof value.keepRunningInTray === 'boolean'
+        ? value.keepRunningInTray
+        : true,
+    startWithWindows:
+      'startWithWindows' in value && typeof value.startWithWindows === 'boolean'
+        ? value.startWithWindows
+        : false,
+    trayNoticeShown:
+      'trayNoticeShown' in value && typeof value.trayNoticeShown === 'boolean'
+        ? value.trayNoticeShown
+        : false,
     lastExportFolder:
       'lastExportFolder' in value &&
       typeof value.lastExportFolder === 'string' &&

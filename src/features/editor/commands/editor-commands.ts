@@ -181,7 +181,7 @@ export const editorCommands: readonly EditorCommand[] = [
     label: 'Link',
     icon: Link,
     group: 'insert',
-    shortcut: 'Mod-k',
+    shortcut: 'Mod-Shift-k',
     active: (editor) => editor.isActive('link'),
     run: (_editor, actions) => actions.link(),
   },

@@ -1,3 +1,4 @@
+import { DesktopProvider } from '@/features/tray/DesktopProvider';
 import { useState, type PropsWithChildren } from 'react';
 import type { NoteRepository } from '@/features/storage/NoteRepository';
 import { useVaultLifecycle } from '@/features/storage/use-vault-lifecycle';
@@ -18,11 +19,12 @@ export function WorkspaceProvider({ repository, children }: WorkspaceProviderPro
       rememberNote,
     }),
   );
-  const flushSettings = useSettingsStore((state) => state.flushPendingSaves);
-  useVaultLifecycle(store, flushSettings);
+  useVaultLifecycle(store);
   return (
     <WorkspaceContext.Provider value={store}>
-      <ExportProvider repository={repository}>{children}</ExportProvider>
+      <DesktopProvider store={store}>
+        <ExportProvider repository={repository}>{children}</ExportProvider>
+      </DesktopProvider>
     </WorkspaceContext.Provider>
   );
 }

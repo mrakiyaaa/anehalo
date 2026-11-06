@@ -1,3 +1,5 @@
+import { SearchIndex } from '@/features/search/SearchIndex';
+import { IndexedNoteRepository } from '@/features/search/IndexedNoteRepository';
 import { createStore } from 'zustand/vanilla';
 import type { NoteRepository } from '@/features/storage/NoteRepository';
 import {
@@ -20,8 +22,13 @@ export function createWorkspaceStore(
 ) {
   const navigation = createNavigationHistory();
   const linkIndex = new NoteLinkIndex((links) => store.setState({ links }));
+  const searchIndex = new SearchIndex(
+    () => store.setState((state) => ({ searchRevision: state.searchRevision + 1 })),
+    (error) => store.setState({ error }),
+  );
+  const indexedRepository = new IndexedNoteRepository(sourceRepository, searchIndex);
   const repository = new LinkedNoteRepository(
-    sourceRepository,
+    indexedRepository,
     linkIndex,
     (rename, notes) => {
       autoSaver.acceptLinkRename(rename, notes);
@@ -58,6 +65,10 @@ export function createWorkspaceStore(
           });
         else set({ error: result.error, isLoading: false });
       }
+      if (result.ok)
+        void searchIndex.refresh(sourceRepository, result.value.notes).then((indexed) => {
+          if (!indexed.ok) set({ error: indexed.error });
+        });
       if (result.ok && rebuildLinks)
         linkIndex.scheduleRebuild(sourceRepository, (error) => set({ error }));
       return result;
@@ -142,6 +153,10 @@ export function createWorkspaceStore(
       navigation,
       activeFolderPath: null,
       searchText: '',
+      searchIndex,
+      searchRevision: 0,
+      isSearchOpen: false,
+      setSearchOpen: (isSearchOpen) => set({ isSearchOpen }),
       isLoading: true,
       isMutating: false,
       isClosing: false,
@@ -249,6 +264,7 @@ export function createWorkspaceStore(
       pauseAutoSave: () => {
         autoSaver.pause();
         linkIndex.cancel();
+        searchIndex.cancel();
       },
       resumeAutoSave: () => autoSaver.resume(),
       createFolder: (name) => mutate(() => repository.createFolder(name)),

@@ -1,3 +1,5 @@
+import { TauriGlobalShortcutService } from '@/features/shortcuts/TauriGlobalShortcutService';
+import { TauriTrayService } from '@/features/tray/TauriTrayService';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/app/App';
@@ -11,6 +13,7 @@ import { TauriAttachmentRepository } from '@/features/attachments/TauriAttachmen
 import { TauriExportPlatform } from '@/features/export/TauriExportPlatform';
 
 const services: AppServices = {
+  desktop: { shortcuts: new TauriGlobalShortcutService(), tray: new TauriTrayService() },
   settingsRepository: new TauriSettingsRepository(),
   folderAccess: new TauriFolderAccess(),
   createNoteRepository: (vaultPath) => new TauriNoteRepository(vaultPath),
