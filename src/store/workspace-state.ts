@@ -2,6 +2,8 @@ import type { Folder, Note, VaultTree } from '@/types/notes';
 import type { NoteRepository, TrashEntry } from '@/features/storage/NoteRepository';
 import type { RepositoryError, RepositoryResult } from '@/features/storage/repository-result';
 import type { NoteDraft } from '@/features/editor/NoteDraft';
+import type { LinkIndexSnapshot } from '@/features/note-links/NoteLinkIndex';
+import type { createNavigationHistory } from '@/store/navigation-history';
 
 export interface WorkspaceOptions {
   readonly lastOpenedNotePath?: string | null;
@@ -11,6 +13,11 @@ export interface WorkspaceOptions {
 
 export interface WorkspaceState {
   tree: VaultTree;
+  links: LinkIndexSnapshot;
+  navigation: ReturnType<typeof createNavigationHistory>;
+  navigateHistory: (direction: -1 | 1) => Promise<RepositoryResult<void>>;
+  createLinkedNote: (title: string, folder: string | null) => Promise<RepositoryResult<Note>>;
+  restoreLinkedNote: (path: string) => Promise<RepositoryResult<Note>>;
   activeFolderPath: string | null;
   searchText: string;
   isLoading: boolean;

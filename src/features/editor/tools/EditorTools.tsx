@@ -12,6 +12,7 @@ import { ToolButton } from './ToolButton';
 import { FormattingPicker } from './FormattingPicker';
 import { LinkForm } from './LinkForm';
 import { CommandList } from './CommandList';
+import { PageNotePicker } from '@/features/note-links/PageNotePicker';
 
 export function EditorTools({
   editor,
@@ -48,7 +49,7 @@ export function EditorTools({
     menu?: readonly EditorCommand[],
   ) {
     const identifier = `${location}:${command.id}`;
-    const isPicker = command.id === 'color' || command.id === 'size' || command.id === 'link';
+    const isPicker = ['color', 'size', 'link', 'page'].includes(command.id);
     if (!isPicker && !menu)
       return (
         <ToolButton
@@ -97,6 +98,8 @@ export function EditorTools({
                 onSelect={run}
                 listId={`${location}-${command.id}-options`}
               />
+            ) : command.id === 'page' ? (
+              <PageNotePicker editor={editor} onDismiss={close} />
             ) : command.id === 'link' ? (
               <LinkForm editor={editor} onChoose={close} />
             ) : (

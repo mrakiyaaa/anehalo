@@ -9,6 +9,7 @@ import {
 } from '@/features/editor/commands/slash-commands';
 import type { EditorActions, EditorCommand } from '@/features/editor/commands/editor-commands';
 import { CommandList } from './CommandList';
+import { PageNotePicker } from '@/features/note-links/PageNotePicker';
 
 export function SlashMenu({ editor, actions }: { editor: Editor; actions: EditorActions }) {
   const [query, setQuery] = useState<SlashQuery | null>(null);
@@ -45,14 +46,15 @@ export function SlashMenu({ editor, actions }: { editor: Editor; actions: Editor
       }
       const coordinates = editor.view.coordsAtPos(next.from);
       setPosition({
-        left: Math.max(8, Math.min(coordinates.left, window.innerWidth - 330)),
-        top: Math.max(8, Math.min(coordinates.bottom + 8, window.innerHeight - 300)),
+        left: Math.max(8, Math.min(coordinates.left, window.innerWidth - 380)),
+        top: Math.max(8, Math.min(coordinates.bottom + 8, window.innerHeight - 340)),
       });
       setQuery(next);
     };
     const handleKey = (event: KeyboardEvent) => {
       if (!editor.isEditable) return;
       const current = slashQuery(editor.state);
+      if (current && /^page(?:\s|$)/i.test(current.query)) return;
       if (
         !current ||
         event.isComposing ||
@@ -103,15 +105,28 @@ export function SlashMenu({ editor, actions }: { editor: Editor; actions: Editor
   if (!query) return null;
   return createPortal(
     <div className="editor-popover slash-menu" style={position}>
-      <p className="editor-popover-label">
-        Insert or format <span>↑ ↓ to navigate · Esc to close</span>
-      </p>
-      <CommandList
-        commands={commands}
-        selectedIndex={selectedIndex}
-        onSelect={(command) => execute(command, query)}
-        listId="slash-commands"
-      />
+      {/^page(?:\s|$)/i.test(query.query) ? (
+        <PageNotePicker
+          editor={editor}
+          range={query}
+          onDismiss={() => {
+            dismissed.current = `${query.from}:${query.query}`;
+            setQuery(null);
+          }}
+        />
+      ) : (
+        <>
+          <p className="editor-popover-label">
+            Insert or format <span>↑ ↓ to navigate · Esc to close</span>
+          </p>
+          <CommandList
+            commands={commands}
+            selectedIndex={selectedIndex}
+            onSelect={(command) => execute(command, query)}
+            listId="slash-commands"
+          />
+        </>
+      )}
     </div>,
     document.body,
   );

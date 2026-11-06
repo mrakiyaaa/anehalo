@@ -18,6 +18,7 @@ export const EditorShortcuts = Extension.create({
       image: () => request('image'),
       color: () => request('color'),
       size: () => request('size'),
+      page: () => request('page'),
     };
     const shortcuts: Record<string, () => boolean> = {};
     for (const command of editorCommands) {

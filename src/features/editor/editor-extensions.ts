@@ -9,6 +9,7 @@ import { Underline } from './extensions/Underline';
 import { Highlight } from './extensions/Highlight';
 import { ImageAttachment } from './extensions/ImageAttachment';
 import { EditorShortcuts } from './extensions/EditorShortcuts';
+import { NoteLink } from './extensions/NoteLink';
 import type { RepositoryResult } from '@/features/storage/repository-result';
 
 export function editorExtensions(
@@ -34,6 +35,7 @@ export function editorExtensions(
     TableKit.configure({ table: { resizable: false } }),
     ImageAttachment.configure(options.resolveImage ? { resolveSource: options.resolveImage } : {}),
     EditorShortcuts,
+    NoteLink,
     Markdown,
   ];
 }

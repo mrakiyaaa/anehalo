@@ -12,6 +12,7 @@ import { EditorTools } from './tools/EditorTools';
 import { SlashMenu } from './tools/SlashMenu';
 import { sanitizeEditorHtml } from './sanitize-editor-html';
 import type { EditorActions } from './commands/editor-commands';
+import { updateEditorLinks } from '@/features/note-links/update-editor-links';
 
 export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   const updateContent = useWorkspaceStore((state) => state.updateNoteContent);
@@ -20,6 +21,7 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   const isMutating = useWorkspaceStore((state) => state.isMutating || state.isClosing);
   const document = useRef<MarkdownDocument | null>(null);
   const editorReference = useRef<Editor | null>(null);
+  const appliedRenames = useRef(draft.linkRenames.length);
   const {
     chooseImage,
     insertFiles,
@@ -89,6 +91,7 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
       link: () => setOpenPopover('toolbar:link'),
       color: () => setOpenPopover('toolbar:color'),
       size: () => setOpenPopover('toolbar:size'),
+      page: () => setOpenPopover('toolbar:page'),
       image: () => {
         if (editor) void chooseImage(editor);
       },
@@ -108,10 +111,17 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
     if (editor && !editor.isDestroyed)
       document.current ??= new MarkdownDocument(draft.content, editor);
   }, [editor, draft.content]);
+  useLayoutEffect(() => {
+    if (!editor || editor.isDestroyed || appliedRenames.current === draft.linkRenames.length)
+      return;
+    updateEditorLinks(editor, draft.linkRenames.slice(appliedRenames.current));
+    appliedRenames.current = draft.linkRenames.length;
+    document.current = new MarkdownDocument(draft.content, editor);
+  }, [editor, draft.linkRenames, draft.content]);
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     editor.setEditable(!isMutating, false);
-    if (!isMutating && editor.isInitialized) editor.commands.focus('end');
+    if (!isMutating && editor.isInitialized) editor.commands.focus();
   }, [editor, isMutating]);
   return (
     <>

@@ -9,8 +9,26 @@ import {
 import { isInsideFolder } from '@/features/storage/storage-paths';
 import { NoteAutoSaver } from '@/features/editor/NoteAutoSaver';
 import type { WorkspaceOptions, WorkspaceState } from '@/store/workspace-state';
+import { NoteLinkIndex, emptyLinkIndex } from '@/features/note-links/NoteLinkIndex';
+import { LinkedNoteRepository } from '@/features/note-links/LinkedNoteRepository';
+import { createNavigationHistory } from '@/store/navigation-history';
+import { restoreLinkedNote } from '@/features/note-links/restore-linked-note';
 
-export function createWorkspaceStore(repository: NoteRepository, options: WorkspaceOptions = {}) {
+export function createWorkspaceStore(
+  sourceRepository: NoteRepository,
+  options: WorkspaceOptions = {},
+) {
+  const navigation = createNavigationHistory();
+  const linkIndex = new NoteLinkIndex((links) => store.setState({ links }));
+  const repository = new LinkedNoteRepository(
+    sourceRepository,
+    linkIndex,
+    (rename, notes) => {
+      autoSaver.acceptLinkRename(rename, notes);
+      navigation.getState().rename(rename);
+    },
+    (error) => store.setState({ error }),
+  );
   const autoSaver = new NoteAutoSaver(repository);
   let initialized = false;
   let lastOpenedPath = options.lastOpenedNotePath ?? null;
@@ -23,7 +41,7 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
     let pendingOperations = 0;
     let refreshIdentifier = 0;
 
-    async function refreshTree() {
+    async function refreshTree(rebuildLinks = true) {
       const requestIdentifier = ++refreshIdentifier;
       set({ isLoading: true });
       const result = await repository.listTree();
@@ -40,6 +58,8 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
           });
         else set({ error: result.error, isLoading: false });
       }
+      if (result.ok && rebuildLinks)
+        linkIndex.scheduleRebuild(sourceRepository, (error) => set({ error }));
       return result;
     }
 
@@ -79,7 +99,7 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
       return success(undefined);
     }
 
-    async function loadNote(path: string): Promise<RepositoryResult<void>> {
+    async function loadNote(path: string, rememberHistory = true): Promise<RepositoryResult<void>> {
       const previousIdentifier = get().openDraft?.identifier;
       const left = await leaveCurrentDraft();
       if (!left.ok) return left;
@@ -89,6 +109,7 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
       else {
         set({ openDraft: loaded.value, isOpeningNote: false });
         await rememberNote(loaded.value.note.relativePath);
+        if (rememberHistory) navigation.getState().visit(loaded.value.note.relativePath);
       }
       if (previousIdentifier && (!loaded.ok || loaded.value.identifier !== previousIdentifier))
         autoSaver.release(previousIdentifier);
@@ -109,7 +130,7 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
             await rememberNote(null);
           }
           set({ pendingDrafts: autoSaver.drafts().filter((draft) => draft.dirty) });
-          await refreshTree();
+          await refreshTree(false);
         }
         return result;
       });
@@ -117,6 +138,8 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
 
     return {
       tree: { vaultPath: '', folders: [], notes: [] },
+      links: emptyLinkIndex,
+      navigation,
       activeFolderPath: null,
       searchText: '',
       isLoading: true,
@@ -136,11 +159,46 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
       initialize: async () => {
         if (initialized) return;
         initialized = true;
-        const tree = await refreshTree();
+        const tree = await refreshTree(false);
+        linkIndex.cancel();
+        const indexing = tree.ok
+          ? linkIndex.rebuild(sourceRepository, tree.value.notes)
+          : Promise.resolve(success(undefined));
         if (tree.ok && options.reopenLastNote !== false && options.lastOpenedNotePath)
           await get().openNote(options.lastOpenedNotePath);
+        const indexed = await indexing;
+        if (!indexed.ok) set({ error: indexed.error });
       },
       openNote: (path) => enqueue(() => loadNote(path)),
+      navigateHistory: (direction) =>
+        enqueue(async () => {
+          const history = navigation.getState();
+          const path = history.paths[history.position + direction];
+          if (!path) return success(undefined);
+          const available = await repository.readNote(path);
+          if (!available.ok) {
+            set({ error: available.error });
+            return available;
+          }
+          const result = await loadNote(path, false);
+          if (result.ok) navigation.getState().move(direction);
+          else set({ error: result.error });
+          return result;
+        }),
+      createLinkedNote: (title, folder) =>
+        enqueue(async () => {
+          const result = await repository.createNote({ title, folder });
+          if (!result.ok) set({ error: result.error });
+          else await refreshTree(false);
+          return result;
+        }),
+      restoreLinkedNote: (path) =>
+        enqueue(async () => {
+          const result = await restoreLinkedNote(repository, path);
+          if (!result.ok) set({ error: result.error });
+          else await refreshTree(false);
+          return result;
+        }),
       goHome: () =>
         enqueue(async () => {
           const saved = await leaveCurrentDraft();
@@ -157,7 +215,7 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
           const result = await repository.createNote({ folder: get().activeFolderPath, content });
           if (!result.ok) set({ error: result.error });
           else {
-            await refreshTree();
+            await refreshTree(false);
             await loadNote(result.value.relativePath);
           }
           return result;
@@ -188,7 +246,10 @@ export function createWorkspaceStore(repository: NoteRepository, options: Worksp
           : Promise.resolve(success(undefined));
       },
       setClosing: (isClosing) => set({ isClosing }),
-      pauseAutoSave: () => autoSaver.pause(),
+      pauseAutoSave: () => {
+        autoSaver.pause();
+        linkIndex.cancel();
+      },
       resumeAutoSave: () => autoSaver.resume(),
       createFolder: (name) => mutate(() => repository.createFolder(name)),
       renameNote: (path, name) =>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { folderTone } from '@/lib/folder-tone';
 import { pathName } from '@/features/storage/storage-paths';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { NoteNavigation } from '@/features/note-links/NoteNavigation';
 
 export function EditorHeader({ draft }: { draft: NoteDraft }) {
   const goHome = useWorkspaceStore((state) => state.goHome);
@@ -19,17 +20,20 @@ export function EditorHeader({ draft }: { draft: NoteDraft }) {
   return (
     <header className="editor-header">
       <div className="editor-navigation">
-        <Button
-          variant="ghost"
-          className="editor-back"
-          disabled={isMutating}
-          onClick={() => {
-            void goHome();
-          }}
-        >
-          <Icon name="left" />
-          Home
-        </Button>
+        <div className="editor-navigation-buttons">
+          <NoteNavigation />
+          <Button
+            variant="ghost"
+            className="editor-back"
+            disabled={isMutating}
+            onClick={() => {
+              void goHome();
+            }}
+          >
+            <Icon name="left" />
+            Home
+          </Button>
+        </div>
         <span role="status" className="editor-save-status" data-state={draft.status}>
           <Icon name={draft.status === 'retrying' ? 'close' : 'check'} />
           {statusText}

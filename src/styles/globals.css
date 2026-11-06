@@ -9,6 +9,7 @@
 @import './editor.css';
 @import './branding.css';
 @import './editor-tools.css';
+@import './note-links.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 

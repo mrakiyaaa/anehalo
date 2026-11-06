@@ -27,6 +27,7 @@ import {
   Trash2,
   Palette,
   Type,
+  FileSymlink,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -35,6 +36,7 @@ export interface EditorActions {
   image: () => void;
   color: () => void;
   size: () => void;
+  page: () => void;
 }
 export interface EditorCommand {
   readonly id: string;
@@ -58,6 +60,15 @@ const marks = [
 ] as const;
 
 export const editorCommands: readonly EditorCommand[] = [
+  {
+    id: 'page',
+    label: 'Page',
+    keywords: 'note link',
+    icon: FileSymlink,
+    group: 'insert',
+    shortcut: 'Mod-Shift-k',
+    run: (_editor, actions) => actions.page(),
+  },
   {
     id: 'paragraph',
     label: 'Paragraph',

@@ -7,6 +7,7 @@ import { SettingsNotice } from '@/features/settings/SettingsNotice';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { BacklinksPanel } from '@/features/note-links/BacklinksPanel';
 
 const MarkdownEditor = lazy(async () => {
   const module = await import('@/features/editor/MarkdownEditor');
@@ -51,6 +52,7 @@ export function EditorScreen() {
         <Suspense fallback={<p className="editor-loading-body">Opening editor...</p>}>
           <MarkdownEditor key={`${draft.identifier}:${draft.documentVersion}`} draft={draft} />
         </Suspense>
+        <BacklinksPanel path={draft.note.relativePath} />
       </div>
     </main>
   );

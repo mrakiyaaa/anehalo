@@ -1,4 +1,5 @@
 import DOMPurify from 'dompurify';
+import { decodeNotePath } from '@/features/note-links/note-link-paths';
 
 export function isSafeLink(value: string): boolean {
   const allowed =
@@ -82,7 +83,8 @@ export function sanitizeEditorHtml(html: string): string {
     element.removeAttribute('style');
   }
   for (const anchor of document.body.querySelectorAll('a')) {
-    if (!isSafeLink(anchor.getAttribute('href') ?? '')) anchor.removeAttribute('href');
+    const reference = anchor.getAttribute('href') ?? '';
+    if (!isSafeLink(reference) && !decodeNotePath(reference).ok) anchor.removeAttribute('href');
   }
   return document.body.innerHTML;
 }

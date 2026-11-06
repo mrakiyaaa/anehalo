@@ -15,6 +15,11 @@ import {
 } from '@/features/storage/repository-result';
 import { isInsideFolder, pathName, parentPath } from '@/features/storage/storage-paths';
 import type { Note } from '@/types/notes';
+import {
+  renamedLink,
+  rewriteNoteLinks,
+  type LinkRename,
+} from '@/features/note-links/NoteLinkRewriter';
 
 interface DraftSession {
   draft: NoteDraft;
@@ -349,6 +354,36 @@ export class NoteAutoSaver {
           title:
             session.draft.title === session.draft.note.title ? note.title : session.draft.title,
         });
+    }
+  }
+
+  acceptLinkRename(rename: LinkRename, notes: ReadonlyMap<string, Note>) {
+    for (const session of this.sessions.values()) {
+      const draft = session.draft;
+      const path =
+        renamedLink(draft.note.relativePath, '', rename)?.path ?? draft.note.relativePath;
+      const note = notes.get(path);
+      // Failed files retain their original baseline and can be retried by the normal save queue.
+      const content = rewriteNoteLinks(draft.content, rename);
+      const externallyChanged =
+        note && rewriteNoteLinks(draft.note.content, rename) !== note.content;
+      this.publish(session, {
+        note: externallyChanged
+          ? {
+              ...draft.note,
+              relativePath: note.relativePath,
+              folder: note.folder,
+              title: note.title,
+            }
+          : (note ?? draft.note),
+        title: note && draft.title === draft.note.title ? note.title : draft.title,
+        content,
+        linkRenames: [...draft.linkRenames, rename],
+        ...(externallyChanged
+          ? { externalNote: note, error: conflictError, status: 'retrying' as const }
+          : {}),
+      });
+      this.schedule(session);
     }
   }
 

@@ -14,7 +14,7 @@ function setup() {
   render(
     <SlashMenu
       editor={editor}
-      actions={{ image: vi.fn(), link: vi.fn(), color: vi.fn(), size: vi.fn() }}
+      actions={{ image: vi.fn(), link: vi.fn(), color: vi.fn(), size: vi.fn(), page: vi.fn() }}
     />,
   );
   return editor;

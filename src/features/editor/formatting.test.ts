@@ -21,7 +21,13 @@ function createEditor(source = 'A useful thought') {
 afterEach(() => {
   editors.splice(0).forEach((editor) => editor.destroy());
 });
-const actions: EditorActions = { link: vi.fn(), image: vi.fn(), color: vi.fn(), size: vi.fn() };
+const actions: EditorActions = {
+  link: vi.fn(),
+  image: vi.fn(),
+  color: vi.fn(),
+  size: vi.fn(),
+  page: vi.fn(),
+};
 
 describe('formatting commands', () => {
   it.each(['link', 'image', 'color', 'size'])(

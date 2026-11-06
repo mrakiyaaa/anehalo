@@ -1,5 +1,6 @@
 import type { Note } from '@/types/notes';
 import type { RepositoryError } from '@/features/storage/repository-result';
+import type { LinkRename } from '@/features/note-links/NoteLinkRewriter';
 
 export interface NoteDraft {
   readonly identifier: string;
@@ -13,6 +14,7 @@ export interface NoteDraft {
   readonly isMissing: boolean;
   readonly isSerializationBlocked: boolean;
   readonly documentVersion: number;
+  readonly linkRenames: readonly LinkRename[];
 }
 
 export function createNoteDraft(note: Note, identifier: string = crypto.randomUUID()): NoteDraft {
@@ -28,6 +30,7 @@ export function createNoteDraft(note: Note, identifier: string = crypto.randomUU
     isMissing: false,
     isSerializationBlocked: false,
     documentVersion: 0,
+    linkRenames: [],
   };
 }
 
