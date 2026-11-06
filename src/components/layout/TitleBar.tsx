@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { useWindowControls } from '@/components/layout/use-window-controls';
 import { ThemeSwitch } from '@/features/theme/ThemeSwitch';
-import { AppLogo } from '@/components/ui/AppLogo';
+import { Logo } from '@/components/ui/Logo';
 
 export function TitleBar() {
   const { isNativeWindow, isMaximized, windowError, runWindowAction } = useWindowControls();
@@ -12,7 +12,7 @@ export function TitleBar() {
     <header className="app-titlebar" data-tauri-drag-region>
       <div className="app-brand" data-tauri-drag-region>
         <span className="app-logo" data-tauri-drag-region>
-          <AppLogo />
+          <Logo variant="mark" />
         </span>
         <span data-tauri-drag-region>{APP_NAME}</span>
       </div>

@@ -80,7 +80,7 @@ export function Onboarding() {
         <OnboardingVisual
           scene={state.isSummary ? summaryScene : step}
           sceneKey={sceneKey}
-          welcome={!state.isSummary && step.id === 'welcome'}
+          branding={state.isSummary ? 'finish' : step.id === 'welcome' ? 'welcome' : null}
         />
         <section
           className="onboarding-panel"

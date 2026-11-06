@@ -89,7 +89,7 @@ button {
   width: 22px;
   height: 22px;
   border-radius: 7px;
-  background: var(--accent);
+  background: transparent;
   color: var(--accent-ink);
   font-size: 13px;
 }

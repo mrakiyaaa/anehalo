@@ -2,6 +2,7 @@ import { filterNotes } from '@/features/notes/filter-notes';
 import { NoteCard } from '@/features/notes/NoteCard';
 import { useCurrentTime } from '@/lib/use-current-time';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { Logo } from '@/components/ui/Logo';
 
 export function RecentNotes() {
   const tree = useWorkspaceStore((state) => state.tree);
@@ -26,13 +27,16 @@ export function RecentNotes() {
           <NoteCard key={note.relativePath} note={note} currentTime={currentTime.getTime()} />
         ))}
         {notes.length === 0 && (
-          <p className="notes-empty">
-            {isLoading
-              ? 'Opening your notes…'
-              : searchText.trim()
-                ? 'No notes match your search.'
-                : 'No notes here yet. Use Quick note or start typing above.'}
-          </p>
+          <div className="notes-empty">
+            {!isLoading && <Logo variant="full" />}
+            <p>
+              {isLoading
+                ? 'Opening your notes…'
+                : searchText.trim()
+                  ? 'No notes match your search.'
+                  : 'No notes here yet. Use Quick note or start typing above.'}
+            </p>
+          </div>
         )}
       </div>
     </section>

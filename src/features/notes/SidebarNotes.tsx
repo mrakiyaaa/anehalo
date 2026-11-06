@@ -3,6 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { ItemMenu } from '@/components/ui/ItemMenu';
 import { filterNotes } from '@/features/notes/filter-notes';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { Logo } from '@/components/ui/Logo';
 
 export function SidebarNotes() {
   const tree = useWorkspaceStore((state) => state.tree);
@@ -51,7 +52,12 @@ export function SidebarNotes() {
             </Button>
           </ItemMenu>
         ))}
-        {notes.length === 0 && <p className="sidebar-notes-empty">No notes here yet</p>}
+        {notes.length === 0 && (
+          <div className="sidebar-notes-empty">
+            <Logo variant="full" />
+            <p>{searchText.trim() ? 'No notes match your search' : 'No notes here yet'}</p>
+          </div>
+        )}
       </nav>
       {retainedDrafts.length > 0 && (
         <>
