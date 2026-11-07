@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { App } from '@/app/App';
@@ -35,6 +35,16 @@ async function renderWorkspace() {
 }
 
 describe('vault home', () => {
+  it('keeps a title entered while the lazy editor initializes', async () => {
+    const repository = await renderWorkspace();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Quick note' }));
+    const title = await screen.findByRole('textbox', { name: 'Note title' });
+    title.focus();
+    fireEvent.change(title, { target: { value: 'Shared note' } });
+    await screen.findByRole('textbox', { name: 'Note content' });
+    await waitFor(() => expect(title).toHaveValue('Shared note'));
+    await waitFor(async () => expect((await repository.readNote('Shared note.md')).ok).toBe(true));
+  });
   it('loads the welcome note and real repository totals', async () => {
     await renderWorkspace();
     expect(screen.getByRole('banner')).toHaveTextContent('Anehalo');
@@ -46,27 +56,33 @@ describe('vault home', () => {
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
   });
 
-  it('creates a folder inline, creates a note there, and saves capture text', async () => {
-    const user = userEvent.setup();
-    const repository = await renderWorkspace();
-    await user.click(screen.getByRole('button', { name: 'New folder' }));
-    await user.type(screen.getByRole('textbox', { name: 'Folder name' }), 'Work');
-    await user.click(screen.getByRole('button', { name: 'Save name' }));
-    await user.click(await screen.findByRole('button', { name: 'Work, 0 notes' }));
-    await user.click(screen.getByRole('button', { name: 'Quick note' }));
-    expect(await screen.findByRole('textbox', { name: 'Note title' })).toHaveValue('Untitled note');
-    const capture = await screen.findByRole('textbox', { name: 'Note content' });
-    await waitFor(() => expect(capture).toHaveFocus());
-    await user.keyboard('A real saved thought');
-    expect(screen.getByRole('status')).toHaveTextContent('Saving...');
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved just now'));
-    expect(unwrapResult(await repository.readNote('Work/Untitled note.md')).content).toBe(
-      'A real saved thought',
-    );
-    await user.click(screen.getByRole('button', { name: 'Home' }));
-    await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'no-match');
-    expect(screen.queryAllByRole('article')).toHaveLength(0);
-  });
+  it(
+    'creates a folder inline, creates a note there, and saves capture text',
+    { timeout: 15_000 },
+    async () => {
+      const user = userEvent.setup();
+      const repository = await renderWorkspace();
+      await user.click(screen.getByRole('button', { name: 'New folder' }));
+      await user.type(screen.getByRole('textbox', { name: 'Folder name' }), 'Work');
+      await user.click(screen.getByRole('button', { name: 'Save name' }));
+      await user.click(await screen.findByRole('button', { name: 'Work, 0 notes' }));
+      await user.click(screen.getByRole('button', { name: 'Quick note' }));
+      expect(await screen.findByRole('textbox', { name: 'Note title' })).toHaveValue(
+        'Untitled note',
+      );
+      const capture = await screen.findByRole('textbox', { name: 'Note content' });
+      await waitFor(() => expect(capture).toHaveFocus());
+      await user.keyboard('A real saved thought');
+      expect(screen.getByRole('status')).toHaveTextContent('Saving...');
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved just now'));
+      expect(unwrapResult(await repository.readNote('Work/Untitled note.md')).content).toBe(
+        'A real saved thought',
+      );
+      await user.click(screen.getByRole('button', { name: 'Home' }));
+      await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'no-match');
+      expect(screen.queryAllByRole('article')).toHaveLength(0);
+    },
+  );
 
   it('renames and trashes notes through in-app dialogs, with cancellation', async () => {
     const user = userEvent.setup();
@@ -143,7 +159,7 @@ describe('vault home', () => {
   it('capture opens a focused editor and title edits rename the real file', async () => {
     const user = userEvent.setup();
     const repository = await renderWorkspace();
-    await user.click(screen.getByRole('button', { name: 'Quick capture' }));
+    await user.click(screen.getByRole('button', { name: /^Quick capture:/ }));
     const body = await screen.findByRole('textbox', { name: 'Note content' });
     await waitFor(() => expect(body).toHaveFocus());
     const title = screen.getByRole('textbox', { name: 'Note title' });

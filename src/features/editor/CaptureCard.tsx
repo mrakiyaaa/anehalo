@@ -12,7 +12,7 @@ export function CaptureCard() {
       <button
         type="button"
         className="capture-start"
-        aria-label="Quick capture"
+        aria-label="Quick capture: Capture a thought. Start a new note."
         disabled={!vaultReady || isMutating}
         onClick={() => {
           void startQuickNote();

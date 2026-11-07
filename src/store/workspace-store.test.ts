@@ -1,7 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
 import { createWorkspaceStore, type WorkspaceStore } from '@/store/workspace-store';
 import { unwrapResult } from '@/test/repository-helpers';
+import { success, failure, type RepositoryResult } from '@/features/storage/repository-result';
+import type { VaultTree } from '@/types/notes';
 
 const stores: WorkspaceStore[] = [];
 function workspace(repository = new InMemoryNoteRepository()) {
@@ -14,6 +16,109 @@ afterEach(() => {
 });
 
 describe('workspace editor navigation', () => {
+  it('never overwrites a note saved while background previews were loading', async () => {
+    const repository = new InMemoryNoteRepository([
+      { relativePath: 'Plan.md', type: 'file', content: 'Original content', modifiedAt: 1 },
+    ]);
+    const full = unwrapResult(await repository.listTree());
+    vi.spyOn(repository, 'listTree').mockResolvedValue(
+      success({
+        ...full,
+        notes: full.notes.map((note) => ({ ...note, snippet: '', searchText: '' })),
+      }),
+    );
+    let complete: (result: RepositoryResult<VaultTree>) => void = () => {
+      throw new Error('Hydration was not initialized.');
+    };
+    const pending = new Promise<RepositoryResult<VaultTree>>((resolve) => {
+      complete = resolve;
+    });
+    const source = Object.assign(repository, { hydrateTree: () => pending });
+    const store = createWorkspaceStore(source);
+    stores.push(store);
+    const initializing = store.getState().initialize();
+    await vi.waitFor(() => expect(store.getState().isLoading).toBe(false));
+    unwrapResult(await store.getState().openNote('Plan.md'));
+    const draft = store.getState().openDraft;
+    if (!draft) throw new Error('The note did not open.');
+    store.getState().updateNoteContent(draft.identifier, 'Saved while loading');
+    unwrapResult(await store.getState().flushNotes());
+    complete(success(full));
+    await initializing;
+    expect(store.getState().tree.notes[0]?.snippet).toBe('Saved while loading');
+    expect(store.getState().openDraft?.content).toBe('Saved while loading');
+    expect(unwrapResult(await repository.readNote('Plan.md')).content).toBe('Saved while loading');
+  });
+  it('makes metadata usable while previews are loading, then publishes full summaries', async () => {
+    const repository = new InMemoryNoteRepository([
+      { relativePath: 'Plan.md', type: 'file', content: 'A hydrated preview' },
+    ]);
+    const full = unwrapResult(await repository.listTree());
+    vi.spyOn(repository, 'listTree').mockResolvedValue(
+      success({
+        ...full,
+        notes: full.notes.map((note) => ({ ...note, snippet: '', searchText: '' })),
+      }),
+    );
+    let complete: (result: RepositoryResult<VaultTree>) => void = () => {
+      throw new Error('Hydration was not initialized.');
+    };
+    const pending = new Promise<RepositoryResult<VaultTree>>((resolve) => {
+      complete = resolve;
+    });
+    const source = Object.assign(repository, { hydrateTree: () => pending });
+    const store = createWorkspaceStore(source);
+    stores.push(store);
+    const initializing = store.getState().initialize();
+    await vi.waitFor(() => expect(store.getState().isLoading).toBe(false));
+    expect(store.getState().tree.notes[0]?.snippet).toBe('');
+    complete(success(full));
+    await initializing;
+    await vi.waitFor(() =>
+      expect(store.getState().tree.notes[0]?.snippet).toBe('A hydrated preview'),
+    );
+  });
+
+  it('keeps metadata accessible and reports failures when previews cannot load', async () => {
+    const repository = Object.assign(
+      new InMemoryNoteRepository([{ relativePath: 'Plan.md', type: 'file' }]),
+      {
+        hydrateTree: () =>
+          Promise.resolve(
+            failure({ code: 'permission-denied', message: 'Preview access denied.' }),
+          ),
+      },
+    );
+    const store = createWorkspaceStore(repository);
+    stores.push(store);
+    await store.getState().initialize();
+    expect(store.getState().tree.notes).toHaveLength(1);
+    expect(store.getState().isLoading).toBe(false);
+    expect(store.getState().error?.code).toBe('permission-denied');
+    expect(store.getState().searchIndex.isRefreshing).toBe(false);
+  });
+
+  it('does not publish preview work after the workspace has been disposed', async () => {
+    const repository = new InMemoryNoteRepository([
+      { relativePath: 'Plan.md', type: 'file', content: 'Original' },
+    ]);
+    const full = unwrapResult(await repository.listTree());
+    let complete: (result: RepositoryResult<VaultTree>) => void = () => {
+      throw new Error('Hydration was not initialized.');
+    };
+    const pending = new Promise<RepositoryResult<VaultTree>>((resolve) => {
+      complete = resolve;
+    });
+    const source = Object.assign(repository, { hydrateTree: () => pending });
+    const store = createWorkspaceStore(source);
+    stores.push(store);
+    await store.getState().refreshTree();
+    store.getState().pauseAutoSave();
+    complete(success({ ...full, notes: [] }));
+    await pending;
+    expect(store.getState().tree.notes).toHaveLength(1);
+    expect(store.getState().searchIndex.isRefreshing).toBe(false);
+  });
   it('updates the remembered path when a note is renamed or trashed from home', async () => {
     const repository = new InMemoryNoteRepository([
       { relativePath: 'Work/Plan.md', type: 'file', content: 'Plan' },

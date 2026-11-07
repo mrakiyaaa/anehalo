@@ -108,7 +108,7 @@ export class TauriExportPlatform implements ExportPlatform {
             code: 'invalid-path',
             message: 'An image does not point to a vault attachment.',
           });
-        const files = new TauriVaultFileSystem(() => Promise.resolve(this.vaultPath));
+        const files = new TauriVaultFileSystem(() => Promise.resolve(this.vaultPath), false);
         await files.initialize();
         bytes = await files.readBytes(path);
       }

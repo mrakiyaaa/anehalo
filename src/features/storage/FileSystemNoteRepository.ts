@@ -22,6 +22,7 @@ import {
 import { VaultFileService } from '@/features/storage/VaultFileService';
 import type { VaultFileSystem } from '@/features/storage/VaultFileSystem';
 import type { Folder, Note, NoteSummary, VaultTree } from '@/types/notes';
+import { compareNoteRecency } from './note-order';
 
 const initializationMarker = '.anehalo-initialized';
 const welcomeContent =
@@ -126,10 +127,7 @@ export class FileSystemNoteRepository implements NoteRepository {
       folders.sort((first, second) =>
         first.relativePath.localeCompare(second.relativePath, undefined, { numeric: true }),
       );
-      notes.sort(
-        (first, second) =>
-          second.modifiedAt - first.modifiedAt || first.title.localeCompare(second.title),
-      );
+      notes.sort(compareNoteRecency);
       return { vaultPath: this.vaultPath, folders, notes };
     });
   }

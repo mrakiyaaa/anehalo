@@ -1,4 +1,4 @@
-import type { Folder, Note, VaultTree } from '@/types/notes';
+import type { Folder, Note, NoteSummary, VaultTree } from '@/types/notes';
 import type { RepositoryResult } from '@/features/storage/repository-result';
 
 export interface CreateNoteInput {
@@ -20,7 +20,12 @@ export interface RenameNoteOptions {
 export interface NoteRepository {
   initializeVault(): Promise<RepositoryResult<void>>;
   listTree(): Promise<RepositoryResult<VaultTree>>;
+  hydrateTree?(): Promise<RepositoryResult<VaultTree>>;
   readNote(relativePath: string): Promise<RepositoryResult<Note>>;
+  readSnapshotNote?(
+    relativePath: string,
+    expectedSummary?: NoteSummary,
+  ): Promise<RepositoryResult<Note>>;
   writeNote(relativePath: string, content: string): Promise<RepositoryResult<Note>>;
   createNote(input?: CreateNoteInput): Promise<RepositoryResult<Note>>;
   renameNote(

@@ -37,9 +37,9 @@ export async function writeBrowserClipboard(text: string, html?: string): Promis
       throw new Error('Clipboard access is unavailable.', { cause: clipboardError });
   } finally {
     document.removeEventListener('copy', copy);
+    if (activeElement instanceof HTMLElement) activeElement.focus();
     selection?.removeAllRanges();
     ranges.forEach((range) => selection?.addRange(range));
-    if (activeElement instanceof HTMLElement) activeElement.focus();
   }
 }
 

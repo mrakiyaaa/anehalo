@@ -4,9 +4,11 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
-    "core:default",
-    "core:path:default",
+    "core:path:allow-join",
+    "core:path:allow-resolve",
+    "core:path:allow-resolve-directory",
     "core:window:allow-minimize",
+    "core:window:allow-is-maximized",
     "core:window:allow-show",
     "core:window:allow-hide",
     "core:window:allow-unminimize",
@@ -20,12 +22,12 @@
     "core:window:allow-start-dragging",
     "core:window:allow-internal-toggle-maximize",
     "fs:allow-lstat",
+    "fs:allow-stat",
     "fs:allow-mkdir",
     "fs:allow-read-dir",
     "fs:allow-read-text-file",
     "fs:allow-read-file",
     "fs:allow-write-file",
-    "fs:allow-stat",
     "fs:allow-write-text-file",
     "fs:allow-rename",
     "fs:allow-remove",
@@ -34,8 +36,6 @@
       "allow": [
         { "path": "$DOCUMENT/Anehalo" },
         { "path": "$DOCUMENT/Anehalo/**" },
-        { "path": "$DOCUMENT/Anehalo/.attachments" },
-        { "path": "$DOCUMENT/Anehalo/.attachments/**" },
         { "path": "$APPCONFIG" },
         { "path": "$APPCONFIG/settings.json" },
         { "path": "$APPCONFIG/.anehalo-*.tmp" }
@@ -47,6 +47,9 @@
     "clipboard-manager:allow-write-html",
     "opener:allow-reveal-item-in-dir",
     "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister"
+    "global-shortcut:allow-unregister",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "log:allow-log"
   ]
 }

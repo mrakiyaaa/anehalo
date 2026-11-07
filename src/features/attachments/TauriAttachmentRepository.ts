@@ -15,7 +15,7 @@ export class TauriAttachmentRepository implements AttachmentRepository {
   private readonly files: TauriVaultFileSystem;
   private scopePreparation: Promise<void> | null = null;
   constructor(private readonly vaultPath: string) {
-    this.files = new TauriVaultFileSystem(() => Promise.resolve(vaultPath));
+    this.files = new TauriVaultFileSystem(() => Promise.resolve(vaultPath), false);
   }
   async importImage(input: ImageInput): Promise<RepositoryResult<ImageAttachment>> {
     const extension = imageExtension(input.bytes);

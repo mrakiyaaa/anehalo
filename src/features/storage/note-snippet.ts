@@ -39,6 +39,10 @@ export function markdownToPlainText(markdown: string): string {
 }
 
 export function createSnippet(plainText: string): string {
-  const characters = [...plainText];
-  return characters.length <= 120 ? plainText : `${characters.slice(0, 119).join('').trimEnd()}…`;
+  const characters: string[] = [];
+  for (const character of plainText) {
+    if (characters.length === 120) return `${characters.slice(0, 119).join('').trimEnd()}…`;
+    characters.push(character);
+  }
+  return plainText;
 }

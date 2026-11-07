@@ -64,12 +64,15 @@ export class NoteLinkIndex {
     if (!notes) {
       const tree = await repository.listTree();
       if (!tree.ok) return tree;
-      notes = tree.value.notes;
+      const hydrated = await (repository.hydrateTree?.() ?? Promise.resolve(tree));
+      if (!hydrated.ok) return hydrated;
+      notes = hydrated.value.notes;
     }
     let scanned = 0;
     for (const note of notes) {
       if (identifier !== this.scanIdentifier) return success(undefined);
-      const read = await repository.readNote(note.relativePath);
+      const read = await (repository.readSnapshotNote?.(note.relativePath, note) ??
+        repository.readNote(note.relativePath));
       if (read.ok)
         outgoing.set(
           note.relativePath,

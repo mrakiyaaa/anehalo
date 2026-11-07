@@ -15,6 +15,7 @@ import {
 } from '@/features/storage/repository-result';
 import { isInsideFolder, pathName, parentPath } from '@/features/storage/storage-paths';
 import type { Note } from '@/types/notes';
+import { logFailure } from '@/features/diagnostics/error-logging';
 import {
   renamedLink,
   rewriteNoteLinks,
@@ -110,6 +111,7 @@ export class NoteAutoSaver {
   }
 
   private failed(session: DraftSession, error: RepositoryError): RepositoryResult<never> {
+    logFailure('save-failed', error.code);
     this.clearTimer(session);
     const isMissing = error.code === 'not-found' || session.draft.isMissing;
     this.publish(session, { error, isMissing, status: 'retrying' });

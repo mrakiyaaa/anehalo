@@ -15,9 +15,9 @@ export function filterNotes(
   return notes.filter((note) => {
     const matchesFolder =
       activeFolderPath === null || isInsideFolder(note.relativePath, activeFolderPath);
-    const matchesSearch = `${note.title} ${note.searchText}`
-      .toLocaleLowerCase()
-      .includes(normalizedSearch);
+    const matchesSearch =
+      !normalizedSearch ||
+      `${note.title} ${note.searchText}`.toLocaleLowerCase().includes(normalizedSearch);
     return matchesFolder && matchesSearch;
   });
 }

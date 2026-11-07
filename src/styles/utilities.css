@@ -51,7 +51,7 @@
 .search-result[aria-selected='true'] {
   background: var(--sidebar);
 }
-.search-result button {
+.search-result-content {
   display: grid;
   gap: 8px;
   width: 100%;

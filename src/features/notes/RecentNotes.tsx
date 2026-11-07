@@ -3,6 +3,7 @@ import { NoteCard } from '@/features/notes/NoteCard';
 import { useCurrentTime } from '@/lib/use-current-time';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { Logo } from '@/components/ui/Logo';
+import { VirtualNotes } from './VirtualNotes';
 
 export function RecentNotes() {
   const tree = useWorkspaceStore((state) => state.tree);
@@ -23,9 +24,13 @@ export function RecentNotes() {
         </span>
       </div>
       <div className="notes-grid">
-        {notes.map((note) => (
-          <NoteCard key={note.relativePath} note={note} currentTime={currentTime.getTime()} />
-        ))}
+        <VirtualNotes
+          notes={notes}
+          layout="grid"
+          renderNote={(note) => (
+            <NoteCard key={note.relativePath} note={note} currentTime={currentTime.getTime()} />
+          )}
+        />
         {notes.length === 0 && (
           <div className="notes-empty">
             {!isLoading && <Logo variant="full" />}

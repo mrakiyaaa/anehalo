@@ -5,10 +5,6 @@ import {
   success,
   type RepositoryResult,
 } from '@/features/storage/repository-result';
-import { buildExportDocument, withExportEditor } from './buildExportDocument';
-import { transformExportDocument } from './transform-export-document';
-import { buildPrintHtml } from './buildPrintHtml';
-import { cleanMarkdown } from './cleanMarkdown';
 import { prepareExportImages } from './export-images';
 import { exportFileName, exportFolder } from './export-file-names';
 import { pdfOptions, type PdfExporter } from './PdfExporter';
@@ -34,6 +30,17 @@ export class ExportService {
   ): Promise<RepositoryResult<ExportOutcome>> {
     try {
       progress('Preparing export…', 0);
+      const [
+        { buildExportDocument, withExportEditor },
+        { transformExportDocument },
+        { buildPrintHtml },
+        { cleanMarkdown },
+      ] = await Promise.all([
+        import('./buildExportDocument'),
+        import('./transform-export-document'),
+        import('./buildPrintHtml'),
+        import('./cleanMarkdown'),
+      ]);
       const draft = this.currentDraft(path);
       const read = draft ? success(draft) : await this.repository.readNote(path);
       if (!read.ok) return read;

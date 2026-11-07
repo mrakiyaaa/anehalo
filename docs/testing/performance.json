@@ -1,0 +1,246 @@
+{
+  "notes": 2000,
+  "startupMilliseconds": 1000.89990234375,
+  "observedStartupMilliseconds": 1872.2354000000014,
+  "searchMilliseconds": [
+    37.20000000298023, 31.899999991059303, 31, 31.69999998807907, 31.100000008940697
+  ],
+  "javascriptHeapMegabytes": 55.3892707824707,
+  "nativeProcesses": {
+    "residentMegabytes": 633.640625,
+    "processCount": 8
+  },
+  "startupProfile": {
+    "markers": [
+      {
+        "name": "anehalo:vault-read-start",
+        "startTime": 280.3999999910593
+      },
+      {
+        "name": "anehalo:vault-read-end",
+        "startTime": 328
+      },
+      {
+        "name": "anehalo:usable",
+        "startTime": 393.20000000298023
+      }
+    ],
+    "resources": [
+      {
+        "name": "index-dSOytv-H.js",
+        "startTime": 83.20000000298023,
+        "duration": 26.899999991059303
+      },
+      {
+        "name": "rolldown-runtime-XKyaHtl9.js",
+        "startTime": 83.3999999910593,
+        "duration": 14.800000011920929
+      },
+      {
+        "name": "radix-DjNisjzO.js",
+        "startTime": 83.5,
+        "duration": 22.299999997019768
+      },
+      {
+        "name": "react-C1iE8mnY.js",
+        "startTime": 83.5,
+        "duration": 28
+      },
+      {
+        "name": "preload-helper-BLdHbfdN.js",
+        "startTime": 83.59999999403954,
+        "duration": 14.900000005960464
+      },
+      {
+        "name": "motion-YpEt0JQd.js",
+        "startTime": 83.59999999403954,
+        "duration": 23.600000008940697
+      },
+      {
+        "name": "markdown-BkNTc1xR.js",
+        "startTime": 83.70000000298023,
+        "duration": 19.69999998807907
+      },
+      {
+        "name": "index-DRUKSwsV.css",
+        "startTime": 83.79999999701977,
+        "duration": 17.400000005960464
+      },
+      {
+        "name": "logo-mark-BnXSIlCW.png",
+        "startTime": 183.20000000298023,
+        "duration": 2.8999999910593033
+      },
+      {
+        "name": "figtree-latin-wght-normal-D_ZTVpCC.woff2",
+        "startTime": 184.59999999403954,
+        "duration": 3
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 198.59999999403954,
+        "duration": 16.299999997019768
+      },
+      {
+        "name": "plugin%3Awindow%7Cis_maximized",
+        "startTime": 199.70000000298023,
+        "duration": 21.69999998807907
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 200.09999999403954,
+        "duration": 18.400000005960464
+      },
+      {
+        "name": "runtime_paths",
+        "startTime": 200.5,
+        "duration": 20.399999991059303
+      },
+      {
+        "name": "logo-mark-BnXSIlCW.png",
+        "startTime": 201.8999999910593,
+        "duration": 3.7000000029802322
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 218.20000000298023,
+        "duration": 3.8999999910593033
+      },
+      {
+        "name": "plugin%3Apath%7Cresolve",
+        "startTime": 226,
+        "duration": 3.3999999910593033
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 227.09999999403954,
+        "duration": 2.9000000059604645
+      },
+      {
+        "name": "plugin%3Afs%7Clstat",
+        "startTime": 234.29999999701977,
+        "duration": 5.5999999940395355
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 235.3999999910593,
+        "duration": 5.100000008940697
+      },
+      {
+        "name": "plugin%3Apath%7Cresolve",
+        "startTime": 242.59999999403954,
+        "duration": 1.7999999970197678
+      },
+      {
+        "name": "plugin%3Afs%7Clstat",
+        "startTime": 245.59999999403954,
+        "duration": 3
+      },
+      {
+        "name": "plugin%3Apath%7Cjoin",
+        "startTime": 249.79999999701977,
+        "duration": 2.7999999970197678
+      },
+      {
+        "name": "plugin%3Afs%7Clstat",
+        "startTime": 254.20000000298023,
+        "duration": 3.699999988079071
+      },
+      {
+        "name": "plugin%3Afs%7Cread_text_file",
+        "startTime": 259.70000000298023,
+        "duration": 4.399999991059303
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 276.79999999701977,
+        "duration": 5
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 277.29999999701977,
+        "duration": 6.799999997019768
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 277.70000000298023,
+        "duration": 6.699999988079071
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 277.8999999910593,
+        "duration": 7
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 278.3999999910593,
+        "duration": 4.5
+      },
+      {
+        "name": "plugin%3Awindow%7Cis_maximized",
+        "startTime": 279.09999999403954,
+        "duration": 6.700000002980232
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 279.70000000298023,
+        "duration": 5.899999991059303
+      },
+      {
+        "name": "read_vault_snapshot",
+        "startTime": 281,
+        "duration": 38
+      },
+      {
+        "name": "logo-mark-BnXSIlCW.png",
+        "startTime": 281.70000000298023,
+        "duration": 7.5999999940395355
+      },
+      {
+        "name": "logo-full--xyg0-Aj.png",
+        "startTime": 281.79999999701977,
+        "duration": 35.400000005960464
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 282.20000000298023,
+        "duration": 7.799999997019768
+      },
+      {
+        "name": "fredoka-latin-wght-normal-DM6njrJ3.woff2",
+        "startTime": 285.3999999910593,
+        "duration": 7.200000002980232
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 312.09999999403954,
+        "duration": 7.700000002980232
+      },
+      {
+        "name": "read_vault_snapshot",
+        "startTime": 336,
+        "duration": 2011.7999999970198
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 408.3999999910593,
+        "duration": 7
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 418.09999999403954,
+        "duration": 4.100000008940697
+      },
+      {
+        "name": "search-worker-CcUHFfHr.js",
+        "startTime": 2470.5999999940395,
+        "duration": -41.29999999701977
+      },
+      {
+        "name": "logo-full--xyg0-Aj.png",
+        "startTime": 3865.7000000029802,
+        "duration": 27.299999997019768
+      }
+    ]
+  }
+}

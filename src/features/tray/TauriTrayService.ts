@@ -1,4 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { runtimePaths } from '@/app/runtime-paths';
 import { listen } from '@tauri-apps/api/event';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 import {
@@ -68,6 +69,7 @@ export class TauriTrayService implements TrayService {
   }
   setAutostart(enabled: boolean) {
     return nativeAction(async () => {
+      if ((await runtimePaths()).isolated) return;
       if ((await isEnabled()) !== enabled) await (enabled ? enable() : disable());
     }, 'Could not change Start with Windows.');
   }

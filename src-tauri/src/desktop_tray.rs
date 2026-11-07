@@ -21,7 +21,10 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let settings = MenuItem::with_id(app, "settings", "Settings", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&quick_note, &open, &settings, &quit])?;
-    let icon = app.default_window_icon().ok_or("The application icon is missing")?.clone();
+    let icon = app
+        .default_window_icon()
+        .ok_or("The application icon is missing")?
+        .clone();
     TrayIconBuilder::with_id("anehalo-tray")
         .icon(icon)
         .tooltip("Anehalo")
@@ -29,22 +32,26 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| {
             let action = event.id.as_ref();
-            if action != "quit" {
-                if let Err(error) = show_main_window(app) {
-                    eprintln!("Could not restore Anehalo: {error}");
-                }
+            if action != "quit" && show_main_window(app).is_err() {
+                log::error!("event=tray-restore-failed");
             }
-            if matches!(action, "quick-note" | "settings" | "quit") {
-                if let Err(error) = app.emit("anehalo:tray", action) {
-                    eprintln!("Could not dispatch tray action: {error}");
-                }
+            if matches!(action, "quick-note" | "settings" | "quit")
+                && app.emit("anehalo:tray", action).is_err()
+            {
+                log::error!("event=tray-dispatch-failed");
             }
         })
         .on_tray_icon_event(|tray, event| {
-            if matches!(event, TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. }) {
-                if let Err(error) = show_main_window(tray.app_handle()) {
-                    eprintln!("Could not restore Anehalo: {error}");
+            if matches!(
+                event,
+                TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
                 }
+            ) && show_main_window(tray.app_handle()).is_err()
+            {
+                log::error!("event=tray-restore-failed");
             }
         })
         .build(app)?;

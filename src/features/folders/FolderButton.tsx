@@ -20,8 +20,10 @@ export function FolderButton({ name, tone, count, active, onSelect }: FolderButt
       onClick={onSelect}
     >
       <IconBadge icon={tone === 'all' ? 'all-notes' : 'folder'} tone={tone} />
-      <span className="folder-name">{name}</span>
-      <span className="folder-count">{count}</span>
+      <span className="folder-name">{name}</span>{' '}
+      <span className="folder-count" aria-hidden="true">
+        {count}
+      </span>
     </Button>
   );
 }

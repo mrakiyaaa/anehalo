@@ -53,7 +53,7 @@ describe('Phase 7 keyboard and settings flows', () => {
     await user.type(input, 'தமிழ்');
     const option = await screen.findByRole('option', { selected: true });
     expect(option).toHaveTextContent('Language notebook');
-    expect(option.querySelector('mark')).toHaveTextContent('தமிழ்');
+    await waitFor(() => expect(option.querySelector('mark')).toHaveTextContent('தமிழ்'));
     await user.keyboard('{Enter}');
     const editor = await screen.findByRole('textbox', { name: 'Note content' });
     await waitFor(() => expect(editor).toHaveFocus());

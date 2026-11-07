@@ -44,7 +44,7 @@ function SearchResults({ close }: { close: () => void }) {
           setSearching(false);
         }
       });
-    }, 70);
+    }, 20);
     return () => {
       cancelled = true;
       clearTimeout(timer);
@@ -118,14 +118,11 @@ function SearchResults({ close }: { close: () => void }) {
             id={`search-result-${position}`}
             className="search-result"
             onPointerMove={() => setSelected(position)}
+            onClick={() => {
+              void choose(result);
+            }}
           >
-            <button
-              type="button"
-              tabIndex={-1}
-              onClick={() => {
-                void choose(result);
-              }}
-            >
+            <div className="search-result-content">
               <span className="search-result-heading">
                 <strong>{result.note.title}</strong>
                 <time dateTime={new Date(result.note.modifiedAt).toISOString()}>
@@ -138,7 +135,7 @@ function SearchResults({ close }: { close: () => void }) {
               <span className="search-snippet">
                 <HighlightedSnippet snippet={result.snippet} />
               </span>
-            </button>
+            </div>
           </div>
         ))}
       </div>

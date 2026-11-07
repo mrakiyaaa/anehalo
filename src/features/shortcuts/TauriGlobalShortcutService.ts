@@ -1,6 +1,7 @@
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { failure, success, type RepositoryResult } from '@/features/storage/repository-result';
 import { validateShortcut } from './shortcut-validation';
+import { runtimePaths } from '@/app/runtime-paths';
 import type { GlobalShortcutService } from './GlobalShortcutService';
 
 export class TauriGlobalShortcutService implements GlobalShortcutService {
@@ -16,6 +17,11 @@ export class TauriGlobalShortcutService implements GlobalShortcutService {
         return success(undefined);
       }
       try {
+        if ((await runtimePaths()).isolated) {
+          this.current = validated.value;
+          this.pressed = pressed;
+          return success(undefined);
+        }
         let held = false;
         await register(validated.value, (event) => {
           if (event.state === 'Released') held = false;
@@ -64,7 +70,7 @@ export class TauriGlobalShortcutService implements GlobalShortcutService {
     const task = this.queue.then(async () => {
       if (!this.current || (pressed && pressed !== this.pressed)) return success(undefined);
       try {
-        await unregister(this.current);
+        if (!(await runtimePaths()).isolated) await unregister(this.current);
         this.current = null;
         this.pressed = null;
         return success(undefined);

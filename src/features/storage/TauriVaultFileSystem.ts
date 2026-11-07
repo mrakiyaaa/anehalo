@@ -54,15 +54,25 @@ async function inspectPath(path: string): Promise<VaultMetadata | null> {
 export class TauriVaultFileSystem implements VaultFileSystem {
   private vaultPath = '';
 
-  constructor(private readonly resolveVaultPath: () => Promise<string>) {}
+  constructor(
+    private readonly resolveVaultPath: () => Promise<string>,
+    private readonly createMissingRoot = true,
+  ) {}
 
   async initialize(): Promise<string> {
     if (!isTauri())
       storageFailure('unavailable', 'Open the Anehalo desktop app to access your local vault.');
     this.vaultPath = await resolve(await this.resolveVaultPath());
     const existing = await inspectPath(this.vaultPath);
-    if (!existing) await mkdir(this.vaultPath, { recursive: true });
-    const root = await inspectPath(this.vaultPath);
+    if (!existing) {
+      if (!this.createMissingRoot)
+        storageFailure(
+          'not-found',
+          'The notes folder no longer exists. Restore it or choose another folder.',
+        );
+      await mkdir(this.vaultPath, { recursive: true });
+    }
+    const root = existing ?? (await inspectPath(this.vaultPath));
     if (root?.type !== 'directory')
       storageFailure(
         'invalid-path',

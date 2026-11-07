@@ -23,6 +23,39 @@ afterEach(() => {
 });
 
 describe('debounced, ordered saves', () => {
+  it('reports a disk-full error explicitly and keeps the dirty draft', async () => {
+    const { saver, repository, identifier } = await setup();
+    vi.spyOn(repository.memoryFileSystem, 'writeText').mockRejectedValueOnce(
+      new Error('There is not enough space on the disk (os error 112)'),
+    );
+    saver.update(identifier, { content: 'Retain this draft' });
+    expect(await saver.flushAll()).toMatchObject({ ok: false, error: { code: 'disk-full' } });
+    expect(saver.get(identifier)).toMatchObject({ dirty: true, content: 'Retain this draft' });
+    expect(unwrapResult(await repository.readNote('First.md')).content).toBe('Original');
+  });
+  it.each(['write', 'rename'] as const)(
+    'preserves the baseline and draft after disk full during %s',
+    async (operation) => {
+      const { saver, repository, identifier } = await setup();
+      repository.memoryFileSystem.failNext(
+        operation,
+        'There is not enough space on the disk (os error 112)',
+      );
+      saver.update(identifier, { content: 'Keep my new text' });
+      expect((await saver.flushAll()).ok).toBe(false);
+      expect(unwrapResult(await repository.readNote('First.md')).content).toBe('Original');
+      expect(saver.get(identifier)).toMatchObject({
+        dirty: true,
+        content: 'Keep my new text',
+        status: 'retrying',
+      });
+      expect(
+        repository.memoryFileSystem.snapshot().some((entry) => entry.relativePath.endsWith('.tmp')),
+      ).toBe(false);
+      unwrapResult(await saver.flushAll());
+      expect(unwrapResult(await repository.readNote('First.md')).content).toBe('Keep my new text');
+    },
+  );
   it('a body blur does not prematurely commit a title the user just started editing', async () => {
     const { saver, identifier, repository } = await setup();
     saver.update(identifier, { content: 'Updated body' });

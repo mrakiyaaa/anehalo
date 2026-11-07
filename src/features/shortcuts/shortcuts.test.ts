@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { validateShortcut, shortcutFromEvent } from './shortcut-validation';
 import { TauriGlobalShortcutService } from './TauriGlobalShortcutService';
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
+import { runtimePaths } from '@/app/runtime-paths';
+
+vi.mock('@/app/runtime-paths', () => ({
+  runtimePaths: vi.fn().mockResolvedValue({ isolated: false }),
+}));
 
 vi.mock('@tauri-apps/plugin-global-shortcut', () => ({
   register: vi.fn().mockResolvedValue(undefined),
@@ -9,6 +14,23 @@ vi.mock('@tauri-apps/plugin-global-shortcut', () => ({
 }));
 
 describe('shortcut validation', () => {
+  it('does not register host shortcuts during an isolated debug run', async () => {
+    vi.mocked(runtimePaths).mockResolvedValueOnce({
+      isolated: true,
+      vault: 'C:/Test/vault',
+      settings: 'C:/Test/settings',
+    });
+    const service = new TauriGlobalShortcutService();
+    expect((await service.replace('Ctrl+Alt+N', () => undefined)).ok).toBe(true);
+    vi.mocked(runtimePaths).mockResolvedValueOnce({
+      isolated: true,
+      vault: 'C:/Test/vault',
+      settings: 'C:/Test/settings',
+    });
+    expect((await service.unregister()).ok).toBe(true);
+    expect(register).not.toHaveBeenCalled();
+    expect(unregister).not.toHaveBeenCalled();
+  });
   it.each([
     'N',
     'Ctrl',

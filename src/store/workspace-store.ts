@@ -7,6 +7,7 @@ import {
   failure,
   success,
   type RepositoryResult,
+  type RepositoryError,
 } from '@/features/storage/repository-result';
 import { isInsideFolder } from '@/features/storage/storage-paths';
 import { NoteAutoSaver } from '@/features/editor/NoteAutoSaver';
@@ -15,6 +16,9 @@ import { NoteLinkIndex, emptyLinkIndex } from '@/features/note-links/NoteLinkInd
 import { LinkedNoteRepository } from '@/features/note-links/LinkedNoteRepository';
 import { createNavigationHistory } from '@/store/navigation-history';
 import { restoreLinkedNote } from '@/features/note-links/restore-linked-note';
+import type { VaultTree } from '@/types/notes';
+import { mergeHydratedTree } from './merge-hydrated-tree';
+import { compareNoteRecency } from '@/features/storage/note-order';
 
 export function createWorkspaceStore(
   sourceRepository: NoteRepository,
@@ -38,6 +42,7 @@ export function createWorkspaceStore(
   );
   const autoSaver = new NoteAutoSaver(repository);
   let initialized = false;
+  let active = true;
   let lastOpenedPath = options.lastOpenedNotePath ?? null;
   async function rememberNote(path: string | null) {
     lastOpenedPath = path;
@@ -47,6 +52,26 @@ export function createWorkspaceStore(
     let operationQueue: Promise<void> = Promise.resolve();
     let pendingOperations = 0;
     let refreshIdentifier = 0;
+
+    function indexTree(tree: VaultTree, rebuildLinks: boolean) {
+      void searchIndex
+        .refresh(sourceRepository, tree.notes)
+        .then((indexed) => {
+          if (!indexed.ok && active) set({ error: indexed.error });
+        })
+        .catch((error: unknown) => {
+          if (active) set({ error: describeStorageError(error, 'Could not update note search.') });
+        });
+      if (rebuildLinks)
+        linkIndex.scheduleRebuild(sourceRepository, (error) => {
+          if (active) set({ error });
+        });
+    }
+
+    function reportHydrationError(error: RepositoryError) {
+      searchIndex.cancel();
+      set((state) => ({ error, searchRevision: state.searchRevision + 1 }));
+    }
 
     async function refreshTree(rebuildLinks = true) {
       const requestIdentifier = ++refreshIdentifier;
@@ -65,12 +90,28 @@ export function createWorkspaceStore(
           });
         else set({ error: result.error, isLoading: false });
       }
-      if (result.ok)
-        void searchIndex.refresh(sourceRepository, result.value.notes).then((indexed) => {
-          if (!indexed.ok) set({ error: indexed.error });
-        });
-      if (result.ok && rebuildLinks)
-        linkIndex.scheduleRebuild(sourceRepository, (error) => set({ error }));
+      if (result.ok && requestIdentifier === refreshIdentifier && active) {
+        const hydration = sourceRepository.hydrateTree?.();
+        if (!hydration) indexTree(result.value, rebuildLinks);
+        else {
+          searchIndex.isRefreshing = true;
+          void hydration
+            .then((hydrated) => {
+              if (requestIdentifier !== refreshIdentifier || !active) return;
+              if (hydrated.ok) {
+                const tree = mergeHydratedTree(result.value, get().tree, hydrated.value);
+                set({ tree });
+                indexTree(tree, rebuildLinks);
+              } else {
+                reportHydrationError(hydrated.error);
+              }
+            })
+            .catch((error: unknown) => {
+              if (requestIdentifier !== refreshIdentifier || !active) return;
+              reportHydrationError(describeStorageError(error, 'Could not load note previews.'));
+            });
+        }
+      }
       return result;
     }
 
@@ -177,11 +218,19 @@ export function createWorkspaceStore(
         const tree = await refreshTree(false);
         linkIndex.cancel();
         const indexing = tree.ok
-          ? linkIndex.rebuild(sourceRepository, tree.value.notes)
+          ? (sourceRepository.hydrateTree?.() ?? Promise.resolve(tree)).then((hydrated) =>
+              hydrated.ok && active
+                ? linkIndex.rebuild(sourceRepository, get().tree.notes)
+                : hydrated.ok
+                  ? success(undefined)
+                  : hydrated,
+            )
           : Promise.resolve(success(undefined));
         if (tree.ok && options.reopenLastNote !== false && options.lastOpenedNotePath)
           await get().openNote(options.lastOpenedNotePath);
-        const indexed = await indexing;
+        const indexed = await indexing.catch((error: unknown) =>
+          failure(describeStorageError(error, 'Could not index note links.')),
+        );
         if (!indexed.ok) set({ error: indexed.error });
       },
       openNote: (path) => enqueue(() => loadNote(path)),
@@ -262,11 +311,15 @@ export function createWorkspaceStore(
       },
       setClosing: (isClosing) => set({ isClosing }),
       pauseAutoSave: () => {
+        active = false;
         autoSaver.pause();
         linkIndex.cancel();
         searchIndex.cancel();
       },
-      resumeAutoSave: () => autoSaver.resume(),
+      resumeAutoSave: () => {
+        active = true;
+        autoSaver.resume();
+      },
       createFolder: (name) => mutate(() => repository.createFolder(name)),
       renameNote: (path, name) =>
         mutate(
@@ -326,10 +379,7 @@ export function createWorkspaceStore(
           note.relativePath !== previousPath && note.relativePath !== draft.note.relativePath,
       );
       if (!draft.isMissing) notes.push(draft.note);
-      notes.sort(
-        (first, second) =>
-          second.modifiedAt - first.modifiedAt || first.title.localeCompare(second.title),
-      );
+      notes.sort(compareNoteRecency);
       tree = { ...tree, notes };
     }
     store.setState({

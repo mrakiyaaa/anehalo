@@ -25,7 +25,7 @@
   --ink: #1b2038;
   --accent: #2f6bf0;
   --muted-ink: #565d7c;
-  --subtle-ink: #6f7696;
+  --subtle-ink: #5d6485;
   --accent-ink: #ffffff;
   --danger: #ba3346;
   --sky-bg: #ddebff;
@@ -197,4 +197,18 @@
   h6 {
     @apply font-heading;
   }
+}
+
+.recovery-screen {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.recovery-screen button {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
 }

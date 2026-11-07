@@ -111,10 +111,12 @@ export class SearchIndex implements SearchEngine {
     const revision = this.revision;
     const paths = new Set(summaries.map((note) => note.relativePath));
     const errors: string[] = [];
+    let scanned = 0;
     for (const summary of summaries) {
-      await yieldToInput();
+      if (++scanned % 20 === 0) await yieldToInput();
       if (generation !== this.generation) return success(undefined);
-      const read = await repository.readNote(summary.relativePath);
+      const read = await (repository.readSnapshotNote?.(summary.relativePath, summary) ??
+        repository.readNote(summary.relativePath));
       if (generation !== this.generation) return success(undefined);
       const mutated = [...this.mutations].some(
         ([path, changed]) => changed > revision && isInsideFolder(summary.relativePath, path),
@@ -160,14 +162,17 @@ export class SearchIndex implements SearchEngine {
   async search(query: string): Promise<readonly SearchResult[]> {
     const terms = normalizedText(query).value.trim().split(/\s+/u).filter(Boolean);
     const matches: { entry: IndexedNote; rank: number }[] = [];
-    let scanned = 0;
+    let lastYield = performance.now();
     for (const entry of this.notes.values()) {
       if (terms.every((term) => entry.title.includes(term) || entry.body.includes(term)))
         matches.push({
           entry,
           rank: terms.reduce((rank, term) => rank + (entry.title.includes(term) ? 10 : 1), 0),
         });
-      if (++scanned % 50 === 0) await yieldToInput();
+      if (performance.now() - lastYield >= 8) {
+        await yieldToInput();
+        lastYield = performance.now();
+      }
     }
     const ranked = matches
       .sort(

@@ -15,6 +15,7 @@ import { sanitizeEditorHtml } from './sanitize-editor-html';
 import type { EditorActions } from './commands/editor-commands';
 import { updateEditorLinks } from '@/features/note-links/update-editor-links';
 import { useNoteExport } from '@/features/export/export-context';
+import { focusEditorWhenReady } from './focus-editor';
 
 export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   const updateContent = useWorkspaceStore((state) => state.updateNoteContent);
@@ -45,7 +46,8 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
     }),
     content: draft.content,
     contentType: 'markdown',
-    autofocus: 'end',
+    autofocus: false,
+    onCreate: ({ editor: initialized }) => focusEditorWhenReady(initialized, true),
     editorProps: {
       transformPastedHTML: sanitizeEditorHtml,
       handlePaste: (_view, event) => {
@@ -128,7 +130,7 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
     editor.setEditable(!isMutating, false);
-    if (!isMutating && editor.isInitialized) editor.commands.focus();
+    if (!isMutating) focusEditorWhenReady(editor);
   }, [editor, isMutating]);
   return (
     <>

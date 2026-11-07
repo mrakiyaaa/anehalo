@@ -11,6 +11,10 @@ import { TauriFolderAccess } from '@/features/onboarding/TauriFolderAccess';
 import type { AppServices } from '@/app/app-services';
 import { TauriAttachmentRepository } from '@/features/attachments/TauriAttachmentRepository';
 import { TauriExportPlatform } from '@/features/export/TauriExportPlatform';
+import { ErrorBoundary } from '@/app/ErrorBoundary';
+import { observeUnhandledErrors } from '@/features/diagnostics/error-logging';
+
+observeUnhandledErrors();
 
 const services: AppServices = {
   desktop: { shortcuts: new TauriGlobalShortcutService(), tray: new TauriTrayService() },
@@ -29,8 +33,10 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <AppProviders services={services}>
-      <App />
-    </AppProviders>
+    <ErrorBoundary>
+      <AppProviders services={services}>
+        <App />
+      </AppProviders>
+    </ErrorBoundary>
   </StrictMode>,
 );
