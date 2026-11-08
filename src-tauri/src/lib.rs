@@ -4,13 +4,17 @@ mod export_commands;
 mod export_transaction;
 mod launch_arguments;
 mod runtime_paths;
+mod vault_access;
+mod vault_error;
 mod vault_snapshot;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default().manage(launch_arguments::LaunchArguments::new(
-        std::env::args().skip(1).collect(),
-    ));
+    let builder = tauri::Builder::default()
+        .manage(launch_arguments::LaunchArguments::new(
+            std::env::args().skip(1).collect(),
+        ))
+        .manage(vault_access::VaultAccess::default());
     let context = tauri::generate_context!();
     #[cfg(debug_assertions)]
     let context = {
@@ -65,17 +69,11 @@ pub fn run() {
             runtime_paths::runtime_paths,
             launch_arguments::initial_arguments,
             launch_arguments::take_pending_arguments,
-            vault_snapshot::read_vault_snapshot
+            vault_snapshot::read_vault_snapshot,
+            vault_access::pick_vault_location,
+            vault_access::prepare_vault,
+            vault_access::read_vault_directory
         ]);
-
-    #[cfg(debug_assertions)]
-    let builder = if runtime_paths::test_root().is_some() {
-        builder
-    } else {
-        builder.plugin(tauri_plugin_persisted_scope::init())
-    };
-    #[cfg(not(debug_assertions))]
-    let builder = builder.plugin(tauri_plugin_persisted_scope::init());
 
     #[cfg(desktop)]
     let builder = builder

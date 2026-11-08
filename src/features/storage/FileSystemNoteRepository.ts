@@ -22,7 +22,9 @@ import {
 import { VaultFileService } from '@/features/storage/VaultFileService';
 import type { VaultFileSystem } from '@/features/storage/VaultFileSystem';
 import type { Folder, Note, NoteSummary, VaultTree } from '@/types/notes';
-import { compareNoteRecency } from './note-order';
+import { scanVault } from './scan-vault';
+import { defaultScanLimits, type ScanLimits } from './ScanLimits';
+import { defaultScanScheduling, type ScanScheduling } from './ScanBudget';
 
 const initializationMarker = '.anehalo-initialized';
 const welcomeContent =
@@ -34,7 +36,10 @@ export class FileSystemNoteRepository implements NoteRepository {
   private initialized = false;
   private vaultPath = '';
 
-  constructor(fileSystem: VaultFileSystem) {
+  constructor(
+    fileSystem: VaultFileSystem,
+    private readonly scanScheduling: ScanScheduling = defaultScanScheduling,
+  ) {
     this.files = new VaultFileService(fileSystem);
   }
 
@@ -66,12 +71,12 @@ export class FileSystemNoteRepository implements NoteRepository {
       if (marker && marker.type !== 'file')
         storageFailure('invalid-type', 'The vault initialization marker is not a regular file.');
       if (!marker) {
-        const entries = await this.files.fileSystem.readDirectory('');
+        const entries = await this.files.fileSystem.readDirectory('', 2);
         const unfinishedStarterFolder =
           entries.length === 1 &&
           entries[0]?.name === 'Getting started' &&
           entries[0].type === 'directory' &&
-          (await this.files.fileSystem.readDirectory('Getting started')).length === 0;
+          (await this.files.fileSystem.readDirectory('Getting started', 1)).length === 0;
         if (entries.length === 0 || unfinishedStarterFolder) {
           await this.files.ensureDirectory('Getting started');
           await this.files.atomicWrite('Getting started/Welcome.md', welcomeContent);
@@ -107,28 +112,9 @@ export class FileSystemNoteRepository implements NoteRepository {
     return { ...data.summary, content: data.content };
   }
 
-  listTree(): Promise<RepositoryResult<VaultTree>> {
+  listTree(limits: ScanLimits = defaultScanLimits): Promise<RepositoryResult<VaultTree>> {
     return this.run('Could not load the vault.', async () => {
-      const folders: Folder[] = [];
-      const notes: NoteSummary[] = [];
-      const visitDirectory = async (directory: string): Promise<void> => {
-        for (const entry of await this.files.fileSystem.readDirectory(directory)) {
-          if (entry.name.startsWith('.') || entry.type === 'link') continue;
-          const path = validateRelativePath(joinRelativePath(directory, entry.name));
-          if (entry.type === 'directory') {
-            folders.push({ name: entry.name, relativePath: path, parent: directory || null });
-            await visitDirectory(path);
-          } else if (/\.md$/i.test(entry.name)) {
-            notes.push((await this.loadNoteData(path)).summary);
-          }
-        }
-      };
-      await visitDirectory('');
-      folders.sort((first, second) =>
-        first.relativePath.localeCompare(second.relativePath, undefined, { numeric: true }),
-      );
-      notes.sort(compareNoteRecency);
-      return { vaultPath: this.vaultPath, folders, notes };
+      return scanVault(this.files.fileSystem, this.vaultPath, limits, this.scanScheduling);
     });
   }
 

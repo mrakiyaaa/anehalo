@@ -20,7 +20,7 @@ export class TauriApplication {
   constructor(readonly root: string) {}
 
   get vault() {
-    return join(this.root, 'vault');
+    return join(this.root, 'Anehalo');
   }
   get settingsPath() {
     return join(this.root, 'settings', 'settings.json');
@@ -32,6 +32,25 @@ export class TauriApplication {
   get page(): Page {
     if (!this.activePage) throw new Error('The application is not connected.');
     return this.activePage;
+  }
+  async directoryAllowed(directory: string) {
+    return this.page.evaluate(async (path) => {
+      const desktop = window as unknown as {
+        __TAURI_INTERNALS__: {
+          invoke: (
+            command: string,
+            parameters: { path: string; options: Record<string, never> },
+          ) => Promise<unknown>;
+        };
+      };
+      try {
+        await desktop.__TAURI_INTERNALS__.invoke('plugin:fs|read_dir', { path, options: {} });
+        return true;
+      } catch (error) {
+        if (/forbidden|not allowed|permission|scope/i.test(String(error))) return false;
+        throw new Error(`Unexpected filesystem response: ${String(error)}`, { cause: error });
+      }
+    }, directory);
   }
 
   async seedSettings(patch: Partial<AppSettings> = {}) {

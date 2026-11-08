@@ -4,8 +4,11 @@ import type { RepositoryError, RepositoryResult } from '@/features/storage/repos
 import type { NoteDraft } from '@/features/editor/NoteDraft';
 import type { LinkIndexSnapshot } from '@/features/note-links/NoteLinkIndex';
 import type { createNavigationHistory } from '@/store/navigation-history';
+import type { ScanLimits } from '@/features/storage/ScanLimits';
 
 export interface WorkspaceOptions {
+  readonly vaultPath?: string;
+  readonly scanLimits?: ScanLimits;
   readonly lastOpenedNotePath?: string | null;
   readonly reopenLastNote?: boolean;
   readonly rememberNote?: (path: string | null) => Promise<void>;
@@ -28,6 +31,7 @@ export interface WorkspaceState {
   isMutating: boolean;
   isClosing: boolean;
   error: RepositoryError | null;
+  vaultError: RepositoryError | null;
   view: 'home' | 'editor';
   openDraft: NoteDraft | null;
   pendingDrafts: readonly NoteDraft[];

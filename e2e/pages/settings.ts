@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test';
+import { selectNativeFolder } from '../support/native-dialog';
 
 export class Settings {
   constructor(private readonly page: Page) {}
@@ -20,5 +21,17 @@ export class Settings {
   async close() {
     await this.page.getByRole('button', { name: 'Close Settings' }).click();
     await expect(this.page.getByRole('dialog', { name: 'Settings', exact: true })).toBeHidden();
+  }
+  async chooseVault(directory: string, applicationProcessId: number) {
+    await Promise.all([
+      selectNativeFolder(applicationProcessId, directory),
+      this.page.getByRole('button', { name: 'Change', exact: true }).click(),
+    ]);
+  }
+  async confirmVault(path: string) {
+    const confirmation = this.page.getByRole('alertdialog', { name: 'Switch notes folder?' });
+    await expect(confirmation).toContainText(`Your notes will be saved in ${path}`);
+    await confirmation.getByRole('button', { name: 'Switch folder', exact: true }).click();
+    await expect(confirmation).toBeHidden();
   }
 }

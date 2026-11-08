@@ -79,13 +79,15 @@ export class InMemoryVaultFileSystem implements VaultFileSystem {
     return Promise.resolve({ type: entry.type, modifiedAt: entry.modifiedAt });
   }
 
-  readDirectory(path: string): Promise<readonly VaultEntry[]> {
+  readDirectory(path: string, maximumEntries?: number): Promise<readonly VaultEntry[]> {
     this.require(path, 'directory');
     const entries = [...this.entries].filter(
       ([entry]) => entry !== '' && parentPath(entry).toLowerCase() === path.toLowerCase(),
     );
     return Promise.resolve(
-      entries.map(([entry, metadata]) => ({ name: pathName(entry), type: metadata.type })),
+      entries
+        .slice(0, maximumEntries)
+        .map(([entry, metadata]) => ({ name: pathName(entry), type: metadata.type })),
     );
   }
 

@@ -1,21 +1,15 @@
-import { AppShell } from '@/components/layout/AppShell';
 import { TitleBar } from '@/components/layout/TitleBar';
-import { useAppServices } from '@/app/app-services';
 import { useSettingsStore } from '@/features/settings/use-settings-store';
-import { WorkspaceProvider } from '@/features/storage/WorkspaceProvider';
+import { WorkspaceSession } from '@/features/storage/WorkspaceSession';
 import { Onboarding } from '@/features/onboarding/Onboarding';
-import { useMemo } from 'react';
+import { useState } from 'react';
 
 export function App() {
   const settings = useSettingsStore((state) => state.settings);
   const error = useSettingsStore((state) => state.error);
   const load = useSettingsStore((state) => state.load);
-  const services = useAppServices();
+  const [sessionRevision, setSessionRevision] = useState(0);
   const completedVaultPath = settings?.onboardingCompleted ? settings.vaultPath : null;
-  const repository = useMemo(
-    () => (completedVaultPath ? services.createNoteRepository(completedVaultPath) : null),
-    [services, completedVaultPath],
-  );
 
   if (!settings)
     return (
@@ -41,10 +35,12 @@ export function App() {
       </div>
     );
   if (!settings.onboardingCompleted) return <Onboarding />;
-  if (!repository) throw new Error('The notes repository was not initialized.');
+  if (completedVaultPath === null) throw new Error('The notes path is unavailable.');
   return (
-    <WorkspaceProvider key={settings.vaultPath} repository={repository}>
-      <AppShell />
-    </WorkspaceProvider>
+    <WorkspaceSession
+      key={`${completedVaultPath}:${sessionRevision}`}
+      path={completedVaultPath}
+      recovered={() => setSessionRevision((revision) => revision + 1)}
+    />
   );
 }

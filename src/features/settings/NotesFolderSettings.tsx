@@ -4,6 +4,8 @@ import { useAppServices } from '@/app/app-services';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { useDesktopRuntime } from '@/features/tray/desktop-context';
 import { prepareVaultChange } from './change-vault';
+import { chooseVaultLocation } from '@/features/onboarding/choose-vault-location';
+import { VaultLocationNotice } from '@/features/onboarding/VaultLocationNotice';
 
 export function NotesFolderSettings({ path }: { path: string }) {
   const services = useAppServices();
@@ -16,12 +18,10 @@ export function NotesFolderSettings({ path }: { path: string }) {
   async function choose() {
     setBusy(true);
     setError(null);
-    const result = await services.folderAccess.choose();
+    const result = await chooseVaultLocation(services.folderAccess);
     if (!result.ok) setError(result.error.message);
     else if (result.value && result.value !== path) {
-      const writable = await services.folderAccess.validate(result.value);
-      if (!writable.ok) setError(writable.error.message);
-      else setChosen(result.value);
+      setChosen(result.value);
     }
     setBusy(false);
   }
@@ -79,6 +79,7 @@ export function NotesFolderSettings({ path }: { path: string }) {
             <AlertDialog.Description>
               Anehalo will open notes in {chosen}. Your current files will stay in {path}.
             </AlertDialog.Description>
+            {chosen && <VaultLocationNotice path={chosen} />}
             {error && <p role="alert">{error}</p>}
             <div className="settings-inline">
               <AlertDialog.Cancel asChild>

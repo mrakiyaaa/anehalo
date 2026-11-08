@@ -29,7 +29,9 @@ npm ci
 npm run tauri dev
 ```
 
-`npm run dev` previews the frontend; local files and native integrations require Tauri. Fonts are bundled locally. Notes default to Documents\Anehalo; onboarding/Settings can choose another folder. Windows settings are saved atomically in `%APPDATA%\me.lakshitha.anehalo\settings.json`. Logs rotate at 1 MB in `%LOCALAPPDATA%\me.lakshitha.anehalo\logs`, retaining three archives and recording event names/error codes, never note content.
+`npm run dev` previews the frontend; local files and native integrations require Tauri. Fonts are bundled locally. Notes default to Documents\Anehalo. Onboarding and Settings choose a **location**: picking `D:\Notes` creates or reuses `D:\Notes\Anehalo`. Picking an existing Anehalo folder, in any letter case, reuses it directly. The final path is shown before continuing; sibling files are never scanned or granted access. Drive roots and system/AppData locations are rejected. Windows settings are saved atomically in `%APPDATA%\me.lakshitha.anehalo\settings.json`. Logs rotate at 1 MB in `%LOCALAPPDATA%\me.lakshitha.anehalo\logs`, retaining three archives and recording event names/error codes, never note content.
+
+Scanning is asynchronous and limited to 20,000 entries and 10 seconds. It skips dot-folders, links/junctions, and non-Markdown files; attachments and trash have separate managed handling. Preview scanning has an 8 MiB per-note limit and a 64 MiB text-memory budget. An invalid, missing, unreadable, or oversized saved vault opens recovery with Choose a folder again and Use the default folder. Older saved locations that are not named Anehalo require confirmation through recovery, including small legacy folders. Existing files are never automatically moved or renamed; choose a copied Anehalo folder to restore notes.
 
 ## Test
 
@@ -51,7 +53,7 @@ npm run build:debug
 npm run test:e2e
 ```
 
-The harness launches the real debug executable, enables WebView2 remote debugging on port 9222, and connects Playwright over CDP. No Playwright browser download is needed. Keep port 9222 free and use an interactive Windows desktop for native dialogs. Tests generate their own temporary vault, settings, WebView profile, and logs using debug-only `ANEHALO_TEST_ROOT`. Release builds contain no test-root override. Never point tests at a personal vault.
+The harness launches the real debug executable, enables WebView2 remote debugging on port 9222, and connects Playwright over CDP. No Playwright browser download is needed. Keep port 9222 free and use an interactive Windows desktop for native dialogs. Tests generate disposable folders under `~/.anehalo-qa/anehalo-e2e-*` with their own vault, settings, WebView profile, and logs using debug-only `ANEHALO_TEST_ROOT`. This avoids AppData, which the normal location validator rejects. Isolated native vault access is restricted to that test's root. Release builds contain no test-root override. Never point tests at a personal vault.
 
 The suite covers onboarding finish/skip, files/trash, formatting/reload, page links/backlinks, image export through the native Save dialog, Sinhala search, theme restart, close-time saves, storage edge cases, axe checks in both themes, and a generated 2,000-note benchmark. Page objects own selectors. Reports/screenshots are in `playwright-report`; artifacts are in `test-results`. Run a subset with `npm run test:e2e -- e2e/workspace.spec.ts`.
 

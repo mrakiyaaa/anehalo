@@ -11,7 +11,7 @@ export interface VaultMetadata {
 export interface VaultFileSystem {
   initialize(): Promise<string>;
   metadata(relativePath: string): Promise<VaultMetadata | null>;
-  readDirectory(relativePath: string): Promise<readonly VaultEntry[]>;
+  readDirectory(relativePath: string, maximumEntries?: number): Promise<readonly VaultEntry[]>;
   readText(relativePath: string): Promise<string>;
   writeText(relativePath: string, content: string): Promise<void>;
   createDirectory(relativePath: string): Promise<void>;

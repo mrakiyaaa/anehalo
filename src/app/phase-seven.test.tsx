@@ -33,7 +33,8 @@ async function setup() {
         settingsRepository,
         desktop: { tray, shortcuts },
         folderAccess,
-        createNoteRepository: (path) => (path === 'Memory/Other' ? nextRepository : repository),
+        createNoteRepository: (path) =>
+          path === 'Memory/Other/Anehalo' ? nextRepository : repository,
         createAttachmentRepository: () => new InMemoryAttachmentRepository(),
         createExportPlatform: () => new InMemoryExportPlatform(),
       }}
@@ -120,15 +121,17 @@ describe('Phase 7 keyboard and settings flows', () => {
     await user.click(screen.getByRole('button', { name: 'Settings' }));
     await user.click(screen.getByRole('button', { name: 'Change' }));
     const confirmation = await screen.findByRole('alertdialog', { name: 'Switch notes folder?' });
+    expect(confirmation).toHaveTextContent('Your notes will be saved in Memory/Other/Anehalo');
+    expect(folderAccess.createdDirectories.has('Memory/Other/Anehalo')).toBe(true);
     expect(unwrapResult(await settingsRepository.load()).vaultPath).toBe('Memory/Anehalo');
     await user.click(within(confirmation).getByRole('button', { name: 'Switch folder' }));
     await waitFor(async () =>
-      expect(unwrapResult(await settingsRepository.load()).vaultPath).toBe('Memory/Other'),
+      expect(unwrapResult(await settingsRepository.load()).vaultPath).toBe('Memory/Other/Anehalo'),
     );
     expect(unwrapResult(await repository.readNote('Language notebook.md')).content).toContain(
       'தமிழ்',
     );
-    expect(folderAccess.validatedPaths).toContain('Memory/Other');
+    expect(folderAccess.validatedPaths).toContain('Memory/Other/Anehalo');
   });
 
   it('records and resets Open Anehalo and explains conflicts with quick notes', async () => {

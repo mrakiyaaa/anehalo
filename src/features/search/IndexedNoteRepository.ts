@@ -4,6 +4,7 @@ import type {
   RenameNoteOptions,
 } from '@/features/storage/NoteRepository';
 import type { SearchIndex } from './SearchIndex';
+import type { ScanLimits } from '@/features/storage/ScanLimits';
 
 export class IndexedNoteRepository implements NoteRepository {
   constructor(
@@ -13,8 +14,8 @@ export class IndexedNoteRepository implements NoteRepository {
   initializeVault() {
     return this.repository.initializeVault();
   }
-  listTree() {
-    return this.repository.listTree();
+  listTree(limits?: ScanLimits) {
+    return this.repository.listTree(limits);
   }
   readNote(path: string) {
     return this.repository.readNote(path);

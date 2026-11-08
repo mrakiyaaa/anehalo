@@ -9,6 +9,7 @@ import { resolveAttachmentReference } from '@/features/attachments/attachment-pa
 import { imageExtension } from '@/features/attachments/image-validation';
 import type { ExportBundle, ExportPlatform } from './export-types';
 import { writeBrowserClipboard } from './browser-clipboard';
+import { openVaultAccess } from '@/features/storage/open-vault-access';
 
 export class TauriExportPlatform implements ExportPlatform {
   constructor(private readonly vaultPath: string) {}
@@ -108,7 +109,7 @@ export class TauriExportPlatform implements ExportPlatform {
             code: 'invalid-path',
             message: 'An image does not point to a vault attachment.',
           });
-        const files = new TauriVaultFileSystem(() => Promise.resolve(this.vaultPath), false);
+        const files = new TauriVaultFileSystem(() => openVaultAccess(this.vaultPath), false);
         await files.initialize();
         bytes = await files.readBytes(path);
       }

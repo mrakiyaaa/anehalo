@@ -8,6 +8,7 @@ import { success, type RepositoryError } from '@/features/storage/repository-res
 import { NoteLinkIndex } from './NoteLinkIndex';
 import { rewriteNoteLinks, type LinkRename } from './NoteLinkRewriter';
 import { isInsideFolder } from '@/features/storage/storage-paths';
+import type { ScanLimits } from '@/features/storage/ScanLimits';
 
 export class LinkedNoteRepository implements NoteRepository {
   constructor(
@@ -19,8 +20,8 @@ export class LinkedNoteRepository implements NoteRepository {
   initializeVault() {
     return this.repository.initializeVault();
   }
-  listTree() {
-    return this.repository.listTree();
+  listTree(limits?: ScanLimits) {
+    return this.repository.listTree(limits);
   }
   readNote(path: string) {
     return this.repository.readNote(path);

@@ -1,5 +1,7 @@
 import type { Folder, Note, NoteSummary, VaultTree } from '@/types/notes';
 import type { RepositoryResult } from '@/features/storage/repository-result';
+import type { ScanLimits } from './ScanLimits';
+export type { ScanLimits } from './ScanLimits';
 
 export interface CreateNoteInput {
   readonly folder?: string | null;
@@ -19,7 +21,7 @@ export interface RenameNoteOptions {
 
 export interface NoteRepository {
   initializeVault(): Promise<RepositoryResult<void>>;
-  listTree(): Promise<RepositoryResult<VaultTree>>;
+  listTree(limits?: ScanLimits): Promise<RepositoryResult<VaultTree>>;
   hydrateTree?(): Promise<RepositoryResult<VaultTree>>;
   readNote(relativePath: string): Promise<RepositoryResult<Note>>;
   readSnapshotNote?(

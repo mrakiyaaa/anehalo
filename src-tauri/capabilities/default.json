@@ -37,8 +37,6 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        { "path": "$DOCUMENT/Anehalo" },
-        { "path": "$DOCUMENT/Anehalo/**" },
         { "path": "$APPCONFIG" },
         { "path": "$APPCONFIG/settings.json" },
         { "path": "$APPCONFIG/.anehalo-*.tmp" }

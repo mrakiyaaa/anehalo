@@ -6,6 +6,9 @@ import type { NoteRepository } from '@/features/storage/NoteRepository';
 import type { RepositoryError, RepositoryResult } from '@/features/storage/repository-result';
 import { failure } from '@/features/storage/repository-result';
 import { onboardingSteps } from '@/features/onboarding/onboarding-steps';
+import { chooseVaultLocation } from './choose-vault-location';
+import { prepareVaultChange } from '@/features/settings/change-vault';
+import { success } from '@/features/storage/repository-result';
 
 interface OnboardingDependencies {
   defaults: AppSettings;
@@ -75,7 +78,7 @@ export function createOnboardingStore(dependencies: OnboardingDependencies) {
     chooseFolder: async () => {
       if (get().isBusy) return;
       set({ isBusy: true, error: null });
-      const chosen = await folderAccess.choose();
+      const chosen = await chooseVaultLocation(folderAccess);
       if (!chosen.ok) {
         set({ isBusy: false, error: chosen.error });
         return;
@@ -84,14 +87,11 @@ export function createOnboardingStore(dependencies: OnboardingDependencies) {
         set({ isBusy: false });
         return;
       }
-      const validated = await folderAccess.validate(chosen.value);
-      if (!validated.ok) set({ isBusy: false, error: validated.error });
-      else
-        set({
-          customPath: chosen.value,
-          answers: { ...get().answers, vaultPath: chosen.value },
-          isBusy: false,
-        });
+      set({
+        customPath: chosen.value,
+        answers: { ...get().answers, vaultPath: chosen.value },
+        isBusy: false,
+      });
     },
     finish: async () => {
       if (get().isBusy || !get().isSummary)
@@ -105,12 +105,12 @@ export function createOnboardingStore(dependencies: OnboardingDependencies) {
         userName: normalizeUserName(get().answers.userName),
         onboardingCompleted: true,
       };
-      const validated = await folderAccess.validate(settings.vaultPath);
-      if (!validated.ok) {
-        set({ isBusy: false, error: validated.error });
-        return validated;
-      }
-      const initialized = await createNoteRepository(settings.vaultPath).initializeVault();
+      const initialized = await prepareVaultChange(
+        settings.vaultPath,
+        folderAccess,
+        createNoteRepository,
+        () => Promise.resolve(success(undefined)),
+      );
       if (!initialized.ok) {
         set({ isBusy: false, error: initialized.error });
         return initialized;

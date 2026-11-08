@@ -1,22 +1,7 @@
 param([Parameter(Mandatory=$true)][int]$ApplicationProcessId, [Parameter(Mandatory=$true)][string]$Destination)
 $ErrorActionPreference = 'Stop'
-Add-Type -AssemblyName UIAutomationClient
-Add-Type -AssemblyName UIAutomationTypes
-$deadline = [DateTime]::UtcNow.AddSeconds(15)
-$dialog = $null
-while ([DateTime]::UtcNow -lt $deadline) {
-  $windows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll(
-    [System.Windows.Automation.TreeScope]::Descendants,
-    [System.Windows.Automation.AndCondition]::new(
-      [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $ApplicationProcessId),
-      [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Window)))
-  foreach ($window in $windows) {
-    if ($window.Current.Name -eq 'Save as Markdown' -and $window.Current.ClassName -eq '#32770') { $dialog = $window; break }
-  }
-  if ($null -ne $dialog) { break }
-  Start-Sleep -Milliseconds 100
-}
-if ($null -eq $dialog) { throw 'The native Markdown save dialog did not open.' }
+. (Join-Path $PSScriptRoot 'find-native-dialog.ps1')
+$dialog = Find-AnehaloDialog -ApplicationProcessId $ApplicationProcessId -Title 'Save as Markdown'
 $edits = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants,
   [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit))
 $fileName = $null

@@ -57,17 +57,14 @@ describe('settings persistence', () => {
     expect(repository.file.content).toBeNull();
   });
 
-  it.each([
-    '{broken json',
-    'null',
-    '[]',
-    '{"theme":"purple"}',
-    '{"onboardingCompleted":true,"userName":"A","vaultPath":"","theme":"light"}',
-  ])('falls back to defaults for corrupt or invalid settings: %s', async (content) => {
-    expect(unwrapResult(await new InMemorySettingsRepository(content).load())).toEqual(
-      defaultSettings('Memory/Anehalo'),
-    );
-  });
+  it.each(['{broken json', 'null', '[]', '{"theme":"purple"}'])(
+    'falls back to defaults for corrupt or invalid settings: %s',
+    async (content) => {
+      expect(unwrapResult(await new InMemorySettingsRepository(content).load())).toEqual(
+        defaultSettings('Memory/Anehalo'),
+      );
+    },
+  );
 
   it('saves and restores every setting, trimming the name', async () => {
     const repository = new InMemorySettingsRepository();
@@ -81,6 +78,20 @@ describe('settings persistence', () => {
     expect(saved.userName).toBe('Akila');
     const restarted = new InMemorySettingsRepository(repository.file.content);
     expect(unwrapResult(await restarted.load())).toEqual(saved);
+  });
+
+  it('preserves completed setup with an invalid vault path so startup can offer recovery', async () => {
+    const repository = new InMemorySettingsRepository(
+      JSON.stringify({
+        ...defaultSettings('Memory/Anehalo'),
+        onboardingCompleted: true,
+        vaultPath: '',
+      }),
+    );
+    expect(unwrapResult(await repository.load())).toMatchObject({
+      onboardingCompleted: true,
+      vaultPath: '',
+    });
   });
 
   it('keeps the previous settings and exposes an error when saving fails', async () => {

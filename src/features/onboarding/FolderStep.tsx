@@ -1,4 +1,5 @@
 import { ChoiceCard } from '@/features/onboarding/ChoiceCard';
+import { VaultLocationNotice } from './VaultLocationNotice';
 
 interface FolderStepProps {
   defaultPath: string;
@@ -67,7 +68,7 @@ export function FolderStep({
           </div>
         </ChoiceCard>
       </div>
-      <p className="onboarding-note">You can change this later.</p>
+      <VaultLocationNotice path={selectedPath} />
     </div>
   );
 }

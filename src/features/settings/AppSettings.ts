@@ -70,9 +70,6 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
     typeof value.onboardingCompleted !== 'boolean' ||
     !('userName' in value) ||
     typeof value.userName !== 'string' ||
-    !('vaultPath' in value) ||
-    typeof value.vaultPath !== 'string' ||
-    !value.vaultPath.trim() ||
     !('theme' in value) ||
     (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system')
   )
@@ -95,7 +92,7 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
   return {
     onboardingCompleted: value.onboardingCompleted,
     userName: normalizeUserName(value.userName),
-    vaultPath: value.vaultPath,
+    vaultPath: 'vaultPath' in value && typeof value.vaultPath === 'string' ? value.vaultPath : '',
     theme: value.theme,
     lastOpenedNotePath:
       'lastOpenedNotePath' in value && typeof value.lastOpenedNotePath === 'string'

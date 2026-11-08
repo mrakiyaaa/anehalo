@@ -16,6 +16,9 @@ export class SearchTextProcessor {
   analyze(title: string, markdown: string) {
     return this.run({ identifier: ++this.identifier, kind: 'analyze', title, markdown });
   }
+  preview(markdown: string) {
+    return this.run({ identifier: ++this.identifier, kind: 'preview', markdown });
+  }
   snippet(text: string, query: string) {
     return this.run({ identifier: ++this.identifier, kind: 'snippet', text, query });
   }

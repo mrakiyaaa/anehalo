@@ -13,6 +13,11 @@ export async function prepareVaultChange(
   if (!saved.ok) return saved;
   const writable = await folderAccess.validate(path);
   if (!writable.ok) return writable;
-  const initialized = await createRepository(path).initializeVault();
+  const repository = createRepository(path);
+  const scanned = await repository.listTree();
+  if (!scanned.ok) return scanned;
+  const hydrated = await repository.hydrateTree?.();
+  if (hydrated && !hydrated.ok) return hydrated;
+  const initialized = await repository.initializeVault();
   return initialized.ok ? success(undefined) : initialized;
 }

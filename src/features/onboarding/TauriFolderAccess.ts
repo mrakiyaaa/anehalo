@@ -1,50 +1,31 @@
-import { open } from '@tauri-apps/plugin-dialog';
-import { TauriVaultFileSystem } from '@/features/storage/TauriVaultFileSystem';
+import { invoke } from '@tauri-apps/api/core';
 import {
   describeStorageError,
   failure,
   success,
   type RepositoryResult,
 } from '@/features/storage/repository-result';
-import type { FolderAccess } from '@/features/onboarding/FolderAccess';
+import { ScanBudget } from '@/features/storage/ScanBudget';
+import { validateSavedVaultPath } from './vault-location';
+import type { FolderAccess } from './FolderAccess';
 
 export class TauriFolderAccess implements FolderAccess {
   async choose(): Promise<RepositoryResult<string | null>> {
     try {
-      return success(
-        await open({
-          directory: true,
-          multiple: false,
-          recursive: true,
-          title: 'Choose your Anehalo notes folder',
-        }),
-      );
+      return success(await invoke<string | null>('pick_vault_location'));
     } catch (error) {
-      return failure(describeStorageError(error, 'Could not open the folder picker.'));
+      return failure(describeStorageError(error, 'Could not choose a location.'));
     }
   }
 
   async validate(path: string): Promise<RepositoryResult<void>> {
-    const files = new TauriVaultFileSystem(() => Promise.resolve(path));
-    const probe = `.anehalo-${crypto.randomUUID()}.tmp`;
-    let probeCreated = false;
+    const location = validateSavedVaultPath(path);
+    if (!location.ok) return location;
     try {
-      await files.initialize();
-      await files.writeText(probe, 'Anehalo folder access check.');
-      probeCreated = true;
-      await files.removeTemporaryFile(probe);
+      await new ScanBudget().wait(invoke('prepare_vault', { vaultPath: path, create: true }));
       return success(undefined);
     } catch (error) {
-      const original = describeStorageError(
-        error,
-        'This folder is not writable. Choose another folder or check its permissions.',
-      );
-      if (probeCreated)
-        return failure({
-          ...original,
-          message: `${original.message} The access-check file could not be removed.`,
-        });
-      return failure(original);
+      return failure(describeStorageError(error, 'Could not prepare this notes folder.'));
     }
   }
 }

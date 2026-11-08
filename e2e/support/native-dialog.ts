@@ -6,6 +6,22 @@ export async function saveNativeDialog(
   applicationProcessId: number,
   destination: string,
 ): Promise<void> {
+  await runNativeDialog('save-dialog.ps1', applicationProcessId, '-Destination', destination);
+}
+
+export async function selectNativeFolder(
+  applicationProcessId: number,
+  directory: string,
+): Promise<void> {
+  await runNativeDialog('select-folder.ps1', applicationProcessId, '-Directory', directory);
+}
+
+async function runNativeDialog(
+  script: string,
+  applicationProcessId: number,
+  argument: string,
+  value: string,
+): Promise<void> {
   await promisify(execFile)(
     'powershell.exe',
     [
@@ -13,11 +29,11 @@ export async function saveNativeDialog(
       '-ExecutionPolicy',
       'Bypass',
       '-File',
-      resolve('e2e/support/save-dialog.ps1'),
+      resolve('e2e/support', script),
       '-ApplicationProcessId',
       String(applicationProcessId),
-      '-Destination',
-      destination,
+      argument,
+      value,
     ],
     { windowsHide: true, timeout: 20_000 },
   );

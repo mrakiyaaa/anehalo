@@ -1,4 +1,4 @@
-import { isTauri } from '@tauri-apps/api/core';
+import { isTauri, invoke } from '@tauri-apps/api/core';
 import { join, resolve } from '@tauri-apps/api/path';
 import {
   lstat,
@@ -24,6 +24,7 @@ import type {
   VaultFileSystem,
   VaultMetadata,
 } from '@/features/storage/VaultFileSystem';
+import { ScanBudget } from './ScanBudget';
 
 const windowsReparsePointAttribute = 0x400;
 
@@ -109,7 +110,20 @@ export class TauriVaultFileSystem implements VaultFileSystem {
     return inspectPath(await this.absolutePath(relativePath));
   }
 
-  async readDirectory(relativePath: string): Promise<readonly VaultEntry[]> {
+  async readDirectory(
+    relativePath: string,
+    maximumEntries?: number,
+  ): Promise<readonly VaultEntry[]> {
+    if (maximumEntries !== undefined) {
+      await this.absolutePath(relativePath);
+      return new ScanBudget().wait(
+        invoke<readonly VaultEntry[]>('read_vault_directory', {
+          vaultPath: this.vaultPath,
+          relativePath,
+          maximumEntries,
+        }),
+      );
+    }
     const entries = await readDir(await this.absolutePath(relativePath));
     const result: VaultEntry[] = [];
     for (const entry of entries) {

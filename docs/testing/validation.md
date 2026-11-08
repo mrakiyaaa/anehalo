@@ -1,22 +1,22 @@
 # Windows validation
 
-Local Windows validation, 2026-11-08. The connected development app is kept separate from QA builds under `src-tauri/target/qa`.
+Local Windows validation, 2026-11-09. QA builds use `src-tauri/target/qa` and disposable data, separate from development data.
 
-| Gate                                               | Result                                                                                   |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| ESLint, zero warnings                              | Passed                                                                                   |
-| Strict TypeScript                                  | Passed                                                                                   |
-| Vitest                                             | 437 tests passed in 41 files                                                             |
-| Service line coverage                              | 94.07% overall; all five service groups exceed 85%                                       |
-| Rust format / Clippy, zero warnings                | Passed                                                                                   |
-| Rust tests                                         | 5 passed                                                                                 |
-| Real Tauri / WebView2 E2E                          | 18 passed; retries disabled                                                              |
-| axe                                                | No serious/critical violations on home, editor, search, or settings in either theme      |
-| npm audit                                          | No vulnerabilities                                                                       |
-| Cargo audit                                        | No vulnerabilities; six upstream informational findings documented in the security audit |
-| NSIS / release isolation / uninstall source checks | Passed; no elevation requested; user-data deletion disabled by hook                      |
+| Gate                                               | Result                                                                                    |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| ESLint, zero warnings                              | Passed                                                                                    |
+| Strict TypeScript                                  | Passed                                                                                    |
+| Vitest                                             | 484 tests passed in 45 files                                                              |
+| Service line coverage                              | 93.92% overall; all five service groups exceed 85%                                        |
+| Rust format / Clippy, zero warnings                | Passed                                                                                    |
+| Rust tests                                         | 5 passed                                                                                  |
+| Real Tauri / WebView2 E2E                          | 21 passed; retries disabled                                                               |
+| axe                                                | No serious/critical violations on home, editor, search, or settings in either theme       |
+| npm audit                                          | No vulnerabilities                                                                        |
+| Cargo audit                                        | No vulnerabilities; five upstream informational findings documented in the security audit |
+| NSIS / release isolation / uninstall source checks | Passed; no elevation requested; user-data deletion disabled by hook                       |
 
-Coverage: storage 97.66%, autosave group 90.90%, link rewriter 100%, search 95.19%, export 91.26%. HTML/LCOV reports are generated under `coverage` and uploaded by CI.
+Coverage: storage 96.38%, autosave group 90.90%, link rewriter 100%, search 95.26%, export 91.26%. HTML/LCOV reports are generated under `coverage` and uploaded by CI.
 
 ## Automated commands
 
@@ -34,14 +34,14 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test --manifest-path src-tauri/Cargo.toml
 npm run build:debug
 npm run test:e2e
-npm run build:installer
+npm run tauri build
 node scripts/check-release-isolation.mjs
 node scripts/verify-installer.mjs
 ```
 
-The E2E fixture launches the **real debug executable** with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` and connects using `chromium.connectOverCDP`. `ANEHALO_TEST_ROOT` supplies a fresh temporary root per test. That variable and its implementation are absent from release binaries. The root contains the vault, settings, and Tauri runtime state (WebView profile, logs, and scopes). Isolated runs skip host hotkey registration and autostart changes. Test teardown terminates only the process it spawned and removes only its own verified temporary directory. An occupied CDP port fails immediately instead of attaching to an unrelated app. No browser-only mock replaces the native filesystem.
+The E2E fixture launches the **real debug executable** with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` and connects using `chromium.connectOverCDP`. `ANEHALO_TEST_ROOT` supplies a fresh temporary root per test. That variable and its implementation are absent from release binaries. Disposable roots are created under `~/.anehalo-qa/anehalo-e2e-*`, outside the AppData locations rejected by the normal validator. Each root contains an `Anehalo` vault, settings, and Tauri runtime state (WebView profile and logs). Native vault access in isolated builds is restricted to that test root. Isolated runs skip host hotkey registration and autostart changes. Test teardown terminates only the process it spawned and removes only its own verified temporary directory. An occupied CDP port fails immediately instead of attaching to an unrelated app. No browser-only mock replaces the native filesystem.
 
-Selectors live in the five page objects and fixture support. Markdown export uses Windows UI Automation and scoped native keystrokes to complete the real Save dialog on English Windows. No destination override bypasses user-selected export permissions. Playwright and axe reports are under `playwright-report`; unit coverage is under `coverage`. CI uploads them even after a failed gate. Native features and clean-machine installation require the [manual checklist](manual-checklist.md).
+Selectors live in page objects and fixture support. Folder-selection regressions drive the real Windows picker and verify scope denial for the selected parent before and after restart. Markdown export uses Windows UI Automation and scoped native keystrokes to complete the real Save dialog on English Windows. No destination override bypasses user-selected export permissions. Playwright and axe reports are under `playwright-report`; unit coverage is under `coverage`. CI uploads them even after a failed gate. Native features and clean-machine installation require the [manual checklist](manual-checklist.md).
 
 ## Performance method
 
@@ -53,13 +53,13 @@ Final measurements on Windows 11 Pro 26200, Intel Core i5-1235U (12 logical proc
 
 | Measurement                                    | Result       | Target                          |
 | ---------------------------------------------- | ------------ | ------------------------------- |
-| Usable workspace after process launch          | 847 ms       | <2,000 ms                       |
-| Playwright observation of the usable workspace | 1,977 ms     | Diagnostic only                 |
-| Search, five samples                           | 31.2–34.8 ms | <100 ms                         |
-| JavaScript heap after search                   | 44.50 MiB    | Measured                        |
-| Aggregate working set, eight processes         | 660.79 MiB   | Measured; includes shared pages |
+| Usable workspace after process launch          | 874 ms       | <2,000 ms                       |
+| Playwright observation of the usable workspace | 1,493 ms     | Diagnostic only                 |
+| Search, five samples                           | 31.7–35.3 ms | <100 ms                         |
+| JavaScript heap after search                   | 53.10 MiB    | Measured                        |
+| Aggregate working set, eight processes         | 670.08 MiB   | Measured; includes shared pages |
 
-The full native E2E run passed in about 65 seconds. [Raw performance measurements](performance.json) include resource timings. Debug application code uses optimization level 1 so debug IPC serialization does not dominate the benchmark; debug assertions and isolation remain enabled. The release profile remains optimized with LTO.
+The full native E2E run includes the vault-location isolation and recovery regressions. [Raw performance measurements](performance.json) include resource timings. Debug application code uses optimization level 1 so debug IPC serialization does not dominate the benchmark; debug assertions and isolation remain enabled. The release profile remains optimized with LTO.
 
 ## Bugs found and fixed
 
@@ -82,8 +82,18 @@ Vitest fakes cover hidden, minimized, unfocused, and focused window states with 
 
 The argument parser covers --open, --new-note, unknown/ambiguous arguments, no arguments, and the existing --autostart action. Tests deliver pending and forwarded requests through the native event adapter, including a workspace-listener handoff and startup racing remembered-note restoration. Native E2E launches the debug executable with --new-note and --open and checks the note files. Host-global registration and real second-process single-instance delivery remain manual: isolated E2E skips those integrations to avoid changing the connected development app. NSIS source checks verify Start menu creation and the post-install desktop-shortcut hook; actual installation is still a manual check.
 
+## Vault location regression checks
+
+Folder selection resolves to an `Anehalo` child before any access grant. Selecting an existing case-insensitive `Anehalo` folder reuses it. Onboarding, Settings confirmation, and recovery display the final path. All legacy saved locations not named `Anehalo` require reconfirmation, including the unsafe old parent-folder case with over 200 entries. Existing files are never moved automatically.
+
+Vitest covers path resolution (drive, UNC, trailing separators, Unicode), system-location rejection, missing/read-only locations and file conflicts, zero sibling reads, Markdown-only enumeration, skipped links and hidden folders, asynchronous yielding, entry/time/content limits, stalled operations, recovery choices, and preservation of a dirty draft during background scan failure. Native snapshots stop at 20,000 entries or ten seconds; initialization reads only the few directory entries it needs. Preview extraction uses a worker for large text. A 64 MiB text budget and 8 MiB per-note limit also bound memory and parsing work.
+
+Real native E2E selects a parent through the Windows folder dialog, checks the created child and untouched sibling, asserts the parent is denied by the filesystem scope, restarts, and checks the grant again. It also restores a copied mixed-case `Anehalo` folder through Settings without nesting and recovers an invalid saved parent through the default-folder action. Static scope tests require settings-only grants. Generic persisted-scope restoration was removed; saved vault-only permissions are revalidated on startup, and legacy broad grant files are ignored.
+
+These changes fix the parent-folder scan/freeze, broad permission persistence, unbounded startup scans, silent missing-vault recreation, and startup loading loops. A failed background scan also keeps any newly typed draft visible. The manual checklist includes location validation, copied-vault restoration, OS permission failures, and startup recovery.
+
 ## Release status
 
-The unsigned x64 NSIS artifact is `src-tauri/target/qa/release/bundle/nsis/Anehalo_0.1.0_x64-setup.exe` (4,593,351 bytes). SHA-256: `fab6887c38850383c01dbd9e2b66255a042c2eaccac0694823a843479462f641`. A matching `.sha256` file is generated beside it.
+The unsigned x64 NSIS artifact is `src-tauri/target/qa/release/bundle/nsis/Anehalo_0.1.0_x64-setup.exe`. The installer is rebuilt after committing the vault fix; `node scripts/verify-installer.mjs` generates a matching `.sha256` file beside it. Use that file to verify the resulting artifact.
 
 Clean-machine install, interactive/silent uninstall preservation, native tray/hotkey/autostart/single-instance checks, and GitHub-hosted CI remain **unverified**. No clean VM or Windows Sandbox executable is available in this workspace; the existing app's data was not used for an installation experiment. The [manual checklist](manual-checklist.md) is deliberately unsigned. The local working tree cannot prove a GitHub workflow run is green; the workflow will run after a push. No push or release publication was performed.

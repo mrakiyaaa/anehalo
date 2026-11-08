@@ -6,6 +6,7 @@ import {
 } from '@/features/storage/repository-result';
 import type { SearchResult } from './SearchEngine';
 import { normalizedText, searchPlainText, searchSnippet } from './search-text';
+import { markdownToPlainText } from '@/features/storage/note-snippet';
 
 export interface AnalyzedSearchText {
   text: string;
@@ -13,14 +14,22 @@ export interface AnalyzedSearchText {
   body: string;
 }
 export type SearchProcessingRequest =
+  | { identifier: number; kind: 'preview'; markdown: string }
   | { identifier: number; kind: 'analyze'; title: string; markdown: string }
   | { identifier: number; kind: 'snippet'; text: string; query: string };
 export type SearchProcessingResponse =
+  | { identifier: number; kind: 'preview'; result: RepositoryResult<string> }
   | { identifier: number; kind: 'analyze'; result: RepositoryResult<AnalyzedSearchText> }
   | { identifier: number; kind: 'snippet'; result: RepositoryResult<SearchResult['snippet']> };
 
 export function processSearchText(request: SearchProcessingRequest): SearchProcessingResponse {
   try {
+    if (request.kind === 'preview')
+      return {
+        identifier: request.identifier,
+        kind: 'preview',
+        result: success(markdownToPlainText(request.markdown)),
+      };
     if (request.kind === 'analyze') {
       const text = searchPlainText(request.markdown);
       return {

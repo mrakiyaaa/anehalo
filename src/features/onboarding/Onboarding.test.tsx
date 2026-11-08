@@ -53,6 +53,13 @@ describe('first launch onboarding', () => {
     await waitFor(() =>
       expect(screen.getByRole('radio', { name: /Choose another folder/ })).toBeChecked(),
     );
+    expect(screen.getByText(/Your notes will be saved in/)).toHaveTextContent(
+      'D:/My notes/Anehalo',
+    );
+    expect(
+      screen.getByText('Anehalo creates its own folder here and never touches your other files.'),
+    ).toBeInTheDocument();
+    expect(setup.folderAccess.createdDirectories.has('D:/My notes/Anehalo')).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Next' }));
     await user.click(screen.getByRole('radio', { name: 'Dark' }));
     await waitFor(() => expect(useThemeStore.getState().preference).toBe('dark'));
@@ -61,7 +68,7 @@ describe('first launch onboarding', () => {
     expect(screen.queryByRole('button', { name: 'Skip setup' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Start writing' }));
     expect(screen.getByRole('heading', { name: 'You are all set, Akila' })).toHaveFocus();
-    expect(screen.getByText('D:/My notes')).toBeInTheDocument();
+    expect(screen.getByText('D:/My notes/Anehalo')).toBeInTheDocument();
     expect(setup.settingsRepository.file.content).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Open Anehalo' }));
     await screen.findByRole('heading', { name: 'Welcome' });
@@ -71,7 +78,7 @@ describe('first launch onboarding', () => {
     expect(unwrapResult(await setup.settingsRepository.load())).toMatchObject({
       userName: 'Akila',
       theme: 'dark',
-      vaultPath: 'D:/My notes',
+      vaultPath: 'D:/My notes/Anehalo',
       onboardingCompleted: true,
     });
     setup.unmount();

@@ -28,7 +28,7 @@
       "assetProtocol": {
         "enable": true,
         "scope": {
-          "allow": ["$DOCUMENT/Anehalo/.attachments/**"],
+          "allow": [],
           "requireLiteralLeadingDot": false
         }
       }

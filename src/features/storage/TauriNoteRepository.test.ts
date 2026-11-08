@@ -3,11 +3,20 @@ import { invoke } from '@tauri-apps/api/core';
 import { TauriNoteRepository } from './TauriNoteRepository';
 import { unwrapResult } from '@/test/repository-helpers';
 import { success } from './repository-result';
+import { defaultScanLimits } from './ScanLimits';
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
 beforeEach(() => vi.resetAllMocks());
 
 describe('native vault snapshots', () => {
+  it('times out a native scan and does not start content hydration after failure', async () => {
+    vi.mocked(invoke).mockImplementationOnce(() => new Promise(() => undefined));
+    const repository = new TauriNoteRepository('C:/Notes/Anehalo');
+    expect(
+      await repository.listTree({ ...defaultScanLimits, maximumDurationMilliseconds: 10 }),
+    ).toMatchObject({ ok: false, error: { code: 'scan-limit' } });
+    expect(invoke).toHaveBeenCalledOnce();
+  });
   it('reads the current file when a save supersedes a background snapshot', async () => {
     vi.mocked(invoke).mockResolvedValue({
       folders: [],
@@ -47,11 +56,13 @@ describe('native vault snapshots', () => {
       '**සිංහල**',
     );
     expect(invoke).toHaveBeenCalledTimes(2);
-    expect(invoke).toHaveBeenNthCalledWith(1, 'read_vault_snapshot', {
+    expect(vi.mocked(invoke).mock.calls[0]?.[0]).toBe('read_vault_snapshot');
+    expect(vi.mocked(invoke).mock.calls[0]?.[1]).toMatchObject({
       vaultPath: 'C:/Vault',
       includeContent: false,
     });
-    expect(invoke).toHaveBeenNthCalledWith(2, 'read_vault_snapshot', {
+    expect(vi.mocked(invoke).mock.calls[1]?.[0]).toBe('read_vault_snapshot');
+    expect(vi.mocked(invoke).mock.calls[1]?.[1]).toMatchObject({
       vaultPath: 'C:/Vault',
       includeContent: true,
     });

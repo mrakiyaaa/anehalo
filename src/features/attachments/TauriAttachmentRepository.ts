@@ -11,25 +11,29 @@ import {
 import type { AttachmentRepository, ImageAttachment, ImageInput } from './AttachmentRepository';
 import { resolveAttachmentReference } from './attachment-paths';
 import { imageExtension } from './image-validation';
+import { openVaultAccess } from '@/features/storage/open-vault-access';
 export class TauriAttachmentRepository implements AttachmentRepository {
   private readonly files: TauriVaultFileSystem;
   private scopePreparation: Promise<void> | null = null;
   constructor(private readonly vaultPath: string) {
-    this.files = new TauriVaultFileSystem(() => Promise.resolve(vaultPath), false);
+    this.files = new TauriVaultFileSystem(() => openVaultAccess(vaultPath), false);
   }
   async importImage(input: ImageInput): Promise<RepositoryResult<ImageAttachment>> {
     const extension = imageExtension(input.bytes);
     if (!extension.ok) return extension;
     const temporaryPath = `.attachments/.anehalo-${crypto.randomUUID()}.tmp`;
+    let writeAttempted = false;
     try {
       await this.files.initialize();
       await new VaultFileService(this.files).ensureDirectory('.attachments');
       const vaultRelativePath = `.attachments/${crypto.randomUUID()}.${extension.value}`;
+      writeAttempted = true;
       await this.files.writeBytes(temporaryPath, input.bytes);
       await this.files.rename(temporaryPath, vaultRelativePath);
       return success({ vaultRelativePath, alt: input.name.replace(/\.[^.]+$/, '') });
     } catch (error) {
       const original = describeStorageError(error, 'Could not save the image.');
+      if (!writeAttempted) return failure(original);
       try {
         if (await this.files.metadata(temporaryPath))
           await this.files.removeTemporaryFile(temporaryPath);

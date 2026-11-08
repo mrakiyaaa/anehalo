@@ -19,6 +19,9 @@ import { restoreLinkedNote } from '@/features/note-links/restore-linked-note';
 import type { VaultTree } from '@/types/notes';
 import { mergeHydratedTree } from './merge-hydrated-tree';
 import { compareNoteRecency } from '@/features/storage/note-order';
+import { validateSavedVaultPath } from '@/features/onboarding/vault-location';
+import { ScanBudget } from '@/features/storage/ScanBudget';
+import { defaultScanLimits } from '@/features/storage/ScanLimits';
 
 export function createWorkspaceStore(
   sourceRepository: NoteRepository,
@@ -43,6 +46,7 @@ export function createWorkspaceStore(
   const autoSaver = new NoteAutoSaver(repository);
   let initialization: Promise<void> | null = null;
   let active = true;
+  let hasLoadedVault = false;
   let lastOpenedPath = options.lastOpenedNotePath ?? null;
   async function rememberNote(path: string | null) {
     lastOpenedPath = path;
@@ -70,13 +74,36 @@ export function createWorkspaceStore(
 
     function reportHydrationError(error: RepositoryError) {
       searchIndex.cancel();
-      set((state) => ({ error, searchRevision: state.searchRevision + 1 }));
+      if (!hasLoadedVault) linkIndex.cancel();
+      const hasUnsavedDraft =
+        get().openDraft?.dirty || get().pendingDrafts.some((draft) => draft.dirty);
+      set((state) => ({
+        error,
+        isLoading: false,
+        ...(!hasLoadedVault && !hasUnsavedDraft ? { vaultError: error } : {}),
+        searchRevision: state.searchRevision + 1,
+      }));
     }
 
     async function refreshTree(rebuildLinks = true) {
+      if (get().vaultError)
+        return failure(
+          get().vaultError ?? { code: 'unavailable', message: 'Choose a folder again.' },
+        );
       const requestIdentifier = ++refreshIdentifier;
       set({ isLoading: true });
-      const result = await repository.listTree();
+      const limits = options.scanLimits ?? defaultScanLimits;
+      const budget = new ScanBudget(limits);
+      let result: RepositoryResult<VaultTree>;
+      try {
+        const valid =
+          options.vaultPath !== undefined
+            ? validateSavedVaultPath(options.vaultPath)
+            : success(undefined);
+        result = valid.ok ? await budget.wait(repository.listTree(limits)) : valid;
+      } catch (error) {
+        result = failure(describeStorageError(error, 'Could not open the notes folder.'));
+      }
       if (requestIdentifier === refreshIdentifier) {
         if (result.ok)
           set({
@@ -88,17 +115,21 @@ export function createWorkspaceStore(
               ? get().activeFolderPath
               : null,
           });
-        else set({ error: result.error, isLoading: false });
+        else reportHydrationError(result.error);
       }
       if (result.ok && requestIdentifier === refreshIdentifier && active) {
         const hydration = sourceRepository.hydrateTree?.();
-        if (!hydration) indexTree(result.value, rebuildLinks);
-        else {
+        if (!hydration) {
+          hasLoadedVault = true;
+          indexTree(result.value, rebuildLinks);
+        } else {
           searchIndex.isRefreshing = true;
-          void hydration
+          void budget
+            .wait(hydration)
             .then((hydrated) => {
               if (requestIdentifier !== refreshIdentifier || !active) return;
               if (hydrated.ok) {
+                hasLoadedVault = true;
                 const tree = mergeHydratedTree(result.value, get().tree, hydrated.value);
                 set({ tree });
                 indexTree(tree, rebuildLinks);
@@ -118,6 +149,8 @@ export function createWorkspaceStore(
     function enqueue<Value>(
       operation: () => Promise<RepositoryResult<Value>>,
     ): Promise<RepositoryResult<Value>> {
+      const vaultError = get().vaultError;
+      if (vaultError) return Promise.resolve(failure(vaultError));
       if (get().isClosing)
         return Promise.resolve(
           failure({
@@ -202,6 +235,7 @@ export function createWorkspaceStore(
       isMutating: false,
       isClosing: false,
       error: null,
+      vaultError: null,
       view: 'home',
       openDraft: null,
       pendingDrafts: [],
@@ -214,6 +248,7 @@ export function createWorkspaceStore(
       refreshTree,
       initialize: () => {
         initialization ??= (async () => {
+          const startupBudget = new ScanBudget(options.scanLimits);
           const tree = await refreshTree(false);
           linkIndex.cancel();
           const indexing = tree.ok
@@ -227,10 +262,12 @@ export function createWorkspaceStore(
             : Promise.resolve(success(undefined));
           if (tree.ok && options.reopenLastNote !== false && options.lastOpenedNotePath)
             await get().openNote(options.lastOpenedNotePath);
-          const indexed = await indexing.catch((error: unknown) =>
-            failure(describeStorageError(error, 'Could not index note links.')),
-          );
-          if (!indexed.ok) set({ error: indexed.error });
+          const indexed = await startupBudget
+            .wait(indexing)
+            .catch((error: unknown) =>
+              failure(describeStorageError(error, 'Could not index note links.')),
+            );
+          if (!indexed.ok) reportHydrationError(indexed.error);
         })();
         return initialization;
       },

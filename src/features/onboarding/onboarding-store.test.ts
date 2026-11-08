@@ -60,7 +60,8 @@ describe('folder validation and completion', () => {
     const { store, folders, settings, vault, openedPaths } = createSetup();
     folders.selection = 'D:/My notes';
     await store.getState().chooseFolder();
-    expect(store.getState().answers.vaultPath).toBe('D:/My notes');
+    expect(store.getState().answers.vaultPath).toBe('D:/My notes/Anehalo');
+    expect(folders.createdDirectories.has('D:/My notes/Anehalo')).toBe(true);
     expect(openedPaths).toEqual([]);
     expect(unwrapResult(await vault.listTree()).notes).toEqual([]);
     store.getState().setTheme('dark');
@@ -68,11 +69,11 @@ describe('folder validation and completion', () => {
     expect(settings.file.content).toBeNull();
     const saved = unwrapResult(await store.getState().finish());
     expect(saved).toMatchObject({
-      vaultPath: 'D:/My notes',
+      vaultPath: 'D:/My notes/Anehalo',
       theme: 'dark',
       onboardingCompleted: true,
     });
-    expect(openedPaths).toEqual(['D:/My notes']);
+    expect(openedPaths).toEqual(['D:/My notes/Anehalo']);
     expect(unwrapResult(await vault.listTree()).notes[0]?.relativePath).toBe(
       'Getting started/Welcome.md',
     );
