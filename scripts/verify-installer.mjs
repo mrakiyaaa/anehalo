@@ -7,6 +7,12 @@ if (configuration.bundle.windows.nsis.installMode !== 'currentUser')
   throw new Error('Anehalo must install per user.');
 const template = await readFile('src-tauri/target/qa/release/nsis/x64/installer.nsi', 'utf8');
 const hook = await readFile('src-tauri/installer/hooks.nsh', 'utf8');
+if (
+  !template.includes('Call CreateOrUpdateStartMenuShortcut') ||
+  !template.includes('!insertmacro NSIS_HOOK_POSTINSTALL') ||
+  !hook.includes('Call CreateOrUpdateDesktopShortcut')
+)
+  throw new Error('The installer must create Start menu and desktop shortcuts.');
 const hookPosition = template.indexOf('!insertmacro NSIS_HOOK_PREUNINSTALL');
 const removalPosition = template.lastIndexOf('${If} $DeleteAppDataCheckboxState = 1');
 if (

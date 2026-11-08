@@ -1,15 +1,5 @@
 #[cfg(desktop)]
-use tauri::{Emitter, Manager};
-
-#[cfg(desktop)]
-pub fn show_main_window(app: &tauri::AppHandle) -> tauri::Result<()> {
-    if let Some(window) = app.get_webview_window("main") {
-        window.show()?;
-        window.unminimize()?;
-        window.set_focus()?;
-    }
-    Ok(())
-}
+use tauri::Emitter;
 
 #[cfg(desktop)]
 pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -32,10 +22,7 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| {
             let action = event.id.as_ref();
-            if action != "quit" && show_main_window(app).is_err() {
-                log::error!("event=tray-restore-failed");
-            }
-            if matches!(action, "quick-note" | "settings" | "quit")
+            if matches!(action, "quick-note" | "open" | "settings" | "quit")
                 && app.emit("anehalo:tray", action).is_err()
             {
                 log::error!("event=tray-dispatch-failed");
@@ -49,14 +36,11 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                     button_state: MouseButtonState::Up,
                     ..
                 }
-            ) && show_main_window(tray.app_handle()).is_err()
+            ) && tray.app_handle().emit("anehalo:tray", "toggle").is_err()
             {
-                log::error!("event=tray-restore-failed");
+                log::error!("event=tray-dispatch-failed");
             }
         })
         .build(app)?;
-    if !std::env::args().any(|argument| argument == "--autostart") {
-        show_main_window(app.handle())?;
-    }
     Ok(())
 }

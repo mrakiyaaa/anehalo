@@ -1,245 +1,303 @@
 {
   "notes": 2000,
-  "startupMilliseconds": 1000.89990234375,
-  "observedStartupMilliseconds": 1872.2354000000014,
-  "searchMilliseconds": [
-    37.20000000298023, 31.899999991059303, 31, 31.69999998807907, 31.100000008940697
-  ],
-  "javascriptHeapMegabytes": 55.3892707824707,
+  "startupMilliseconds": 847.400146484375,
+  "observedStartupMilliseconds": 1977.4314000000013,
+  "searchMilliseconds": [34.79999998211861, 33.5, 31.19999998807907, 32.70000001788139, 32.5],
+  "javascriptHeapMegabytes": 44.501953125,
   "nativeProcesses": {
-    "residentMegabytes": 633.640625,
+    "residentMegabytes": 660.7890625,
     "processCount": 8
   },
   "startupProfile": {
     "markers": [
       {
         "name": "anehalo:vault-read-start",
-        "startTime": 280.3999999910593
+        "startTime": 252.7999999821186
       },
       {
         "name": "anehalo:vault-read-end",
-        "startTime": 328
+        "startTime": 306.2999999821186
       },
       {
         "name": "anehalo:usable",
-        "startTime": 393.20000000298023
+        "startTime": 380.7999999821186
       }
     ],
     "resources": [
       {
-        "name": "index-dSOytv-H.js",
-        "startTime": 83.20000000298023,
-        "duration": 26.899999991059303
+        "name": "index-BUFc_OTF.js",
+        "startTime": 68,
+        "duration": 21.19999998807907
       },
       {
         "name": "rolldown-runtime-XKyaHtl9.js",
-        "startTime": 83.3999999910593,
-        "duration": 14.800000011920929
+        "startTime": 68.2999999821186,
+        "duration": 8.300000011920929
       },
       {
         "name": "radix-DjNisjzO.js",
-        "startTime": 83.5,
-        "duration": 22.299999997019768
+        "startTime": 68.5,
+        "duration": 14.699999988079071
       },
       {
         "name": "react-C1iE8mnY.js",
-        "startTime": 83.5,
-        "duration": 28
-      },
-      {
-        "name": "preload-helper-BLdHbfdN.js",
-        "startTime": 83.59999999403954,
-        "duration": 14.900000005960464
+        "startTime": 68.5,
+        "duration": 19.19999998807907
       },
       {
         "name": "motion-YpEt0JQd.js",
-        "startTime": 83.59999999403954,
-        "duration": 23.600000008940697
+        "startTime": 68.59999999403954,
+        "duration": 15.900000005960464
+      },
+      {
+        "name": "preload-helper-BLdHbfdN.js",
+        "startTime": 68.69999998807907,
+        "duration": 8.199999988079071
       },
       {
         "name": "markdown-BkNTc1xR.js",
-        "startTime": 83.70000000298023,
-        "duration": 19.69999998807907
+        "startTime": 68.7999999821186,
+        "duration": 13
       },
       {
         "name": "index-DRUKSwsV.css",
-        "startTime": 83.79999999701977,
-        "duration": 17.400000005960464
+        "startTime": 69,
+        "duration": 11
       },
       {
         "name": "logo-mark-BnXSIlCW.png",
-        "startTime": 183.20000000298023,
-        "duration": 2.8999999910593033
+        "startTime": 145.5,
+        "duration": 2.7999999821186066
       },
       {
         "name": "figtree-latin-wght-normal-D_ZTVpCC.woff2",
-        "startTime": 184.59999999403954,
-        "duration": 3
+        "startTime": 147.19999998807907,
+        "duration": 2.4000000059604645
+      },
+      {
+        "name": "initial_arguments",
+        "startTime": 157.39999997615814,
+        "duration": 11.800000011920929
       },
       {
         "name": "plugin%3Aevent%7Clisten",
-        "startTime": 198.59999999403954,
-        "duration": 16.299999997019768
+        "startTime": 158.19999998807907,
+        "duration": 17.5
       },
       {
         "name": "plugin%3Awindow%7Cis_maximized",
-        "startTime": 199.70000000298023,
-        "duration": 21.69999998807907
+        "startTime": 159.09999999403954,
+        "duration": 27.400000005960464
       },
       {
         "name": "plugin%3Aevent%7Clisten",
-        "startTime": 200.09999999403954,
-        "duration": 18.400000005960464
+        "startTime": 159.39999997615814,
+        "duration": 16.80000001192093
       },
       {
         "name": "runtime_paths",
-        "startTime": 200.5,
-        "duration": 20.399999991059303
+        "startTime": 159.89999997615814,
+        "duration": 16.100000023841858
       },
       {
         "name": "logo-mark-BnXSIlCW.png",
-        "startTime": 201.8999999910593,
-        "duration": 3.7000000029802322
+        "startTime": 161.59999999403954,
+        "duration": 3.2999999821186066
+      },
+      {
+        "name": "plugin%3Awindow%7Cshow",
+        "startTime": 172,
+        "duration": 14.899999976158142
       },
       {
         "name": "plugin%3Aevent%7Clisten",
-        "startTime": 218.20000000298023,
-        "duration": 3.8999999910593033
+        "startTime": 178.69999998807907,
+        "duration": 9.599999994039536
       },
       {
         "name": "plugin%3Apath%7Cresolve",
-        "startTime": 226,
-        "duration": 3.3999999910593033
-      },
-      {
-        "name": "plugin%3Aevent%7Clisten",
-        "startTime": 227.09999999403954,
-        "duration": 2.9000000059604645
-      },
-      {
-        "name": "plugin%3Afs%7Clstat",
-        "startTime": 234.29999999701977,
-        "duration": 5.5999999940395355
-      },
-      {
-        "name": "plugin%3Aevent%7Clisten",
-        "startTime": 235.3999999910593,
-        "duration": 5.100000008940697
-      },
-      {
-        "name": "plugin%3Apath%7Cresolve",
-        "startTime": 242.59999999403954,
-        "duration": 1.7999999970197678
-      },
-      {
-        "name": "plugin%3Afs%7Clstat",
-        "startTime": 245.59999999403954,
-        "duration": 3
-      },
-      {
-        "name": "plugin%3Apath%7Cjoin",
-        "startTime": 249.79999999701977,
-        "duration": 2.7999999970197678
-      },
-      {
-        "name": "plugin%3Afs%7Clstat",
-        "startTime": 254.20000000298023,
-        "duration": 3.699999988079071
-      },
-      {
-        "name": "plugin%3Afs%7Cread_text_file",
-        "startTime": 259.70000000298023,
-        "duration": 4.399999991059303
-      },
-      {
-        "name": "plugin%3Aevent%7Cunlisten",
-        "startTime": 276.79999999701977,
-        "duration": 5
-      },
-      {
-        "name": "plugin%3Aevent%7Cunlisten",
-        "startTime": 277.29999999701977,
-        "duration": 6.799999997019768
-      },
-      {
-        "name": "plugin%3Aevent%7Cunlisten",
-        "startTime": 277.70000000298023,
-        "duration": 6.699999988079071
-      },
-      {
-        "name": "plugin%3Aevent%7Cunlisten",
-        "startTime": 277.8999999910593,
-        "duration": 7
-      },
-      {
-        "name": "plugin%3Aevent%7Cunlisten",
-        "startTime": 278.3999999910593,
-        "duration": 4.5
+        "startTime": 180.09999999403954,
+        "duration": 10.599999994039536
       },
       {
         "name": "plugin%3Awindow%7Cis_maximized",
-        "startTime": 279.09999999403954,
-        "duration": 6.700000002980232
+        "startTime": 188.2999999821186,
+        "duration": 3.4000000059604645
+      },
+      {
+        "name": "plugin%3Awindow%7Cunminimize",
+        "startTime": 190.19999998807907,
+        "duration": 5.800000011920929
       },
       {
         "name": "plugin%3Aevent%7Clisten",
-        "startTime": 279.70000000298023,
-        "duration": 5.899999991059303
+        "startTime": 191.7999999821186,
+        "duration": 3.5
       },
       {
-        "name": "read_vault_snapshot",
-        "startTime": 281,
-        "duration": 38
-      },
-      {
-        "name": "logo-mark-BnXSIlCW.png",
-        "startTime": 281.70000000298023,
-        "duration": 7.5999999940395355
-      },
-      {
-        "name": "logo-full--xyg0-Aj.png",
-        "startTime": 281.79999999701977,
-        "duration": 35.400000005960464
-      },
-      {
-        "name": "plugin%3Aevent%7Clisten",
-        "startTime": 282.20000000298023,
-        "duration": 7.799999997019768
-      },
-      {
-        "name": "fredoka-latin-wght-normal-DM6njrJ3.woff2",
-        "startTime": 285.3999999910593,
-        "duration": 7.200000002980232
-      },
-      {
-        "name": "plugin%3Aevent%7Clisten",
-        "startTime": 312.09999999403954,
-        "duration": 7.700000002980232
-      },
-      {
-        "name": "read_vault_snapshot",
-        "startTime": 336,
-        "duration": 2011.7999999970198
-      },
-      {
-        "name": "plugin%3Aevent%7Clisten",
-        "startTime": 408.3999999910593,
+        "name": "plugin%3Afs%7Clstat",
+        "startTime": 193.69999998807907,
         "duration": 7
       },
       {
         "name": "plugin%3Aevent%7Clisten",
-        "startTime": 418.09999999403954,
-        "duration": 4.100000008940697
+        "startTime": 198.69999998807907,
+        "duration": 4
       },
       {
-        "name": "search-worker-CcUHFfHr.js",
-        "startTime": 2470.5999999940395,
-        "duration": -41.29999999701977
+        "name": "plugin%3Awindow%7Cset_focus",
+        "startTime": 200,
+        "duration": 4.5
+      },
+      {
+        "name": "plugin%3Apath%7Cresolve",
+        "startTime": 203.39999997615814,
+        "duration": 1.800000011920929
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 204.7999999821186,
+        "duration": 2.0999999940395355
+      },
+      {
+        "name": "plugin%3Afs%7Clstat",
+        "startTime": 206.69999998807907,
+        "duration": 4.300000011920929
+      },
+      {
+        "name": "plugin%3Apath%7Cjoin",
+        "startTime": 213.39999997615814,
+        "duration": 4
+      },
+      {
+        "name": "plugin%3Afs%7Clstat",
+        "startTime": 218.69999998807907,
+        "duration": 3.4000000059604645
+      },
+      {
+        "name": "plugin%3Afs%7Cread_text_file",
+        "startTime": 224.39999997615814,
+        "duration": 6.5
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 242.59999999403954,
+        "duration": 4.5
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 243.5,
+        "duration": 4.799999982118607
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 244.39999997615814,
+        "duration": 3.4000000059604645
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 245.5,
+        "duration": 3.5999999940395355
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 246.5,
+        "duration": 3.7999999821186066
+      },
+      {
+        "name": "plugin%3Aevent%7Cunlisten",
+        "startTime": 247.7999999821186,
+        "duration": 4.700000017881393
+      },
+      {
+        "name": "plugin%3Awindow%7Cis_maximized",
+        "startTime": 249.59999999403954,
+        "duration": 4.0999999940395355
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 251.09999999403954,
+        "duration": 3
+      },
+      {
+        "name": "read_vault_snapshot",
+        "startTime": 254.19999998807907,
+        "duration": 36.900000005960464
+      },
+      {
+        "name": "logo-mark-BnXSIlCW.png",
+        "startTime": 255.19999998807907,
+        "duration": 4
       },
       {
         "name": "logo-full--xyg0-Aj.png",
-        "startTime": 3865.7000000029802,
-        "duration": 27.299999997019768
+        "startTime": 255.39999997615814,
+        "duration": 29.700000017881393
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 256.09999999403954,
+        "duration": 3.7999999821186066
+      },
+      {
+        "name": "fredoka-latin-wght-normal-DM6njrJ3.woff2",
+        "startTime": 260.7999999821186,
+        "duration": 2.5
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 305.89999997615814,
+        "duration": 2.4000000059604645
+      },
+      {
+        "name": "read_vault_snapshot",
+        "startTime": 320.19999998807907,
+        "duration": 1960.5999999940395
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 412.7999999821186,
+        "duration": 10.900000005960464
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 444.19999998807907,
+        "duration": 3.5
+      },
+      {
+        "name": "plugin%3Aevent%7Clisten",
+        "startTime": 450.39999997615814,
+        "duration": 3.100000023841858
+      },
+      {
+        "name": "take_pending_arguments",
+        "startTime": 455.59999999403954,
+        "duration": 3.199999988079071
+      },
+      {
+        "name": "search-worker-CcUHFfHr.js",
+        "startTime": 2397.7999999821186,
+        "duration": -43.79999998211861
+      },
+      {
+        "name": "plugin%3Awindow%7Cshow",
+        "startTime": 3016.899999976158,
+        "duration": 1.800000011920929
+      },
+      {
+        "name": "plugin%3Awindow%7Cunminimize",
+        "startTime": 3020,
+        "duration": 1.399999976158142
+      },
+      {
+        "name": "plugin%3Awindow%7Cset_focus",
+        "startTime": 3022.399999976158,
+        "duration": 1.300000011920929
+      },
+      {
+        "name": "logo-full--xyg0-Aj.png",
+        "startTime": 3727.199999988079,
+        "duration": 24.5
       }
     ]
   }

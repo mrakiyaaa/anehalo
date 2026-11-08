@@ -2,12 +2,15 @@ mod attachment_scope;
 mod desktop_tray;
 mod export_commands;
 mod export_transaction;
+mod launch_arguments;
 mod runtime_paths;
 mod vault_snapshot;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().manage(launch_arguments::LaunchArguments::new(
+        std::env::args().skip(1).collect(),
+    ));
     let context = tauri::generate_context!();
     #[cfg(debug_assertions)]
     let context = {
@@ -21,9 +24,9 @@ pub fn run() {
     };
 
     #[cfg(desktop)]
-    let single_instance = tauri_plugin_single_instance::init(|app, _arguments, _directory| {
-        if let Err(error) = desktop_tray::show_main_window(app) {
-            eprintln!("Could not restore Anehalo: {error}");
+    let single_instance = tauri_plugin_single_instance::init(|app, arguments, _directory| {
+        if launch_arguments::forward(app, arguments.into_iter().skip(1).collect()).is_err() {
+            log::error!("event=launch-forward-failed");
         }
     });
     #[cfg(all(desktop, debug_assertions))]
@@ -60,6 +63,8 @@ pub fn run() {
             attachment_scope::prepare_attachment_scope,
             export_commands::write_note_export,
             runtime_paths::runtime_paths,
+            launch_arguments::initial_arguments,
+            launch_arguments::take_pending_arguments,
             vault_snapshot::read_vault_snapshot
         ]);
 

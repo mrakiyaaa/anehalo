@@ -5,6 +5,19 @@ import { createSettingsStore } from '@/features/settings/settings-store';
 import { unwrapResult } from '@/test/repository-helpers';
 
 describe('settings persistence', () => {
+  it('preserves an older custom quick-note binding that uses the new default open shortcut', async () => {
+    const repository = new InMemorySettingsRepository(
+      JSON.stringify({
+        ...defaultSettings('Memory/Anehalo'),
+        quickNoteShortcut: 'Alt+Control+A',
+        openShortcut: undefined,
+      }),
+    );
+    expect(unwrapResult(await repository.load())).toMatchObject({
+      quickNoteShortcut: 'Ctrl+Alt+A',
+      openShortcut: 'Ctrl+Alt+O',
+    });
+  });
   it('migrates settings from before the editor without restarting onboarding', async () => {
     const repository = new InMemorySettingsRepository(
       JSON.stringify({

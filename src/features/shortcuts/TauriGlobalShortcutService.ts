@@ -1,25 +1,42 @@
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { failure, success, type RepositoryResult } from '@/features/storage/repository-result';
-import { validateShortcut } from './shortcut-validation';
+import { validateShortcut, shortcutConflictMessage } from './shortcut-validation';
 import { runtimePaths } from '@/app/runtime-paths';
-import type { GlobalShortcutService } from './GlobalShortcutService';
+import type {
+  GlobalShortcutAction,
+  GlobalShortcutService,
+  ShortcutRegistration,
+} from './GlobalShortcutService';
 
 export class TauriGlobalShortcutService implements GlobalShortcutService {
-  private current: string | null = null;
-  private pressed: (() => void) | null = null;
+  private registrations = new Map<GlobalShortcutAction, ShortcutRegistration>();
   private queue: Promise<unknown> = Promise.resolve();
-  replace(shortcut: string, pressed: () => void): Promise<RepositoryResult<void>> {
+  replace(
+    shortcut: string,
+    pressed: () => void,
+    action: GlobalShortcutAction = 'quick-note',
+  ): Promise<RepositoryResult<void>> {
     const task = this.queue.then(async () => {
       const validated = validateShortcut(shortcut);
       if (!validated.ok) return validated;
-      if (this.current === validated.value) {
-        this.pressed = pressed;
+      const current = this.registrations.get(action);
+      if (
+        [...this.registrations].some(
+          ([registeredAction, registration]) =>
+            registeredAction !== action && registration.shortcut === validated.value,
+        )
+      )
+        return failure({
+          code: 'conflict',
+          message: shortcutConflictMessage,
+        });
+      if (current?.shortcut === validated.value) {
+        current.pressed = pressed;
         return success(undefined);
       }
       try {
         if ((await runtimePaths()).isolated) {
-          this.current = validated.value;
-          this.pressed = pressed;
+          this.registrations.set(action, { shortcut: validated.value, pressed });
           return success(undefined);
         }
         let held = false;
@@ -27,7 +44,7 @@ export class TauriGlobalShortcutService implements GlobalShortcutService {
           if (event.state === 'Released') held = false;
           else if (!held) {
             held = true;
-            this.pressed?.();
+            this.registrations.get(action)?.pressed();
           }
         });
       } catch (error) {
@@ -37,9 +54,9 @@ export class TauriGlobalShortcutService implements GlobalShortcutService {
           detail: String(error),
         });
       }
-      if (this.current) {
+      if (current) {
         try {
-          await unregister(this.current);
+          await unregister(current.shortcut);
         } catch (error) {
           try {
             await unregister(validated.value);
@@ -59,25 +76,27 @@ export class TauriGlobalShortcutService implements GlobalShortcutService {
           });
         }
       }
-      this.current = validated.value;
-      this.pressed = pressed;
+      this.registrations.set(action, { shortcut: validated.value, pressed });
       return success(undefined);
     });
     this.queue = task;
     return task;
   }
-  unregister(pressed?: () => void): Promise<RepositoryResult<void>> {
+  unregister(
+    pressed?: () => void,
+    action: GlobalShortcutAction = 'quick-note',
+  ): Promise<RepositoryResult<void>> {
     const task = this.queue.then(async () => {
-      if (!this.current || (pressed && pressed !== this.pressed)) return success(undefined);
+      const current = this.registrations.get(action);
+      if (!current || (pressed && pressed !== current.pressed)) return success(undefined);
       try {
-        if (!(await runtimePaths()).isolated) await unregister(this.current);
-        this.current = null;
-        this.pressed = null;
+        if (!(await runtimePaths()).isolated) await unregister(current.shortcut);
+        this.registrations.delete(action);
         return success(undefined);
       } catch (error) {
         return failure({
           code: 'io-error',
-          message: 'Could not release the quick-note shortcut.',
+          message: 'Could not release the global shortcut.',
           detail: String(error),
         });
       }

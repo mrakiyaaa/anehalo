@@ -1,4 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invoke } from '@tauri-apps/api/core';
 import { runtimePaths } from '@/app/runtime-paths';
 import { listen } from '@tauri-apps/api/event';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
@@ -23,8 +24,41 @@ async function nativeAction(
 }
 
 export class TauriTrayService implements TrayService {
+  private argumentDeliveries = Promise.resolve();
+  private pendingArguments: string[][] = [];
+  private argumentReceiver: Pick<TrayEvents, 'arguments' | 'error'> | undefined;
+
   async observe(events: TrayEvents): Promise<RepositoryResult<() => void>> {
     const disposers: (() => void)[] = [];
+    let disposed = false;
+    const receiver = events.arguments
+      ? { arguments: events.arguments, error: events.error }
+      : undefined;
+    if (receiver) this.argumentReceiver = receiver;
+    const deliverArguments = () => {
+      if (disposed) return;
+      if (!events.arguments) {
+        events.open();
+        return;
+      }
+      this.argumentDeliveries = this.argumentDeliveries.then(async () => {
+        try {
+          const pending = await invoke<string[][]>('take_pending_arguments');
+          this.pendingArguments.push(...pending);
+          while (this.argumentReceiver?.arguments && this.pendingArguments.length) {
+            const activeReceiver = this.argumentReceiver;
+            const launchArguments = this.pendingArguments.shift();
+            if (!launchArguments || !activeReceiver.arguments) break;
+            const handled = await activeReceiver.arguments(launchArguments);
+            if (!handled.ok) activeReceiver.error(handled.error);
+          }
+        } catch (error) {
+          (this.argumentReceiver ?? events).error(
+            describeStorageError(error, 'Could not receive the launch action.'),
+          );
+        }
+      });
+    };
     try {
       const window = getCurrentWindow();
       disposers.push(
@@ -43,12 +77,20 @@ export class TauriTrayService implements TrayService {
           if (payload === 'quit') events.quit();
           else if (payload === 'quick-note') events.quickNote();
           else if (payload === 'settings') events.settings();
+          else if (payload === 'open') events.open();
+          else if (payload === 'toggle') events.toggle();
         }),
       );
+      disposers.push(await listen('anehalo:arguments', deliverArguments));
+      if (events.arguments) deliverArguments();
       return success(() => {
+        disposed = true;
+        if (this.argumentReceiver === receiver) this.argumentReceiver = undefined;
         for (const dispose of disposers) dispose();
       });
     } catch (error) {
+      disposed = true;
+      if (this.argumentReceiver === receiver) this.argumentReceiver = undefined;
       for (const dispose of disposers) dispose();
       return failure(describeStorageError(error, 'Could not connect to the system tray.'));
     }
@@ -63,6 +105,29 @@ export class TauriTrayService implements TrayService {
   }
   hide() {
     return nativeAction(() => getCurrentWindow().hide(), 'Could not hide the window to the tray.');
+  }
+  minimize() {
+    return nativeAction(() => getCurrentWindow().minimize(), 'Could not minimize Anehalo.');
+  }
+  async windowState() {
+    try {
+      const window = getCurrentWindow();
+      const [visible, minimized, focused] = await Promise.all([
+        window.isVisible(),
+        window.isMinimized(),
+        window.isFocused(),
+      ]);
+      return success({ visible, minimized, focused });
+    } catch (error) {
+      return failure(describeStorageError(error, 'Could not read the Anehalo window state.'));
+    }
+  }
+  async initialArguments() {
+    try {
+      return success(await invoke<string[]>('initial_arguments'));
+    } catch (error) {
+      return failure(describeStorageError(error, 'Could not read the launch action.'));
+    }
   }
   quit() {
     return nativeAction(() => getCurrentWindow().destroy(), 'Could not quit Anehalo.');

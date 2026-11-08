@@ -27,7 +27,7 @@ function SettingsContent() {
         </p>
       )}
       <GeneralSettings settings={settings} change={change} />
-      <ShortcutSettings shortcut={settings.quickNoteShortcut} change={change} />
+      <ShortcutSettings settings={settings} change={change} />
       <NotesFolderSettings path={settings.vaultPath} />
       <section className="settings-section settings-about" aria-labelledby="about-settings">
         <img src={logo} alt="" />

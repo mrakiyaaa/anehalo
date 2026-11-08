@@ -9,7 +9,7 @@ A quiet place for your thoughts. Anehalo is a Windows desktop notes app built wi
 - `/page` links, automatic link rewriting on rename, backlinks, and navigation history.
 - Full-text search with Sinhala/Tamil support and find within a note.
 - Markdown/PDF export, image assets, and plain/rich clipboard copy.
-- Light/dark/system themes, onboarding, remembered settings, global quick note, tray, and optional Windows autostart.
+- Light/dark/system themes, onboarding, remembered settings, global quick note and quick open, tray, and optional Windows autostart.
 - Ordered atomic saves with conflict detection, retries, and save-before-close protection.
 
 ## Install
@@ -76,22 +76,27 @@ The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, an
 
 ## Shortcuts
 
-| Shortcut                       | Action                                      |
-| ------------------------------ | ------------------------------------------- |
-| `Ctrl+Alt+N`                   | Global quick note; configurable in Settings |
-| `Ctrl+K`                       | Search all notes                            |
-| `Ctrl+F`                       | Find in the current note                    |
-| `Ctrl+B` / `Ctrl+I` / `Ctrl+U` | Bold / italic / underline                   |
-| `Ctrl+Shift+S`                 | Strikethrough                               |
-| `Ctrl+Shift+K` or `/page`      | Insert a page link                          |
-| `Ctrl+Shift+C`                 | Copy as Markdown                            |
-| `Ctrl+Shift+E`                 | Open Export                                 |
-| `Alt+Left` / `Alt+Right`       | Navigation history                          |
-| `Ctrl+Z` / `Ctrl+Y`            | Undo / redo                                 |
-| `Ctrl+Alt+1` / `2` / `3`       | Headings                                    |
-| `Escape`                       | Close menu, search, or dialog               |
+| Shortcut                       | Action                                        |
+| ------------------------------ | --------------------------------------------- |
+| `Ctrl+Alt+N`                   | Global quick note; configurable in Settings   |
+| `Ctrl+Alt+A`                   | Open/toggle Anehalo; configurable in Settings |
+| `Ctrl+K`                       | Search all notes                              |
+| `Ctrl+F`                       | Find in the current note                      |
+| `Ctrl+B` / `Ctrl+I` / `Ctrl+U` | Bold / italic / underline                     |
+| `Ctrl+Shift+S`                 | Strikethrough                                 |
+| `Ctrl+Shift+K` or `/page`      | Insert a page link                            |
+| `Ctrl+Shift+C`                 | Copy as Markdown                              |
+| `Ctrl+Shift+E`                 | Open Export                                   |
+| `Alt+Left` / `Alt+Right`       | Navigation history                            |
+| `Ctrl+Z` / `Ctrl+Y`            | Undo / redo                                   |
+| `Ctrl+Alt+1` / `2` / `3`       | Headings                                      |
+| `Escape`                       | Close menu, search, or dialog                 |
 
 Toolbar tooltips and slash commands show additional shortcuts. `Ctrl+K` always opens global search; use the link toolbar for web links.
+
+Open Anehalo restores and focuses the last view without creating a note. If the window is already focused, it hides to the tray when Keep running in the tray is enabled, or minimizes otherwise. Both global shortcuts work while the app is running and must use different keys. An older custom quick-note binding on `Ctrl+Alt+A` is preserved during migration; Open Anehalo then starts on `Ctrl+Alt+O`.
+
+The installer creates Start menu and desktop shortcuts. To launch an action even when Anehalo is closed, create a Windows shortcut to `anehalo.exe --open` or `anehalo.exe --new-note`, then set its **Properties → Shortcut key**. `--open` shows the last view; `--new-note` performs the existing quick-note action. A running instance receives the action; a cold start queues it until loading and onboarding complete. Launching without arguments opens the existing view. Left-clicking the tray icon toggles show/hide; its menu also has Open Anehalo and New quick note.
 
 ## Folder layout
 

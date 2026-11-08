@@ -41,7 +41,7 @@ export function createWorkspaceStore(
     (error) => store.setState({ error }),
   );
   const autoSaver = new NoteAutoSaver(repository);
-  let initialized = false;
+  let initialization: Promise<void> | null = null;
   let active = true;
   let lastOpenedPath = options.lastOpenedNotePath ?? null;
   async function rememberNote(path: string | null) {
@@ -212,26 +212,27 @@ export function createWorkspaceStore(
       dismissError: () => set({ error: null }),
       reportError: (error) => set({ error }),
       refreshTree,
-      initialize: async () => {
-        if (initialized) return;
-        initialized = true;
-        const tree = await refreshTree(false);
-        linkIndex.cancel();
-        const indexing = tree.ok
-          ? (sourceRepository.hydrateTree?.() ?? Promise.resolve(tree)).then((hydrated) =>
-              hydrated.ok && active
-                ? linkIndex.rebuild(sourceRepository, get().tree.notes)
-                : hydrated.ok
-                  ? success(undefined)
-                  : hydrated,
-            )
-          : Promise.resolve(success(undefined));
-        if (tree.ok && options.reopenLastNote !== false && options.lastOpenedNotePath)
-          await get().openNote(options.lastOpenedNotePath);
-        const indexed = await indexing.catch((error: unknown) =>
-          failure(describeStorageError(error, 'Could not index note links.')),
-        );
-        if (!indexed.ok) set({ error: indexed.error });
+      initialize: () => {
+        initialization ??= (async () => {
+          const tree = await refreshTree(false);
+          linkIndex.cancel();
+          const indexing = tree.ok
+            ? (sourceRepository.hydrateTree?.() ?? Promise.resolve(tree)).then((hydrated) =>
+                hydrated.ok && active
+                  ? linkIndex.rebuild(sourceRepository, get().tree.notes)
+                  : hydrated.ok
+                    ? success(undefined)
+                    : hydrated,
+              )
+            : Promise.resolve(success(undefined));
+          if (tree.ok && options.reopenLastNote !== false && options.lastOpenedNotePath)
+            await get().openNote(options.lastOpenedNotePath);
+          const indexed = await indexing.catch((error: unknown) =>
+            failure(describeStorageError(error, 'Could not index note links.')),
+          );
+          if (!indexed.ok) set({ error: indexed.error });
+        })();
+        return initialization;
       },
       openNote: (path) => enqueue(() => loadNote(path)),
       navigateHistory: (direction) =>

@@ -65,6 +65,36 @@ describe('shortcut validation', () => {
 });
 
 describe('native shortcut service', () => {
+  it('keeps independent callbacks and registrations for both actions', async () => {
+    const service = new TauriGlobalShortcutService();
+    const quickNote = vi.fn();
+    const open = vi.fn();
+    await service.replace('Ctrl+Alt+N', quickNote);
+    await service.replace('Ctrl+Alt+A', open, 'open');
+    const quickNoteCallback = vi.mocked(register).mock.calls[0]?.[1];
+    const openCallback = vi.mocked(register).mock.calls[1]?.[1];
+    if (typeof quickNoteCallback !== 'function' || typeof openCallback !== 'function')
+      throw new Error('Expected independent shortcut callbacks.');
+    quickNoteCallback({ shortcut: 'Ctrl+Alt+N', id: 1, state: 'Pressed' });
+    openCallback({ shortcut: 'Ctrl+Alt+A', id: 2, state: 'Pressed' });
+    expect(quickNote).toHaveBeenCalledOnce();
+    expect(open).toHaveBeenCalledOnce();
+    await service.unregister(open, 'open');
+    expect(unregister).toHaveBeenCalledExactlyOnceWith('Ctrl+Alt+A');
+    await service.unregister(quickNote);
+    expect(unregister).toHaveBeenLastCalledWith('Ctrl+Alt+N');
+  });
+
+  it('rejects normalized duplicates before registering the second action', async () => {
+    const service = new TauriGlobalShortcutService();
+    await service.replace('Ctrl+Alt+N', () => undefined);
+    expect(await service.replace('Alt+Control+N', () => undefined, 'open')).toMatchObject({
+      ok: false,
+      error: { code: 'conflict' },
+    });
+    expect(register).toHaveBeenCalledOnce();
+    expect(unregister).not.toHaveBeenCalled();
+  });
   it('registers, re-registers, and releases on exit', async () => {
     const service = new TauriGlobalShortcutService();
     const pressed = vi.fn();

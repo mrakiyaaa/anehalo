@@ -51,7 +51,7 @@ describe('Phase 7 keyboard and settings flows', () => {
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     const input = await screen.findByRole('combobox', { name: 'Search all notes' });
     await user.type(input, 'தமிழ்');
-    const option = await screen.findByRole('option', { selected: true });
+    const option = await screen.findByRole('option', { selected: true, name: /Language notebook/ });
     expect(option).toHaveTextContent('Language notebook');
     await waitFor(() => expect(option.querySelector('mark')).toHaveTextContent('தமிழ்'));
     await user.keyboard('{Enter}');
@@ -131,9 +131,31 @@ describe('Phase 7 keyboard and settings flows', () => {
     expect(folderAccess.validatedPaths).toContain('Memory/Other');
   });
 
+  it('records and resets Open Anehalo and explains conflicts with quick notes', async () => {
+    const { user, shortcuts, settingsRepository } = await setup();
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    const openShortcut = within(dialog).getByRole('textbox', {
+      name: 'Record Open Anehalo shortcut',
+    });
+    expect(openShortcut).toHaveValue('Ctrl+Alt+A');
+    await user.click(openShortcut);
+    fireEvent.keyDown(openShortcut, { key: 'n', code: 'KeyN', ctrlKey: true, altKey: true });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('different shortcuts');
+    expect(shortcuts.current).toBe('Ctrl+Alt+N');
+    fireEvent.keyDown(openShortcut, { key: 'o', code: 'KeyO', ctrlKey: true, altKey: true });
+    await waitFor(() => expect(shortcuts.registrations.get('open')?.shortcut).toBe('Ctrl+Alt+O'));
+    await user.click(within(dialog).getByRole('button', { name: 'Reset Open Anehalo shortcut' }));
+    await waitFor(async () =>
+      expect(unwrapResult(await settingsRepository.load()).openShortcut).toBe('Ctrl+Alt+A'),
+    );
+    expect(shortcuts.current).toBe('Ctrl+Alt+N');
+  });
+
   it('dispatches the registered hotkey while the window is in the tray', async () => {
     const { tray, shortcuts } = await setup();
     await waitFor(() => expect(shortcuts.pressed).toBeTypeOf('function'));
+    tray.actions.length = 0;
     await act(async () => {
       tray.events?.close();
       await Promise.resolve();

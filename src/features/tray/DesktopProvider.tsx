@@ -21,7 +21,7 @@ export function DesktopProvider({ store, children }: PropsWithChildren<{ store: 
       ),
   );
   useEffect(() => {
-    runtime.connect();
+    void runtime.connect();
     return () => {
       void runtime.stop();
     };

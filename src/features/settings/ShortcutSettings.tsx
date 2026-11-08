@@ -1,73 +1,36 @@
-import { useEffect } from 'react';
-import { useDesktopRuntime } from '@/features/tray/desktop-context';
-import { useState } from 'react';
 import {
+  defaultOpenShortcut,
   defaultQuickNoteShortcut,
-  shortcutFromEvent,
 } from '@/features/shortcuts/shortcut-validation';
 import type { ChangeSettings } from './GeneralSettings';
+import type { AppSettings } from './AppSettings';
+import { ShortcutRecorder } from './ShortcutRecorder';
 
 export function ShortcutSettings({
-  shortcut,
+  settings,
   change,
 }: {
-  shortcut: string;
+  settings: AppSettings;
   change: ChangeSettings;
 }) {
-  const runtime = useDesktopRuntime();
-  useEffect(
-    () => () => {
-      runtime.state.setState({ recordingShortcut: false });
-    },
-    [runtime],
-  );
-  const [recording, setRecording] = useState(false);
   return (
     <section className="settings-section" aria-labelledby="shortcut-settings">
       <h3 id="shortcut-settings">Shortcuts</h3>
-      <label className="settings-field">
-        New quick note
-        <span className="settings-inline">
-          <input
-            readOnly
-            data-shortcut-recorder
-            aria-label="Record quick note shortcut"
-            value={recording ? 'Press a shortcut…' : shortcut}
-            onFocus={() => {
-              setRecording(true);
-              runtime.state.setState({ recordingShortcut: true });
-            }}
-            onBlur={() => {
-              setRecording(false);
-              runtime.state.setState({ recordingShortcut: false });
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Tab') return;
-              event.preventDefault();
-              event.stopPropagation();
-              if (event.key === 'Escape') {
-                setRecording(false);
-                event.currentTarget.blur();
-                return;
-              }
-              const recorded = shortcutFromEvent(event.nativeEvent);
-              if (recorded) {
-                setRecording(false);
-                void change({ quickNoteShortcut: recorded });
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              void change({ quickNoteShortcut: defaultQuickNoteShortcut });
-            }}
-          >
-            Reset
-          </button>
-        </span>
-      </label>
-      <p>Focus the field and press a modifier and a key. Works while Anehalo is in the tray.</p>
+      <ShortcutRecorder
+        label="New quick note"
+        accessibleName="Record quick note shortcut"
+        shortcut={settings.quickNoteShortcut}
+        defaultShortcut={defaultQuickNoteShortcut}
+        change={(shortcut) => change({ quickNoteShortcut: shortcut })}
+      />
+      <ShortcutRecorder
+        label="Open Anehalo"
+        accessibleName="Record Open Anehalo shortcut"
+        shortcut={settings.openShortcut}
+        defaultShortcut={defaultOpenShortcut}
+        change={(shortcut) => change({ openShortcut: shortcut })}
+      />
+      <p>Focus a field and press a modifier and a key. Works while Anehalo is in the tray.</p>
     </section>
   );
 }

@@ -1,4 +1,9 @@
 import type { Theme } from '@/types/theme';
+import {
+  defaultOpenShortcut,
+  defaultQuickNoteShortcut,
+  validateShortcut,
+} from '@/features/shortcuts/shortcut-validation';
 
 export type ThemePreference = Theme | 'system';
 
@@ -11,6 +16,7 @@ export interface AppSettings {
   readonly reopenLastNote: boolean;
   readonly lastExportFolder: string | null;
   readonly quickNoteShortcut: string;
+  readonly openShortcut: string;
   readonly keepRunningInTray: boolean;
   readonly startWithWindows: boolean;
   readonly trayNoticeShown: boolean;
@@ -41,7 +47,8 @@ export function defaultSettings(vaultPath: string): AppSettings {
     lastOpenedNotePath: null,
     reopenLastNote: true,
     lastExportFolder: null,
-    quickNoteShortcut: 'Ctrl+Alt+N',
+    quickNoteShortcut: defaultQuickNoteShortcut,
+    openShortcut: defaultOpenShortcut,
     keepRunningInTray: true,
     startWithWindows: false,
     trayNoticeShown: false,
@@ -70,6 +77,21 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
     (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system')
   )
     return defaults;
+  const quickNote = validateShortcut(
+    'quickNoteShortcut' in value && typeof value.quickNoteShortcut === 'string'
+      ? value.quickNoteShortcut
+      : defaultQuickNoteShortcut,
+  );
+  const quickNoteShortcut = quickNote.ok ? quickNote.value : defaultQuickNoteShortcut;
+  const open = validateShortcut(
+    'openShortcut' in value && typeof value.openShortcut === 'string'
+      ? value.openShortcut
+      : defaultOpenShortcut,
+  );
+  let openShortcut = open.ok ? open.value : defaultOpenShortcut;
+  // Preserve a pre-existing custom quick-note binding when adding the new shortcut.
+  if (openShortcut === quickNoteShortcut)
+    openShortcut = quickNoteShortcut === defaultOpenShortcut ? 'Ctrl+Alt+O' : defaultOpenShortcut;
   return {
     onboardingCompleted: value.onboardingCompleted,
     userName: normalizeUserName(value.userName),
@@ -83,10 +105,8 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
       'reopenLastNote' in value && typeof value.reopenLastNote === 'boolean'
         ? value.reopenLastNote
         : true,
-    quickNoteShortcut:
-      'quickNoteShortcut' in value && typeof value.quickNoteShortcut === 'string'
-        ? value.quickNoteShortcut
-        : 'Ctrl+Alt+N',
+    quickNoteShortcut,
+    openShortcut,
     keepRunningInTray:
       'keepRunningInTray' in value && typeof value.keepRunningInTray === 'boolean'
         ? value.keepRunningInTray

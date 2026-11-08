@@ -49,7 +49,7 @@ export class TauriApplication {
     );
   }
 
-  async start() {
+  async start(launchArguments: readonly string[] = []) {
     if (process.platform !== 'win32')
       throw new Error('Real Tauri E2E tests require Windows/WebView2.');
     try {
@@ -60,7 +60,7 @@ export class TauriApplication {
     }
     const started = performance.now();
     this.startedEpoch = Date.now();
-    this.process = spawn(resolve('src-tauri/target/qa/debug/anehalo.exe'), [], {
+    this.process = spawn(resolve('src-tauri/target/qa/debug/anehalo.exe'), launchArguments, {
       env: {
         ...process.env,
         ANEHALO_TEST_ROOT: this.root,

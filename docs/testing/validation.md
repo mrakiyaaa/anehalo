@@ -1,4 +1,4 @@
-# Phase 8 validation
+# Windows validation
 
 Local Windows validation, 2026-11-08. The connected development app is kept separate from QA builds under `src-tauri/target/qa`.
 
@@ -6,11 +6,11 @@ Local Windows validation, 2026-11-08. The connected development app is kept sepa
 | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | ESLint, zero warnings                              | Passed                                                                                   |
 | Strict TypeScript                                  | Passed                                                                                   |
-| Vitest                                             | 401 tests passed in 38 files                                                             |
+| Vitest                                             | 437 tests passed in 41 files                                                             |
 | Service line coverage                              | 94.07% overall; all five service groups exceed 85%                                       |
 | Rust format / Clippy, zero warnings                | Passed                                                                                   |
 | Rust tests                                         | 5 passed                                                                                 |
-| Real Tauri / WebView2 E2E                          | 16 passed; retries disabled                                                              |
+| Real Tauri / WebView2 E2E                          | 18 passed; retries disabled                                                              |
 | axe                                                | No serious/critical violations on home, editor, search, or settings in either theme      |
 | npm audit                                          | No vulnerabilities                                                                       |
 | Cargo audit                                        | No vulnerabilities; six upstream informational findings documented in the security audit |
@@ -53,13 +53,13 @@ Final measurements on Windows 11 Pro 26200, Intel Core i5-1235U (12 logical proc
 
 | Measurement                                    | Result       | Target                          |
 | ---------------------------------------------- | ------------ | ------------------------------- |
-| Usable workspace after process launch          | 1,001 ms     | <2,000 ms                       |
-| Playwright observation of the usable workspace | 1,872 ms     | Diagnostic only                 |
-| Search, five samples                           | 31.0–37.2 ms | <100 ms                         |
-| JavaScript heap after search                   | 55.39 MiB    | Measured                        |
-| Aggregate working set, eight processes         | 633.64 MiB   | Measured; includes shared pages |
+| Usable workspace after process launch          | 847 ms       | <2,000 ms                       |
+| Playwright observation of the usable workspace | 1,977 ms     | Diagnostic only                 |
+| Search, five samples                           | 31.2–34.8 ms | <100 ms                         |
+| JavaScript heap after search                   | 44.50 MiB    | Measured                        |
+| Aggregate working set, eight processes         | 660.79 MiB   | Measured; includes shared pages |
 
-The full native E2E run passed in 59.1 seconds. [Raw performance measurements](performance.json) include resource timings. Debug application code uses optimization level 1 so debug IPC serialization does not dominate the benchmark; debug assertions and isolation remain enabled. The release profile remains optimized with LTO.
+The full native E2E run passed in about 65 seconds. [Raw performance measurements](performance.json) include resource timings. Debug application code uses optimization level 1 so debug IPC serialization does not dominate the benchmark; debug assertions and isolation remain enabled. The release profile remains optimized with LTO.
 
 ## Bugs found and fixed
 
@@ -76,8 +76,14 @@ The full native E2E run passed in 59.1 seconds. [Raw performance measurements](p
 
 Additional hardening: friendly React recovery, private rotating file logs, CSP, explicit permissions, debug-only test isolation, synchronized versions, and CI/release packaging. The generated NSIS uninstaller invokes the preservation hook before app-data deletion; that hook resets the deletion checkbox state to zero even if selected. The release binary contains no test-root override.
 
+## Quick-open regression checks
+
+Vitest fakes cover hidden, minimized, unfocused, and focused window states with both tray preferences; editor/view preservation; serialized rapid toggles; save-before-hide ordering and failure recovery; independent shortcut callbacks; internal conflicts after modifier normalization; settings rollback; and restoration of both bindings after a partial unregister failure. A migration regression preserves a pre-existing quick-note shortcut on Ctrl+Alt+A. Settings integration tests record and reset Open Anehalo and show duplicate-key feedback.
+
+The argument parser covers --open, --new-note, unknown/ambiguous arguments, no arguments, and the existing --autostart action. Tests deliver pending and forwarded requests through the native event adapter, including a workspace-listener handoff and startup racing remembered-note restoration. Native E2E launches the debug executable with --new-note and --open and checks the note files. Host-global registration and real second-process single-instance delivery remain manual: isolated E2E skips those integrations to avoid changing the connected development app. NSIS source checks verify Start menu creation and the post-install desktop-shortcut hook; actual installation is still a manual check.
+
 ## Release status
 
-The unsigned x64 NSIS artifact is `src-tauri/target/qa/release/bundle/nsis/Anehalo_0.1.0_x64-setup.exe` (4,633,846 bytes). SHA-256: `75799bbf0263b3e1fac4327e30dd473c285be2baf5ea80926717c9617c0bb543`. A matching `.sha256` file is generated beside it. This local build uses the workspace's current icon assets; separate local icon/logo edits are outside the QA commit.
+The unsigned x64 NSIS artifact is `src-tauri/target/qa/release/bundle/nsis/Anehalo_0.1.0_x64-setup.exe` (4,593,351 bytes). SHA-256: `fab6887c38850383c01dbd9e2b66255a042c2eaccac0694823a843479462f641`. A matching `.sha256` file is generated beside it.
 
 Clean-machine install, interactive/silent uninstall preservation, native tray/hotkey/autostart/single-instance checks, and GitHub-hosted CI remain **unverified**. No clean VM or Windows Sandbox executable is available in this workspace; the existing app's data was not used for an installation experiment. The [manual checklist](manual-checklist.md) is deliberately unsigned. The local working tree cannot prove a GitHub workflow run is green; the workflow will run after a push. No push or release publication was performed.

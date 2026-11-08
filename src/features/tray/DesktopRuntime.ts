@@ -10,7 +10,9 @@ import {
   type RepositoryError,
   type RepositoryResult,
 } from '@/features/storage/repository-result';
-import { validateShortcut } from '@/features/shortcuts/shortcut-validation';
+import { DesktopShortcutController } from '@/features/shortcuts/DesktopShortcutController';
+import { WindowVisibilityController } from '@/features/window/WindowVisibilityController';
+import { parseCommandLineArguments } from '@/features/launch/command-line-arguments';
 
 export class DesktopRuntime {
   readonly state = createStore<{
@@ -25,13 +27,75 @@ export class DesktopRuntime {
   private readonly shortcutPressed = () => {
     if (!this.state.getState().recordingShortcut) void this.quickNote();
   };
+  private readonly openShortcutPressed = () => {
+    if (!this.state.getState().recordingShortcut) void this.toggle();
+  };
+  readonly visibility: WindowVisibilityController;
+  private readonly shortcutController: DesktopShortcutController;
   private changes: Promise<unknown> = Promise.resolve();
+  private toggles: Promise<unknown> = Promise.resolve();
   constructor(
     private readonly workspace: WorkspaceStore,
     private readonly settings: SettingsStore,
-    private readonly shortcuts: GlobalShortcutService,
+    shortcuts: GlobalShortcutService,
     private readonly tray: TrayService,
-  ) {}
+  ) {
+    this.shortcutController = new DesktopShortcutController(shortcuts, {
+      'quick-note': this.shortcutPressed,
+      open: this.openShortcutPressed,
+    });
+    this.visibility = new WindowVisibilityController(tray, {
+      keepRunningInTray: () => this.settings.getState().settings?.keepRunningInTray ?? true,
+      hasOpenEditor: () =>
+        this.workspace.getState().view === 'editor' &&
+        !this.workspace.getState().isSearchOpen &&
+        !this.state.getState().settingsOpen,
+      flushPendingSaves: () => this.flushPendingSaves(),
+    });
+  }
+
+  private async flushPendingSaves(): Promise<RepositoryResult<void>> {
+    await this.changes;
+    const notes = await this.workspace.getState().flushNotes();
+    if (!notes.ok) return notes;
+    return this.settings.getState().flushPendingSaves();
+  }
+
+  async show(): Promise<RepositoryResult<void>> {
+    const shown = await this.visibility.show();
+    this.report(shown);
+    return shown;
+  }
+
+  toggle(source: 'shortcut' | 'tray' = 'shortcut'): Promise<RepositoryResult<void>> {
+    const task = this.toggles.then(async () => {
+      if (this.closing) return success(undefined);
+      this.closing = true;
+      this.workspace.getState().setClosing(true);
+      try {
+        const toggled = await this.visibility.toggle(source);
+        this.report(toggled);
+        return toggled;
+      } finally {
+        this.closing = false;
+        this.workspace.getState().setClosing(false);
+      }
+    });
+    this.toggles = task;
+    return task;
+  }
+
+  async handleArguments(launchArguments: readonly string[]): Promise<RepositoryResult<void>> {
+    const parsed = parseCommandLineArguments(launchArguments);
+    if (!parsed.ok) {
+      await this.show();
+      this.report(parsed);
+      return parsed;
+    }
+    if (parsed.value === 'background') return success(undefined);
+    await this.workspace.getState().initialize();
+    return parsed.value === 'new-note' ? this.quickNote() : this.show();
+  }
 
   private report(result: RepositoryResult<unknown>) {
     if (!result.ok) this.state.setState({ error: result.error });
@@ -56,25 +120,35 @@ export class DesktopRuntime {
         },
         settings: () => {
           this.openSettings();
+          void this.show();
         },
         focus: () => {
           void this.refresh();
         },
+        open: () => {
+          void this.show();
+        },
+        toggle: () => {
+          void this.toggle('tray');
+        },
+        arguments: (launchArguments) => this.handleArguments(launchArguments),
+        error: (error) => this.report(failure(error)),
       });
       if (observed.ok) this.disconnect = observed.value;
       else this.report(observed);
       const settings = this.settings.getState().settings;
       if (settings) {
-        this.report(await this.shortcuts.replace(settings.quickNoteShortcut, this.shortcutPressed));
+        this.report(await this.shortcutController.configure(settings));
         this.report(await this.tray.setAutostart(settings.startWithWindows));
       }
     });
+    return this.lifecycle;
   }
   stop() {
     this.lifecycle = this.lifecycle.then(async () => {
       this.disconnect?.();
       this.disconnect = undefined;
-      this.report(await this.shortcuts.unregister(this.shortcutPressed));
+      this.report(await this.shortcutController.unregister());
     });
     return this.lifecycle;
   }
@@ -84,7 +158,7 @@ export class DesktopRuntime {
     this.report(await state.refreshTree());
   }
   async quickNote(): Promise<RepositoryResult<void>> {
-    const shown = await this.tray.show();
+    const shown = await this.visibility.show(false);
     if (!shown.ok) {
       this.report(shown);
       return shown;
@@ -94,7 +168,7 @@ export class DesktopRuntime {
     const created = await this.workspace.getState().startQuickNote();
     this.report(created);
     if (!created.ok) return created;
-    this.tray.focusEditor();
+    this.visibility.focusEditor();
     return success(undefined);
   }
   updateSettings(patch: Partial<AppSettings>): Promise<RepositoryResult<void>> {
@@ -109,28 +183,27 @@ export class DesktopRuntime {
   private async applySettings(patch: Partial<AppSettings>): Promise<RepositoryResult<void>> {
     const previous = this.settings.getState().settings;
     if (!previous) return failure({ code: 'unavailable', message: 'Settings have not loaded.' });
-    if (patch.quickNoteShortcut !== undefined) {
-      const validated = validateShortcut(patch.quickNoteShortcut);
-      if (!validated.ok) return validated;
-      patch = { ...patch, quickNoteShortcut: validated.value };
-      const registered = await this.shortcuts.replace(validated.value, this.shortcutPressed);
-      if (!registered.ok) return registered;
+    const shortcutsChanged =
+      patch.quickNoteShortcut !== undefined || patch.openShortcut !== undefined;
+    if (shortcutsChanged) {
+      const registered = await this.shortcutController.configure({ ...previous, ...patch });
+      if (!registered.ok) {
+        this.report(await this.shortcutController.configure(previous));
+        return registered;
+      }
+      patch = { ...patch, ...registered.value };
     }
     if (patch.startWithWindows !== undefined) {
       const enabled = await this.tray.setAutostart(patch.startWithWindows);
       if (!enabled.ok) {
-        if (patch.quickNoteShortcut !== undefined)
-          this.report(
-            await this.shortcuts.replace(previous.quickNoteShortcut, this.shortcutPressed),
-          );
+        if (shortcutsChanged) this.report(await this.shortcutController.configure(previous));
         return enabled;
       }
     }
     const saved = await this.settings.getState().update(patch);
     if (!saved.ok) {
       this.settings.getState().revertPending(Object.keys(patch) as (keyof AppSettings)[]);
-      if (patch.quickNoteShortcut !== undefined)
-        this.report(await this.shortcuts.replace(previous.quickNoteShortcut, this.shortcutPressed));
+      if (shortcutsChanged) this.report(await this.shortcutController.configure(previous));
       if (patch.startWithWindows !== undefined)
         this.report(await this.tray.setAutostart(previous.startWithWindows));
       return saved;
@@ -148,19 +221,19 @@ export class DesktopRuntime {
       const notes = await workspace.flushNotes();
       if (!notes.ok) {
         this.report(notes);
-        await this.tray.show().then((result) => this.report(result));
+        await this.show();
         return notes;
       }
       const settingsSaved = await this.settings.getState().flushPendingSaves();
       if (!settingsSaved.ok) {
         this.report(settingsSaved);
-        this.report(await this.tray.show());
+        await this.show();
         return settingsSaved;
       }
       const finalNotes = await workspace.flushNotes();
       if (!finalNotes.ok) {
         this.report(finalNotes);
-        this.report(await this.tray.show());
+        await this.show();
         return finalNotes;
       }
       const settings = this.settings.getState().settings;
@@ -175,18 +248,18 @@ export class DesktopRuntime {
             toast: `Anehalo is still running in the tray. Use ${settings.quickNoteShortcut} for a new note.`,
           });
         }
-        const hidden = await this.tray.hide();
+        const hidden = await this.visibility.hide();
         this.report(hidden);
         return hidden;
       }
-      const released = await this.shortcuts.unregister(this.shortcutPressed);
+      const released = await this.shortcutController.unregister();
       if (!released.ok) {
+        if (settings) this.report(await this.shortcutController.configure(settings));
         this.report(released);
         return released;
       }
       const quit = await this.tray.quit();
-      if (!quit.ok && settings)
-        this.report(await this.shortcuts.replace(settings.quickNoteShortcut, this.shortcutPressed));
+      if (!quit.ok && settings) this.report(await this.shortcutController.configure(settings));
       this.report(quit);
       return quit;
     } finally {
