@@ -3,7 +3,7 @@ import { limitUserName, maximumUserNameLength } from './AppSettings';
 
 export type ChangeSettings = (patch: Partial<AppSettings>) => Promise<void>;
 
-function SettingsToggle({
+export function SettingsToggle({
   label,
   checked,
   change,

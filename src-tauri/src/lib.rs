@@ -78,6 +78,9 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // Updates are checked and installed from the web UI; see src/features/updates.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(
             tauri_plugin_autostart::Builder::new()
                 .args(["--autostart"])

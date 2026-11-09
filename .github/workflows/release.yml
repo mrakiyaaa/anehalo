@@ -33,6 +33,14 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
+      # Cache the NSIS tools Tauri downloads on first use, so releases do not fetch them again.
+      - uses: actions/cache@v6
+        with:
+          path: ~\AppData\Local\tauri
+          key: tauri-nsis-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            tauri-nsis-${{ runner.os }}-
+
       # Install the exact dependencies from package-lock.json.
       - run: npm ci
 
@@ -49,12 +57,26 @@ jobs:
       - name: Unit tests
         run: npm run test
 
-      # Build the NSIS installer and create the draft release for this tag.
+      # Installed copies only accept updates signed with this key. Stop early, with a clear
+      # message, if it is missing. The value is never printed.
+      - name: Check the updater signing key is available
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) {
+            throw 'The repository secret TAURI_SIGNING_PRIVATE_KEY is not set. See docs/RELEASING.md.'
+          }
+
+      # Build the NSIS installer, sign it for the updater, and create the draft release.
+      # tauri-action also uploads latest.json and the .sig file that installed copies read.
       - name: Build installer and create draft release
         id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Anehalo ${{ github.ref_name }}'
@@ -68,6 +90,7 @@ jobs:
             Updating keeps your notes and settings.
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: true
 
       # Copy the installer to a fixed file name and upload it to the same draft release.
       # That gives the landing page a stable link:
@@ -81,7 +104,11 @@ jobs:
           $ErrorActionPreference = 'Stop'
           if (-not $env:RELEASE_ID) { throw 'tauri-action did not return a releaseId.' }
 
-          $installers = @(Get-ChildItem -Path 'src-tauri/target/release/bundle/nsis' -Filter '*-setup.exe' -File)
+          # Match the name exactly, so the installer's .sig file can never be picked up.
+          $installers = @(
+            Get-ChildItem -Path 'src-tauri/target/release/bundle/nsis' -File |
+              Where-Object { $_.Name -like '*-setup.exe' }
+          )
           if ($installers.Count -ne 1) {
             throw "Expected exactly one NSIS installer, found $($installers.Count)."
           }
@@ -105,6 +132,28 @@ jobs:
           $asset = Invoke-RestMethod -Method Post -Headers $headers -Uri $uploadUri `
             -ContentType 'application/octet-stream' -InFile 'Anehalo-Setup.exe'
           Write-Host "Uploaded $($asset.name) ($($asset.size) bytes)."
+
+      # Without latest.json and the .sig file on the release, installed copies cannot update.
+      # Fail here, while the release is still a draft, rather than after it is published.
+      - name: Check the updater files are on the draft release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.tauri.outputs.releaseId }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization          = "Bearer $env:GITHUB_TOKEN"
+            Accept                 = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID/assets?per_page=100"
+          $names = @(Invoke-RestMethod -Headers $headers -Uri $uri) | ForEach-Object { $_.name }
+          if ($names -notcontains 'latest.json') { throw 'latest.json is missing from the draft release.' }
+          if (-not ($names | Where-Object { $_ -like '*-setup.exe.sig' })) {
+            throw 'The installer signature (.sig) is missing from the draft release.'
+          }
+          Write-Host "Updater files present: latest.json and $($names | Where-Object { $_ -like '*.sig' })"
 
       # Record the installer checksum on the workflow run page.
       - name: Write SHA-256 to the job summary

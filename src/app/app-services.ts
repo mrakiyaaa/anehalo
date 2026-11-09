@@ -9,6 +9,7 @@ export interface AppServices {
   desktop?: {
     shortcuts: import('@/features/shortcuts/GlobalShortcutService').GlobalShortcutService;
     tray: import('@/features/tray/TrayService').TrayService;
+    updater?: import('@/features/updates/UpdateService').UpdateService;
   };
   settingsRepository: SettingsRepository;
   folderAccess: FolderAccess;

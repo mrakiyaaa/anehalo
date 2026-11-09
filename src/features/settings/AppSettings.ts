@@ -20,6 +20,7 @@ export interface AppSettings {
   readonly keepRunningInTray: boolean;
   readonly startWithWindows: boolean;
   readonly trayNoticeShown: boolean;
+  readonly autoCheckForUpdates: boolean;
 }
 
 export const themeLabels: Record<ThemePreference, string> = {
@@ -52,6 +53,7 @@ export function defaultSettings(vaultPath: string): AppSettings {
     keepRunningInTray: true,
     startWithWindows: false,
     trayNoticeShown: false,
+    autoCheckForUpdates: true,
   };
 }
 
@@ -116,6 +118,10 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
       'trayNoticeShown' in value && typeof value.trayNoticeShown === 'boolean'
         ? value.trayNoticeShown
         : false,
+    autoCheckForUpdates:
+      'autoCheckForUpdates' in value && typeof value.autoCheckForUpdates === 'boolean'
+        ? value.autoCheckForUpdates
+        : true,
     lastExportFolder:
       'lastExportFolder' in value &&
       typeof value.lastExportFolder === 'string' &&

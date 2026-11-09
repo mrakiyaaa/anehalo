@@ -41,6 +41,8 @@
     "@tauri-apps/plugin-global-shortcut": "^2.4.1",
     "@tauri-apps/plugin-log": "^2.10.1",
     "@tauri-apps/plugin-opener": "^2.7.2",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.14.1",
     "@tiptap/core": "^3.32.3",
     "@tiptap/extension-bubble-menu": "^3.32.3",
     "@tiptap/extension-highlight": "^3.32.3",

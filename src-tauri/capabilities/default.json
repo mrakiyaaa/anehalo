@@ -7,6 +7,7 @@
     "core:path:allow-join",
     "core:path:allow-resolve",
     "core:path:allow-resolve-directory",
+    "core:app:allow-version",
     "core:window:allow-minimize",
     "core:window:allow-is-maximized",
     "core:window:allow-is-visible",
@@ -51,6 +52,8 @@
     "global-shortcut:allow-unregister",
     "core:event:allow-listen",
     "core:event:allow-unlisten",
-    "log:allow-log"
+    "log:allow-log",
+    "updater:default",
+    "process:allow-restart"
   ]
 }

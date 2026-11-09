@@ -2,7 +2,13 @@ import { isTauri } from '@tauri-apps/api/core';
 import { error } from '@tauri-apps/plugin-log';
 import type { RepositoryErrorCode } from '@/features/storage/repository-result';
 
-type ErrorEvent = 'unhandled-error' | 'unhandled-rejection' | 'render-error' | 'save-failed';
+type ErrorEvent =
+  | 'unhandled-error'
+  | 'unhandled-rejection'
+  | 'render-error'
+  | 'save-failed'
+  | 'update-check-failed'
+  | 'update-install-failed';
 
 export function logFailure(event: ErrorEvent, code?: RepositoryErrorCode): void {
   if (!isTauri()) return;

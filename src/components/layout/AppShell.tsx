@@ -1,6 +1,7 @@
 import { SearchPalette } from '@/features/search/SearchPalette';
 import { SettingsScreen } from '@/features/settings/SettingsScreen';
 import { DesktopNotice } from '@/features/tray/DesktopNotice';
+import { UpdateBanner } from '@/features/updates/UpdateBanner';
 import { MainArea } from '@/components/layout/MainArea';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { StatusBar } from '@/components/layout/StatusBar';
@@ -37,6 +38,7 @@ export function AppShell() {
       <StatusBar />
       <SearchPalette />
       <SettingsScreen />
+      <UpdateBanner />
       <DesktopNotice />
     </div>
   );

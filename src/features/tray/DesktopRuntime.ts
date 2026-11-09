@@ -13,6 +13,9 @@ import {
 import { DesktopShortcutController } from '@/features/shortcuts/DesktopShortcutController';
 import { WindowVisibilityController } from '@/features/window/WindowVisibilityController';
 import { parseCommandLineArguments } from '@/features/launch/command-line-arguments';
+import { DisabledUpdateService } from '@/features/updates/DisabledUpdateService';
+import { UpdateController } from '@/features/updates/UpdateController';
+import type { UpdateService } from '@/features/updates/UpdateService';
 
 export class DesktopRuntime {
   readonly state = createStore<{
@@ -31,6 +34,7 @@ export class DesktopRuntime {
     if (!this.state.getState().recordingShortcut) void this.toggle();
   };
   readonly visibility: WindowVisibilityController;
+  readonly updates: UpdateController;
   private readonly shortcutController: DesktopShortcutController;
   private changes: Promise<unknown> = Promise.resolve();
   private toggles: Promise<unknown> = Promise.resolve();
@@ -39,7 +43,13 @@ export class DesktopRuntime {
     private readonly settings: SettingsStore,
     shortcuts: GlobalShortcutService,
     private readonly tray: TrayService,
+    updater: UpdateService = new DisabledUpdateService(),
   ) {
+    this.updates = new UpdateController(updater, {
+      autoCheck: () => this.settings.getState().settings?.autoCheckForUpdates ?? true,
+      flushPendingSaves: () => this.flushPendingSaves(),
+      setEditingLocked: (locked) => this.workspace.getState().setClosing(locked),
+    });
     this.shortcutController = new DesktopShortcutController(shortcuts, {
       'quick-note': this.shortcutPressed,
       open: this.openShortcutPressed,
@@ -107,6 +117,7 @@ export class DesktopRuntime {
     this.state.setState({ error: null, toast: null });
   }
   connect() {
+    void this.updates.start();
     this.lifecycle = this.lifecycle.then(async () => {
       const observed = await this.tray.observe({
         close: () => {
@@ -145,6 +156,7 @@ export class DesktopRuntime {
     return this.lifecycle;
   }
   stop() {
+    this.updates.stop();
     this.lifecycle = this.lifecycle.then(async () => {
       this.disconnect?.();
       this.disconnect = undefined;

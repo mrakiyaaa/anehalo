@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+Automatic updates. Anehalo checks GitHub Releases ten seconds after it starts and every six hours (Settings → Updates can turn this off or check on demand), and shows a small banner when a newer version is published. **Update now** saves all notes and settings, downloads the signed installer, verifies its signature, saves again, and installs for the current user before restarting. Nothing is checked or installed in development builds, and a failed check while offline is logged, not shown. Settings now reads the version from the running app.
+
+Copies installed from 0.1.0 have no updater and must be reinstalled once from the first release that includes it.
+
 ## 0.1.0 — 2026-11-08
 
 First Windows release candidate. Local Markdown vaults, folders, recoverable trash, rich text editing and image attachments, page links and backlinks, Sinhala/Tamil-aware search, Markdown/PDF export, themes, onboarding, tray, autostart, and global quick-note shortcuts.

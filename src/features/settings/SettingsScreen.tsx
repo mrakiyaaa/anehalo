@@ -7,12 +7,14 @@ import { GeneralSettings } from './GeneralSettings';
 import { ShortcutSettings } from './ShortcutSettings';
 import { NotesFolderSettings } from './NotesFolderSettings';
 import type { AppSettings } from './AppSettings';
+import { UpdateSettings } from '@/features/updates/UpdateSettings';
 import logo from '@/assets/logo-mark.png';
-import packageMetadata from '../../../package.json';
 
 function SettingsContent() {
   const settings = useSettingsStore((state) => state.pendingSettings ?? state.settings);
   const runtime = useDesktopRuntime();
+  // Read from the running app, so the number shown can never differ from what is installed.
+  const version = useStore(runtime.updates.state, (state) => state.currentVersion);
   const [error, setError] = useState<string | null>(null);
   async function change(patch: Partial<AppSettings>) {
     const result = await runtime.updateSettings(patch);
@@ -29,11 +31,12 @@ function SettingsContent() {
       <GeneralSettings settings={settings} change={change} />
       <ShortcutSettings settings={settings} change={change} />
       <NotesFolderSettings path={settings.vaultPath} />
+      <UpdateSettings settings={settings} change={change} />
       <section className="settings-section settings-about" aria-labelledby="about-settings">
         <img src={logo} alt="" />
         <div>
           <h3 id="about-settings">About Anehalo</h3>
-          <p>Version {packageMetadata.version}</p>
+          {version && <p>Version {version}</p>}
           <p>A quiet place for your thoughts.</p>
         </div>
       </section>

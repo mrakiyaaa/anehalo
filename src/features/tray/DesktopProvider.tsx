@@ -18,6 +18,7 @@ export function DesktopProvider({ store, children }: PropsWithChildren<{ store: 
         settings,
         services.desktop?.shortcuts ?? new FakeGlobalShortcutService(),
         services.desktop?.tray ?? new FakeTrayService(),
+        services.desktop?.updater,
       ),
   );
   useEffect(() => {

@@ -35,6 +35,33 @@ describe('settings persistence', () => {
     });
   });
 
+  it('checks for updates automatically unless the user has turned it off', async () => {
+    const load = async (extra: Record<string, unknown>) =>
+      unwrapResult(
+        await new InMemorySettingsRepository(
+          JSON.stringify({ ...defaultSettings('D:/Notes'), onboardingCompleted: true, ...extra }),
+        ).load(),
+      );
+    expect(defaultSettings('D:/Notes').autoCheckForUpdates).toBe(true);
+    // A file written before updates existed has no such key.
+    expect((await load({ autoCheckForUpdates: undefined })).autoCheckForUpdates).toBe(true);
+    expect((await load({ autoCheckForUpdates: 'no' })).autoCheckForUpdates).toBe(true);
+    expect((await load({ autoCheckForUpdates: false })).autoCheckForUpdates).toBe(false);
+  });
+
+  it('saves the automatic update setting to settings.json', async () => {
+    const repository = new InMemorySettingsRepository(
+      JSON.stringify({ ...defaultSettings('Memory/Anehalo'), onboardingCompleted: true }),
+    );
+    const store = createSettingsStore(repository);
+    await store.getState().load();
+    unwrapResult(await store.getState().update({ autoCheckForUpdates: false }));
+    expect(JSON.parse(repository.file.content ?? '{}')).toMatchObject({
+      autoCheckForUpdates: false,
+    });
+    expect(unwrapResult(await repository.load()).autoCheckForUpdates).toBe(false);
+  });
+
   it('preserves the last note when theme and note settings update together', async () => {
     const repository = new InMemorySettingsRepository(
       JSON.stringify({ ...defaultSettings('Memory/Anehalo'), onboardingCompleted: true }),

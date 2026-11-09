@@ -37,10 +37,19 @@
   "plugins": {
     "fs": {
       "requireLiteralLeadingDot": false
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdDRDEzMzVEODkxOEIxOTQKUldTVXNSaUpYVFBSZk14dlZzL3c5a1IzWFhRMklwSzlVZEhhWmhMRDE0Rlc2UW5NMDZXVzRMUEUK",
+      "endpoints": ["https://github.com/mrakiyaaa/anehalo/releases/latest/download/latest.json"],
+      "windows": {
+        "installMode": "passive"
+      },
+      "requireSignedVersion": true
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis"],
     "publisher": "Lakshitha",
     "shortDescription": "Private Markdown notes on your desktop",

@@ -74,7 +74,7 @@ npm run version:bump -- 0.1.1
 node scripts/check-version.mjs
 ```
 
-The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, and both lockfiles. Commit those with a changelog entry. GitHub Actions runs strict lint/typecheck, coverage, audits, Rust checks, native E2E, and the installer build on branch pushes and pull requests. Pushing a matching `v<version>` tag runs a separate release workflow that builds the installer and attaches it to a **draft** GitHub Release for manual testing and publishing; see [Releasing](docs/RELEASING.md). Manual checks remain a separate release sign-off.
+The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, and both lockfiles. Commit those with a changelog entry. GitHub Actions runs strict lint/typecheck, coverage, audits, Rust checks, native E2E, and the installer build on branch pushes and pull requests. Pushing a matching `v<version>` tag runs a separate release workflow that builds the installer and attaches it to a **draft** GitHub Release for manual testing and publishing; see [Releasing](docs/RELEASING.md). Once a release is published, installed copies find it themselves: they check shortly after start and every six hours (Settings → Updates), verify the update's signature, and install it after saving your notes. Releases need the updater signing key, and losing that key strands every installed copy, so read the warning in [Releasing](docs/RELEASING.md) first. Manual checks remain a separate release sign-off.
 
 ## Shortcuts
 

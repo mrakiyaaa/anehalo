@@ -1,5 +1,6 @@
 import { TauriGlobalShortcutService } from '@/features/shortcuts/TauriGlobalShortcutService';
 import { TauriTrayService } from '@/features/tray/TauriTrayService';
+import { TauriUpdateService } from '@/features/updates/TauriUpdateService';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from '@/app/App';
@@ -17,7 +18,11 @@ import { observeUnhandledErrors } from '@/features/diagnostics/error-logging';
 observeUnhandledErrors();
 
 const services: AppServices = {
-  desktop: { shortcuts: new TauriGlobalShortcutService(), tray: new TauriTrayService() },
+  desktop: {
+    shortcuts: new TauriGlobalShortcutService(),
+    tray: new TauriTrayService(),
+    updater: new TauriUpdateService(),
+  },
   settingsRepository: new TauriSettingsRepository(),
   folderAccess: new TauriFolderAccess(),
   createNoteRepository: (vaultPath) => new TauriNoteRepository(vaultPath),
