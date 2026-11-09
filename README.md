@@ -74,7 +74,7 @@ npm run version:bump -- 0.1.1
 node scripts/check-version.mjs
 ```
 
-The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, and both lockfiles. Commit those with a changelog entry. GitHub Actions runs strict lint/typecheck, coverage, audits, Rust checks, native E2E, and the installer build on pushes and pull requests. A matching `v<version>` tag attaches the validated installer to a GitHub Release after quality gates pass. Manual checks remain a separate release sign-off.
+The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, and both lockfiles. Commit those with a changelog entry. GitHub Actions runs strict lint/typecheck, coverage, audits, Rust checks, native E2E, and the installer build on branch pushes and pull requests. Pushing a matching `v<version>` tag runs a separate release workflow that builds the installer and attaches it to a **draft** GitHub Release for manual testing and publishing; see [Releasing](docs/RELEASING.md). Manual checks remain a separate release sign-off.
 
 ## Shortcuts
 
@@ -116,7 +116,7 @@ e2e/pages/           Playwright page objects
 e2e/support/         Launch, isolation, native dialog, and process helpers
 scripts/             Build, version, and release checks
 docs/testing/        Validation, audit, manual checklist
-.github/workflows/   Windows quality gates and tagged releases
+.github/workflows/   Windows quality gates (windows.yml), draft releases (release.yml)
 ```
 
 Vault folders contain `.md` notes, `.attachments/` images, and `.trash/` recoverable deletions. `.anehalo-initialized` prevents starter notes from reappearing after deletion. Hidden entries, symbolic links, and junctions are excluded. Permanent note deletion is not exposed.

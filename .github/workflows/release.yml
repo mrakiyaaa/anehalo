@@ -1,0 +1,127 @@
+name: Release
+
+# Pushing a tag such as v0.1.0 builds the Windows installer and attaches it to a
+# DRAFT GitHub Release. Test the draft, then publish it manually.
+# Steps: see docs/RELEASING.md.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      # Check out the tagged commit.
+      - uses: actions/checkout@v7
+
+      # Node 24 (LTS) with the npm cache. Same major as local development and windows.yml.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      # Rust toolchain. This action is selected by branch (@stable), not by a major tag.
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Cache Cargo downloads and the src-tauri build output between releases.
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      # Install the exact dependencies from package-lock.json.
+      - run: npm ci
+
+      # Fail early unless the tag (without "v") equals the version in package.json,
+      # tauri.conf.json and Cargo.toml (and both lockfiles).
+      - name: Check tag matches app version
+        run: node scripts/check-version.mjs
+
+      # Lint with zero warnings allowed.
+      - name: Lint
+        run: npm run lint
+
+      # Unit tests only. E2E tests need an interactive desktop and run in windows.yml.
+      - name: Unit tests
+        run: npm run test
+
+      # Build the NSIS installer and create the draft release for this tag.
+      - name: Build installer and create draft release
+        id: tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Anehalo ${{ github.ref_name }}'
+          releaseBody: |
+            **Windows 10 and 11**
+
+            Download **Anehalo-Setup.exe** below and run it.
+
+            The installer is not code-signed yet. If Windows shows "Windows protected your PC", choose **More info**, then **Run anyway**.
+
+            Updating keeps your notes and settings.
+          releaseDraft: true
+          prerelease: false
+
+      # Copy the installer to a fixed file name and upload it to the same draft release.
+      # That gives the landing page a stable link:
+      #   releases/latest/download/Anehalo-Setup.exe
+      - name: Upload Anehalo-Setup.exe to the draft release
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.tauri.outputs.releaseId }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:RELEASE_ID) { throw 'tauri-action did not return a releaseId.' }
+
+          $installers = @(Get-ChildItem -Path 'src-tauri/target/release/bundle/nsis' -Filter '*-setup.exe' -File)
+          if ($installers.Count -ne 1) {
+            throw "Expected exactly one NSIS installer, found $($installers.Count)."
+          }
+          Copy-Item -LiteralPath $installers[0].FullName -Destination 'Anehalo-Setup.exe'
+
+          $headers = @{
+            Authorization          = "Bearer $env:GITHUB_TOKEN"
+            Accept                 = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $repo = "https://api.github.com/repos/$env:GITHUB_REPOSITORY"
+
+          # If this job is re-run, remove an earlier copy so the upload cannot fail with 422.
+          @(Invoke-RestMethod -Headers $headers -Uri "$repo/releases/$env:RELEASE_ID/assets?per_page=100") |
+            Where-Object { $_.name -eq 'Anehalo-Setup.exe' } |
+            ForEach-Object {
+              Invoke-RestMethod -Method Delete -Headers $headers -Uri "$repo/releases/assets/$($_.id)" | Out-Null
+            }
+
+          $uploadUri = "https://uploads.github.com/repos/$env:GITHUB_REPOSITORY/releases/$env:RELEASE_ID/assets?name=Anehalo-Setup.exe"
+          $asset = Invoke-RestMethod -Method Post -Headers $headers -Uri $uploadUri `
+            -ContentType 'application/octet-stream' -InFile 'Anehalo-Setup.exe'
+          Write-Host "Uploaded $($asset.name) ($($asset.size) bytes)."
+
+      # Record the installer checksum on the workflow run page.
+      - name: Write SHA-256 to the job summary
+        shell: pwsh
+        env:
+          RELEASE_URL: ${{ steps.tauri.outputs.releaseHtmlUrl }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $file = Get-Item -LiteralPath 'Anehalo-Setup.exe'
+          $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          $megabytes = [math]::Round($file.Length / 1MB, 2)
+          @(
+            '### Anehalo-Setup.exe',
+            '',
+            ('- SHA-256: `{0}`' -f $hash),
+            "- Size: $megabytes MB",
+            "- Draft release: $env:RELEASE_URL",
+            '',
+            'The release is a draft. Test it, then publish it manually.'
+          ) | Add-Content -Path $env:GITHUB_STEP_SUMMARY -Encoding utf8
