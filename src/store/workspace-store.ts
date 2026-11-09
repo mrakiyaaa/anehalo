@@ -323,7 +323,11 @@ export function createWorkspaceStore(
           return result;
         }),
       updateNoteContent: (identifier, content) => autoSaver.update(identifier, { content }),
-      updateNoteTitle: (identifier, title) => autoSaver.update(identifier, { title }),
+      editNoteTitle: (identifier, title) => autoSaver.editTitle(identifier, title),
+      commitNoteTitle: async (identifier, title) => {
+        const result = await autoSaver.commitTitle(identifier, title);
+        return result.ok ? success(autoSaver.get(identifier)?.note.title ?? title) : result;
+      },
       reportContentError: (identifier, error) => autoSaver.reportContentError(identifier, error),
       saveNote: (identifier) => autoSaver.flush(identifier),
       saveNoteContent: (identifier) => autoSaver.flushContent(identifier),

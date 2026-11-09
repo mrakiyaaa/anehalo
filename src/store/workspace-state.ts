@@ -47,7 +47,10 @@ export interface WorkspaceState {
   goHome: () => Promise<RepositoryResult<void>>;
   startQuickNote: (content?: string) => Promise<RepositoryResult<Note>>;
   updateNoteContent: (identifier: string, content: string) => void;
-  updateNoteTitle: (identifier: string, title: string) => void;
+  /** Records title-field typing without renaming; see NoteAutoSaver.editTitle. */
+  editNoteTitle: (identifier: string, title: string) => void;
+  /** Renames once for the typed title. Resolves to the title the note ended up with. */
+  commitNoteTitle: (identifier: string, title: string) => Promise<RepositoryResult<string>>;
   reportContentError: (identifier: string, error: RepositoryError) => void;
   saveNote: (identifier: string) => Promise<RepositoryResult<void>>;
   saveNoteContent: (identifier: string) => Promise<RepositoryResult<void>>;

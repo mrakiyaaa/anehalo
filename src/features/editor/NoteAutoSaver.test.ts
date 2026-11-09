@@ -278,3 +278,134 @@ describe('external changes and filenames', () => {
     });
   });
 });
+
+describe('title editing', () => {
+  it('renames nothing while typing, then once after the field has been quiet', async () => {
+    const { saver, identifier, repository } = await setup();
+    const rename = vi.spyOn(repository, 'renameNote');
+    for (const text of ['M', 'My', 'My ti', 'My title']) {
+      saver.editTitle(identifier, text);
+      await vi.advanceTimersByTimeAsync(700);
+    }
+    expect(rename).not.toHaveBeenCalled();
+    // What is typed is not in the draft, so no store update can echo it back into the field.
+    expect(saver.get(identifier)).toMatchObject({ title: 'First', dirty: false });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(rename).toHaveBeenCalledTimes(1);
+    expect(saver.get(identifier)?.note.relativePath).toBe('My title.md');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('never lets the idle timer commit an emptied title, but commits it on request', async () => {
+    const { saver, identifier, repository } = await setup();
+    const rename = vi.spyOn(repository, 'renameNote');
+    saver.editTitle(identifier, '');
+    saver.editTitle(identifier, ' ... ');
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(rename).not.toHaveBeenCalled();
+    expect(saver.get(identifier)?.note.relativePath).toBe('First.md');
+    unwrapResult(await saver.commitTitle(identifier, ''));
+    expect(saver.get(identifier)?.note.relativePath).toBe('Untitled note.md');
+  });
+
+  it('falls back to the next free "Untitled note" name', async () => {
+    const { saver, identifier, repository } = await setup();
+    unwrapResult(await repository.createNote({ title: 'Untitled note' }));
+    unwrapResult(await saver.commitTitle(identifier, ''));
+    expect(saver.get(identifier)).toMatchObject({
+      title: 'Untitled note 2',
+      note: { relativePath: 'Untitled note 2.md' },
+    });
+  });
+
+  it('does not rename for the note’s own name, however it is spelled', async () => {
+    const { saver, identifier, repository } = await setup();
+    const rename = vi.spyOn(repository, 'renameNote');
+    for (const text of ['First', '  First  ', 'First.md']) {
+      unwrapResult(await saver.commitTitle(identifier, text));
+    }
+    expect(rename).not.toHaveBeenCalled();
+    expect(saver.get(identifier)).toMatchObject({ title: 'First', dirty: false });
+  });
+
+  it('treats a case-only change as the same file, not a clash', async () => {
+    const { saver, identifier } = await setup();
+    unwrapResult(await saver.commitTitle(identifier, 'first'));
+    expect(saver.get(identifier)).toMatchObject({
+      title: 'first',
+      note: { relativePath: 'first.md' },
+    });
+  });
+
+  it('numbers a name that another note uses', async () => {
+    const { saver, identifier } = await setup();
+    unwrapResult(await saver.commitTitle(identifier, 'Second'));
+    expect(saver.get(identifier)?.note.relativePath).toBe('Second 2.md');
+  });
+
+  it('commits typing that is still pending on flush, but not for body auto-save or a body blur', async () => {
+    const { saver, identifier, repository } = await setup();
+    saver.editTitle(identifier, 'Typing');
+    saver.update(identifier, { content: 'Body' });
+    await vi.advanceTimersByTimeAsync(600);
+    // The body timer fired and saved the body, leaving the title alone.
+    expect(unwrapResult(await repository.readNote('First.md')).content).toBe('Body');
+    unwrapResult(await saver.flushContent(identifier));
+    expect(saver.get(identifier)?.note.relativePath).toBe('First.md');
+    // Anything that saves everything, such as closing the app, commits it first.
+    unwrapResult(await saver.flushAll());
+    expect(saver.get(identifier)?.note.relativePath).toBe('Typing.md');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('commits typing that is still pending when a single note is flushed', async () => {
+    const { saver, identifier } = await setup();
+    saver.editTitle(identifier, 'Leaving');
+    unwrapResult(await saver.flush(identifier));
+    expect(saver.get(identifier)?.note.relativePath).toBe('Leaving.md');
+  });
+
+  it('stops the quiet-field timer while paused and restarts it on resume', async () => {
+    const { saver, identifier } = await setup();
+    saver.editTitle(identifier, 'Paused');
+    saver.pause();
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(saver.get(identifier)?.note.relativePath).toBe('First.md');
+    saver.editTitle(identifier, 'Paused too');
+    expect(vi.getTimerCount()).toBe(0);
+    saver.resume();
+    await vi.advanceTimersByTimeAsync(800);
+    expect(saver.get(identifier)?.note.relativePath).toBe('Paused too.md');
+  });
+
+  it('keeps the typed title and reports invalid-name, then recovers when the user retypes', async () => {
+    const { saver, identifier } = await setup();
+    expect((await saver.commitTitle(identifier, 'CON')).ok).toBe(false);
+    expect(saver.get(identifier)).toMatchObject({ title: 'CON', error: { code: 'invalid-name' } });
+    unwrapResult(await saver.commitTitle(identifier, 'First'));
+    expect(saver.get(identifier)).toMatchObject({ title: 'First', error: null, dirty: false });
+  });
+
+  it('ignores unknown notes and drops its timer with the note', async () => {
+    const { saver, identifier } = await setup();
+    saver.editTitle('missing', 'Nothing');
+    expect((await saver.commitTitle('missing', 'Nothing')).ok).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    saver.editTitle(identifier, 'Released');
+    saver.release(identifier);
+    expect(saver.get(identifier)).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('drops its timer when the note is deleted, and when the note is reloaded', async () => {
+    const { saver, identifier } = await setup();
+    saver.editTitle(identifier, 'Deleted soon');
+    saver.forgetDeletedPath('First.md');
+    expect(vi.getTimerCount()).toBe(0);
+    const reloaded = unwrapResult(await saver.load('Second.md'));
+    saver.editTitle(reloaded.identifier, 'Reloaded');
+    unwrapResult(await saver.load('Second.md'));
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

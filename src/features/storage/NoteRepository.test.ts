@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { FileSystemNoteRepository } from '@/features/storage/FileSystemNoteRepository';
 import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
-import { MAXIMUM_NAME_LENGTH, sanitizeName } from '@/features/storage/note-names';
+import {
+  MAXIMUM_NAME_LENGTH,
+  cleanNoteTitle,
+  noteTitle,
+  sanitizeName,
+} from '@/features/storage/note-names';
 import { createSnippet, markdownToPlainText } from '@/features/storage/note-snippet';
 import { assertInsideVault } from '@/features/storage/storage-paths';
 import { unwrapResult } from '@/test/repository-helpers';
@@ -46,6 +51,18 @@ describe('Windows names and duplicate suffixes', () => {
     expect(sanitizeName(`a${String.fromCharCode(0)}b`, 'Untitled')).toBe('ab');
     expect(sanitizeName(' . ', 'Untitled note')).toBe('Untitled note');
     expect([...sanitizeName('🌼'.repeat(200), 'Untitled')]).toHaveLength(MAXIMUM_NAME_LENGTH);
+  });
+
+  it('cleans a typed note title without throwing, leaving the fallback to the caller', () => {
+    expect(cleanNoteTitle('  Plan.md')).toBe('Plan');
+    expect(cleanNoteTitle('Plan.MD')).toBe('Plan');
+    expect(cleanNoteTitle('a/b:c')).toBe('abc');
+    expect(cleanNoteTitle(' ... ')).toBe('');
+    expect(cleanNoteTitle('')).toBe('');
+    // Reserved names are rejected when saving, not while the user is still typing.
+    expect(cleanNoteTitle('CON')).toBe('CON');
+    expect(() => noteTitle('CON')).toThrow();
+    expect(noteTitle('')).toBe('Untitled note');
   });
 
   it.each([

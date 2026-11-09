@@ -80,8 +80,7 @@ describe('links in live drafts', () => {
     unwrapResult(await store.getState().openNote('Old.md'));
     const draft = store.getState().openDraft!;
     store.getState().updateNoteContent(draft.identifier, '[Old](Old.md) latest text');
-    store.getState().updateNoteTitle(draft.identifier, 'New');
-    unwrapResult(await store.getState().saveNote(draft.identifier));
+    unwrapResult(await store.getState().commitNoteTitle(draft.identifier, 'New'));
     expect(store.getState().openDraft?.content).toBe('[New](New.md) latest text');
     expect(store.getState().openDraft?.dirty).toBe(false);
     expect(unwrapResult(await source.readNote('New.md')).content).toBe('[New](New.md) latest text');

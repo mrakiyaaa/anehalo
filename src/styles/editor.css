@@ -177,6 +177,14 @@
 .editor-title[aria-invalid='true'] {
   box-shadow: 0 2px 0 var(--danger);
 }
+.editor-title-hint {
+  margin: 4px 0 0;
+  color: var(--subtle-ink);
+  font-size: 12.5px;
+}
+.editor-title-hint:empty {
+  display: none;
+}
 .editor-folder-chip {
   display: inline-flex;
   align-items: center;

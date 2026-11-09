@@ -43,7 +43,10 @@ describe('vault home', () => {
     fireEvent.change(title, { target: { value: 'Shared note' } });
     await screen.findByRole('textbox', { name: 'Note content' });
     await waitFor(() => expect(title).toHaveValue('Shared note'));
-    await waitFor(async () => expect((await repository.readNote('Shared note.md')).ok).toBe(true));
+    // The rename follows the title field being quiet for 800 ms, longer than waitFor's default.
+    await waitFor(async () => expect((await repository.readNote('Shared note.md')).ok).toBe(true), {
+      timeout: 4000,
+    });
   });
   it('loads the welcome note and real repository totals', async () => {
     await renderWorkspace();

@@ -14,6 +14,7 @@ import {
   type RepositoryResult,
 } from '@/features/storage/repository-result';
 import { isInsideFolder, pathName, parentPath } from '@/features/storage/storage-paths';
+import { DEFAULT_NOTE_TITLE, cleanNoteTitle } from '@/features/storage/note-names';
 import type { Note } from '@/types/notes';
 import { logFailure } from '@/features/diagnostics/error-logging';
 import {
@@ -22,12 +23,18 @@ import {
   type LinkRename,
 } from '@/features/note-links/NoteLinkRewriter';
 
+/** How long the title field must stay quiet before what was typed becomes a rename. */
+const TITLE_IDLE_DELAY_MS = 800;
+
 interface DraftSession {
   draft: NoteDraft;
   timer: ReturnType<typeof setTimeout> | null;
   retryCount: number;
   releaseWhenSaved: boolean;
   lastEditedAt: number;
+  /** Text typed in the title field that has not been turned into a rename yet. */
+  titleEdit: string | null;
+  titleTimer: ReturnType<typeof setTimeout> | null;
 }
 
 export interface DraftChange {
@@ -94,6 +101,11 @@ export class NoteAutoSaver {
     session.timer = null;
   }
 
+  private clearTitleTimer(session: DraftSession) {
+    if (session.titleTimer !== null) clearTimeout(session.titleTimer);
+    session.titleTimer = null;
+  }
+
   private schedule(session: DraftSession, delay = 500) {
     this.clearTimer(session);
     if (
@@ -106,7 +118,8 @@ export class NoteAutoSaver {
       return;
     session.timer = setTimeout(() => {
       session.timer = null;
-      void this.flush(session.draft.identifier);
+      // Body auto-save never commits a title the user is still typing; that has its own timer.
+      void this.flush(session.draft.identifier, false);
     }, delay);
   }
 
@@ -135,16 +148,67 @@ export class NoteAutoSaver {
       const result = await this.repository.readNote(relativePath);
       if (!result.ok) return result;
       const draft = createNoteDraft(result.value, existing?.draft.identifier);
-      if (existing) this.clearTimer(existing);
+      if (existing) {
+        this.clearTimer(existing);
+        this.clearTitleTimer(existing);
+      }
       this.sessions.set(draft.identifier, {
         draft,
         timer: null,
         retryCount: 0,
         releaseWhenSaved: false,
         lastEditedAt: 0,
+        titleEdit: null,
+        titleTimer: null,
       });
       return success(draft);
     });
+  }
+
+  private armTitleTimer(session: DraftSession) {
+    this.clearTitleTimer(session);
+    // An emptied field waits for blur or Enter, so clearing it to retype never renames the note.
+    if (this.paused || session.titleEdit === null || cleanNoteTitle(session.titleEdit) === '')
+      return;
+    session.titleTimer = setTimeout(() => {
+      session.titleTimer = null;
+      void this.commitTitle(session.draft.identifier);
+    }, TITLE_IDLE_DELAY_MS);
+  }
+
+  /**
+   * Records what is typed in the title field. Nothing is renamed and the draft's title is left
+   * alone: the rename waits for commitTitle, for the field to be quiet, or for a flush.
+   */
+  editTitle(identifier: string, text: string) {
+    const session = this.sessions.get(identifier);
+    if (!session) return;
+    session.titleEdit = text;
+    this.armTitleTimer(session);
+  }
+
+  private applyTitleEdit(session: DraftSession) {
+    const typed = session.titleEdit;
+    session.titleEdit = null;
+    this.clearTitleTimer(session);
+    if (typed === null) return;
+    const { note } = session.draft;
+    // The note's own name (or that name plus stray spaces or ".md") is not a rename, so it can
+    // never be treated as a clash with itself.
+    const title = (cleanNoteTitle(typed) || DEFAULT_NOTE_TITLE) === note.title ? note.title : typed;
+    this.update(session.draft.identifier, { title });
+  }
+
+  /**
+   * Turns the typed title into a single rename. Blur, Enter and Escape pass the field's text;
+   * the idle timer commits what editTitle last recorded.
+   */
+  commitTitle(identifier: string, text?: string): Promise<RepositoryResult<void>> {
+    const session = this.sessions.get(identifier);
+    if (!session) return Promise.resolve(success(undefined));
+    if (text !== undefined) session.titleEdit = text;
+    this.applyTitleEdit(session);
+    return this.flush(identifier);
   }
 
   update(identifier: string, changes: Partial<Pick<NoteDraft, 'content' | 'title'>>) {
@@ -259,10 +323,13 @@ export class NoteAutoSaver {
     return success(undefined);
   }
 
-  flush(identifier: string): Promise<RepositoryResult<void>> {
+  /** Saves now. Text still being typed in the title field is committed first unless told not to. */
+  flush(identifier: string, applyTitleEdit = true): Promise<RepositoryResult<void>> {
     return this.run(async () => {
       const session = this.sessions.get(identifier);
-      return session ? this.saveSession(session) : success(undefined);
+      if (!session) return success(undefined);
+      if (applyTitleEdit) this.applyTitleEdit(session);
+      return this.saveSession(session);
     });
   }
 
@@ -276,6 +343,7 @@ export class NoteAutoSaver {
   private async saveEverySession(): Promise<RepositoryResult<void>> {
     let firstError: RepositoryError | null = null;
     for (const session of this.sessions.values()) {
+      this.applyTitleEdit(session);
       const result = await this.saveSession(session);
       if (!result.ok) firstError ??= result.error;
     }
@@ -415,6 +483,7 @@ export class NoteAutoSaver {
         });
       else {
         this.clearTimer(session);
+        this.clearTitleTimer(session);
         this.sessions.delete(session.draft.identifier);
       }
     }
@@ -425,16 +494,23 @@ export class NoteAutoSaver {
     if (session?.draft.dirty) session.releaseWhenSaved = true;
     if (session && !session.draft.dirty) {
       this.clearTimer(session);
+      this.clearTitleTimer(session);
       this.sessions.delete(identifier);
     }
   }
 
   pause() {
     this.paused = true;
-    for (const session of this.sessions.values()) this.clearTimer(session);
+    for (const session of this.sessions.values()) {
+      this.clearTimer(session);
+      this.clearTitleTimer(session);
+    }
   }
   resume() {
     this.paused = false;
-    for (const session of this.sessions.values()) this.schedule(session);
+    for (const session of this.sessions.values()) {
+      this.schedule(session);
+      this.armTitleTimer(session);
+    }
   }
 }

@@ -6,11 +6,10 @@ import { pathName } from '@/features/storage/storage-paths';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { NoteNavigation } from '@/features/note-links/NoteNavigation';
 import { ExportMenu } from '@/features/export/ExportMenu';
+import { NoteTitleField } from '@/features/editor/NoteTitleField';
 
 export function EditorHeader({ draft }: { draft: NoteDraft }) {
   const goHome = useWorkspaceStore((state) => state.goHome);
-  const updateTitle = useWorkspaceStore((state) => state.updateNoteTitle);
-  const saveNote = useWorkspaceStore((state) => state.saveNote);
   const isMutating = useWorkspaceStore((state) => state.isMutating || state.isClosing);
   const statusText =
     draft.status === 'saving'
@@ -47,18 +46,8 @@ export function EditorHeader({ draft }: { draft: NoteDraft }) {
         <label htmlFor="note-title" className="sr-only">
           Note title
         </label>
-        <input
-          id="note-title"
-          className="editor-title"
-          value={draft.title}
-          placeholder="Untitled note"
-          disabled={isMutating}
-          aria-invalid={draft.error?.code === 'invalid-name'}
-          onChange={(event) => updateTitle(draft.identifier, event.target.value)}
-          onBlur={() => {
-            void saveNote(draft.identifier);
-          }}
-        />
+        {/* Keyed by note so a half-edited title can never carry over to another note. */}
+        <NoteTitleField key={draft.identifier} draft={draft} disabled={isMutating} />
       </div>
       <span
         className={`editor-folder-chip tone-${folderTone(draft.note.folder)}`}
