@@ -1,7 +1,7 @@
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { defaultSettings, type AppSettings } from '../../src/features/settings/AppSettings';
@@ -71,19 +71,17 @@ export class TauriApplication {
   async start(launchArguments: readonly string[] = []) {
     if (process.platform !== 'win32')
       throw new Error('Real Tauri E2E tests require Windows/WebView2.');
-    try {
-      await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(300) });
-      throw new Error('CDP port 9222 is occupied. Close the other debugging session first.');
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('CDP port')) throw error;
-    }
+    // A port file left by the previous launch would point at a closed port. Its WebView2
+    // process can hold the file for a moment after being killed, hence the retries.
+    await rm(this.devtoolsPortFile, { force: true, maxRetries: 20, retryDelay: 100 });
     const started = performance.now();
     this.startedEpoch = Date.now();
     this.process = spawn(resolve('src-tauri/target/qa/debug/anehalo.exe'), launchArguments, {
       env: {
         ...process.env,
         ANEHALO_TEST_ROOT: this.root,
-        WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222',
+        // Port 0 lets WebView2 pick a free port, so a busy port on the machine cannot block tests.
+        WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=0',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
@@ -98,8 +96,8 @@ export class TauriApplication {
     this.process.stdout?.on('data', (chunk: Buffer) => {
       this.nativeOutput += chunk.toString();
     });
-    await this.waitForDevtools(() => launchError);
-    this.browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+    const devtoolsEndpoint = await this.waitForDevtools(() => launchError);
+    this.browser = await chromium.connectOverCDP(devtoolsEndpoint);
     const context = this.browser.contexts()[0];
     if (!context) throw new Error('WebView2 did not expose a browser context.');
     this.activePage = context.pages()[0] ?? (await context.waitForEvent('page'));
@@ -112,16 +110,38 @@ export class TauriApplication {
     this.startupMilliseconds = performance.now() - started;
   }
 
-  private async waitForDevtools(launchError: () => Error | undefined) {
+  /** WebView2 writes the port it chose to this file inside the isolated profile. */
+  private get devtoolsPortFile() {
+    return join(this.root, 'runtime', 'EBWebView', 'DevToolsActivePort');
+  }
+
+  private async readDevtoolsPort(): Promise<string | null> {
+    try {
+      const port = (await readFile(this.devtoolsPortFile, 'utf8')).split(/\r?\n/)[0]?.trim();
+      return port && /^\d+$/.test(port) ? port : null;
+    } catch (error) {
+      // Missing until WebView2 starts, and locked while WebView2 is still writing it.
+      const notReadyYet = ['ENOENT', 'EBUSY'];
+      if (error instanceof Error && 'code' in error && notReadyYet.includes(String(error.code)))
+        return null;
+      throw error;
+    }
+  }
+
+  private async waitForDevtools(launchError: () => Error | undefined): Promise<string> {
     const deadline = performance.now() + 20_000;
     while (performance.now() < deadline) {
       const error = launchError();
       if (error) throw error;
       if (this.process?.exitCode !== null) break;
-      try {
-        if ((await fetch('http://127.0.0.1:9222/json/version')).ok) return;
-      } catch {
-        // The port opens only once WebView2 has started; keep waiting.
+      const port = await this.readDevtoolsPort();
+      if (port) {
+        const endpoint = `http://127.0.0.1:${port}`;
+        try {
+          if ((await fetch(`${endpoint}/json/version`)).ok) return endpoint;
+        } catch {
+          // The port file can appear just before the server accepts connections.
+        }
       }
       await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
     }
@@ -141,8 +161,10 @@ export class TauriApplication {
     } catch (error) {
       runtimeLog = `unavailable (${String(error)})`;
     }
+    const port = await this.readDevtoolsPort();
     return [
       `WebView2 never opened its DevTools port; the Tauri process ${state}.`,
+      `DevTools port file: ${port ?? 'missing'}`,
       `Native output: ${this.nativeOutput.slice(-2_000) || '(none)'}`,
       `Runtime log: ${runtimeLog || '(empty)'}`,
     ].join('\n');
