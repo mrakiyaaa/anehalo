@@ -15,7 +15,9 @@ export const test = base.extend<{ application: TauriApplication }>({
   application: async ({ browserName }, provideApplication, testInfo) => {
     if (browserName !== 'chromium') throw new Error('WebView2 requires Chromium CDP.');
     const root = await createTestDirectory();
-    const application = new TauriApplication(root);
+    // Opt-in, because tracing slows the app down: ANEHALO_E2E_TRACE=1 keeps traces of failures.
+    const traceDirectory = process.env.ANEHALO_E2E_TRACE ? testInfo.outputPath('traces') : null;
+    const application = new TauriApplication(root, traceDirectory);
     try {
       await provideApplication(application);
       expect(application.errors, 'No JavaScript, CSP, or resource errors').toEqual([]);
@@ -46,6 +48,8 @@ export const test = base.extend<{ application: TauriApplication }>({
         }
       }
       await application.stop();
+      if (traceDirectory && testInfo.status === testInfo.expectedStatus)
+        await rm(traceDirectory, { recursive: true, force: true });
       await removeTestRoot(root);
     }
   },

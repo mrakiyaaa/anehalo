@@ -5,6 +5,7 @@ import type { RepositoryResult } from '@/features/storage/repository-result';
 import { WindowVisibilityController } from '@/features/window/WindowVisibilityController';
 import { parseCommandLineArguments } from '@/features/launch/command-line-arguments';
 import { SettingsContext } from '@/features/settings/settings-context';
+import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
 
 export function StartupTrayBridge() {
   const { desktop } = useAppServices();
@@ -33,7 +34,8 @@ export function StartupTrayBridge() {
       if (!action.ok) setError(action.error.message);
       if (!action.ok || action.value !== 'background') {
         const shown = await visibility.show();
-        if (!shown.ok && !disposed) setError(shown.error.message);
+        if (shown.ok) markStartupOnce(startupMarks.windowShown);
+        else if (!disposed) setError(shown.error.message);
       }
     });
     return () => {

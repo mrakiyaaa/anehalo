@@ -72,7 +72,7 @@ jobs:
 
       - name: Build debug app for E2E
         run: npm run build:debug
-      # Published as an annotation so E2E launch problems can be diagnosed without log access.
+      # Published as an annotation, so startup numbers can be read with the WebView2 version.
       - name: Describe the E2E desktop
         shell: pwsh
         run: |
@@ -83,24 +83,19 @@ jobs:
           $session = (Get-Process -Id $PID).SessionId
           $explorer = @(Get-Process explorer -ErrorAction SilentlyContinue).Count
           "::notice title=E2E desktop::WebView2 $webView; user $env:USERNAME; session $session; interactive $([Environment]::UserInteractive); explorer processes $explorer"
-          $policies = foreach ($hive in 'HKLM', 'HKCU') {
-            foreach ($key in 'Microsoft\Edge', 'Microsoft\Edge\WebView2', 'Microsoft\EdgeUpdate') {
-              $path = "${hive}:\SOFTWARE\Policies\$key"
-              $values = Get-ItemProperty -Path $path -ErrorAction SilentlyContinue
-              if ($values) {
-                $names = $values.PSObject.Properties |
-                  Where-Object { $_.Name -notlike 'PS*' } |
-                  ForEach-Object { "$($_.Name)=$($_.Value)" }
-                "$path [$($names -join ', ')]"
-              }
-            }
-          }
-          $policySummary = if ($policies) { $policies -join ' | ' } else { 'none' }
-          $webViewVariables = (Get-ChildItem env: | Where-Object Name -like 'WEBVIEW2*' | ForEach-Object Name) -join ', '
-          "::notice title=WebView2 policies::$policySummary; WEBVIEW2 variables already set: $(if ($webViewVariables) { $webViewVariables } else { 'none' })"
       # The runner has no visible display, so the real app window runs unattended.
       - name: End-to-end tests
-        run: npm run test:e2e
+        run: npm run test:e2e -- --grep-invert @startup-budget
+      # Budgets live in e2e/support/startup-budgets.ts. Two repeats give six measured launches
+      # for the per-stage profile that the startup reporter adds to the job summary.
+      - name: Startup budget (debug build)
+        run: npm run test:e2e -- --grep @startup-budget --repeat-each=2
+      - name: Build optimized app for the startup budget
+        run: npm run build:e2e-optimized
+      - name: Startup budget (optimized build)
+        run: npm run test:e2e -- --grep @startup-budget --repeat-each=2
+        env:
+          ANEHALO_E2E_BUILD: optimized
 
       - name: Build Windows installer
         run: npm run build:installer

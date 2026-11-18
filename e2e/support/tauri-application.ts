@@ -3,8 +3,11 @@ import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { chromium, type Browser, type Page } from '@playwright/test';
+import { chromium, expect, type Browser, type Page } from '@playwright/test';
 import { defaultSettings, type AppSettings } from '../../src/features/settings/AppSettings';
+import { startupMarks, type StartupMark } from '../../src/features/diagnostics/startup-marks';
+import { e2eExecutable, selectedE2eBuild } from './e2e-build';
+import { parseNativeTimeline, type StartupTimestamps } from './startup-profile';
 
 const executeFile = promisify(execFile);
 
@@ -17,7 +20,13 @@ export class TauriApplication {
   private startedEpoch = 0;
   private nativeOutput = '';
 
-  constructor(readonly root: string) {}
+  private launchCount = 0;
+
+  /** @param traceDirectory Where to keep a Playwright trace of each launch, or null for none. */
+  constructor(
+    readonly root: string,
+    private readonly traceDirectory: string | null = null,
+  ) {}
 
   get vault() {
     return join(this.root, 'Anehalo');
@@ -76,7 +85,7 @@ export class TauriApplication {
     await rm(this.devtoolsPortFile, { force: true, maxRetries: 20, retryDelay: 100 });
     const started = performance.now();
     this.startedEpoch = Date.now();
-    this.process = spawn(resolve('src-tauri/target/qa/debug/anehalo.exe'), launchArguments, {
+    this.process = spawn(resolve(e2eExecutable(selectedE2eBuild())), launchArguments, {
       env: {
         ...process.env,
         ANEHALO_TEST_ROOT: this.root,
@@ -98,6 +107,8 @@ export class TauriApplication {
     this.browser = await chromium.connectOverCDP(devtoolsEndpoint);
     const context = this.browser.contexts()[0];
     if (!context) throw new Error('WebView2 did not expose a browser context.');
+    this.launchCount += 1;
+    if (this.traceDirectory) await context.tracing.start({ screenshots: true, snapshots: true });
     this.activePage = context.pages()[0] ?? (await context.waitForEvent('page'));
     this.page.on('pageerror', (error) => this.errors.push(error.stack ?? error.message));
     this.page.on('console', (message) => {
@@ -209,6 +220,11 @@ export class TauriApplication {
 
   async stop() {
     const running = this.process;
+    // A trace can be saved only while WebView2 is still connected.
+    if (this.traceDirectory && running?.exitCode === null)
+      await this.browser?.contexts()[0]?.tracing.stop({
+        path: join(this.traceDirectory, `launch-${this.launchCount}.zip`),
+      });
     if (running?.pid && running.exitCode === null) {
       try {
         await executeFile('taskkill', ['/PID', String(running.pid), '/T', '/F'], {
@@ -262,25 +278,47 @@ export class TauriApplication {
     );
     return JSON.parse(result.stdout) as unknown;
   }
-  async usableMilliseconds(): Promise<number> {
-    const usableEpoch = await this.page.evaluate(() => {
-      const marker = performance.getEntriesByName('anehalo:usable')[0];
-      if (!marker) throw new Error('The workspace has not committed its usable screen.');
-      return performance.timeOrigin + marker.startTime;
+  /** Waits for the background search index too, so every stage of the launch is present. */
+  async startupTimestamps(): Promise<StartupTimestamps> {
+    await expect
+      .poll(() => this.pageMarkTimes().then((marks) => marks[startupMarks.searchIndexFinished]), {
+        timeout: 30_000,
+      })
+      .toBeDefined();
+    const native = await this.page.evaluate(() => {
+      const desktop = window as unknown as {
+        __TAURI_INTERNALS__: { invoke: (command: string) => Promise<unknown> };
+      };
+      return desktop.__TAURI_INTERNALS__.invoke('startup_timeline');
     });
-    return usableEpoch - this.startedEpoch;
+    return {
+      spawned: this.startedEpoch,
+      ...parseNativeTimeline(native),
+      marks: await this.pageMarkTimes(),
+    };
   }
-  async startupProfile(): Promise<unknown> {
-    return this.page.evaluate(() => ({
-      markers: performance
-        .getEntriesByType('mark')
-        .map(({ name, startTime }) => ({ name, startTime })),
-      resources: performance.getEntriesByType('resource').map(({ name, startTime, duration }) => ({
-        name: name.split('/').at(-1),
-        startTime,
-        duration,
-      })),
-    }));
+  private async pageMarkTimes(): Promise<Partial<Record<StartupMark, number>>> {
+    const names: StartupMark[] = Object.values(startupMarks);
+    const entries = await this.page.evaluate(
+      (markNames) =>
+        markNames.flatMap((name) => {
+          const mark = performance.getEntriesByName(name, 'mark')[0];
+          return mark ? [[name, performance.timeOrigin + mark.startTime] as const] : [];
+        }),
+      names,
+    );
+    return Object.fromEntries(entries);
+  }
+  /** A new WebView2 profile makes every measured launch a first launch, as in a fresh install. */
+  async resetWebviewProfile() {
+    if (this.process)
+      throw new Error('Stop the application before resetting its WebView2 profile.');
+    await rm(join(this.root, 'runtime', 'EBWebView'), {
+      recursive: true,
+      force: true,
+      maxRetries: 20,
+      retryDelay: 100,
+    });
   }
   async log(): Promise<string> {
     return readFile(join(this.root, 'runtime', 'logs', 'anehalo.log'), 'utf8');

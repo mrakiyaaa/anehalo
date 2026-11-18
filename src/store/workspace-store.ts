@@ -22,6 +22,7 @@ import { compareNoteRecency } from '@/features/storage/note-order';
 import { validateSavedVaultPath } from '@/features/onboarding/vault-location';
 import { ScanBudget } from '@/features/storage/ScanBudget';
 import { defaultScanLimits } from '@/features/storage/ScanLimits';
+import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
 
 export function createWorkspaceStore(
   sourceRepository: NoteRepository,
@@ -58,9 +59,11 @@ export function createWorkspaceStore(
     let refreshIdentifier = 0;
 
     function indexTree(tree: VaultTree, rebuildLinks: boolean) {
+      markStartupOnce(startupMarks.searchIndexStarted);
       void searchIndex
         .refresh(sourceRepository, tree.notes)
         .then((indexed) => {
+          markStartupOnce(startupMarks.searchIndexFinished);
           if (!indexed.ok && active) set({ error: indexed.error });
         })
         .catch((error: unknown) => {

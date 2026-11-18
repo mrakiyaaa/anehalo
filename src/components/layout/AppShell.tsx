@@ -10,6 +10,7 @@ import { useQuickCaptureShortcut } from '@/features/editor/use-quick-capture-sho
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { EditorScreen } from '@/features/editor/EditorScreen';
 import { useLayoutEffect } from 'react';
+import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
 
 export function AppShell() {
   const startQuickNote = useWorkspaceStore((state) => state.startQuickNote);
@@ -17,8 +18,7 @@ export function AppShell() {
   const view = useWorkspaceStore((state) => state.view);
   const vaultReady = useWorkspaceStore((state) => Boolean(state.tree.vaultPath));
   useLayoutEffect(() => {
-    if (vaultReady && performance.getEntriesByName('anehalo:usable').length === 0)
-      performance.mark('anehalo:usable');
+    if (vaultReady) markStartupOnce(startupMarks.usable);
   }, [vaultReady]);
   async function createQuickNote() {
     if (isMutating) return;

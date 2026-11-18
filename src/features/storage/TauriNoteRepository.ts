@@ -18,6 +18,7 @@ import { defaultScanLimits, scanLimitMessage, type ScanLimits } from './ScanLimi
 import { openVaultAccess } from './open-vault-access';
 import { SearchTextProcessor } from '@/features/search/SearchTextProcessor';
 import { prepareNotePreview } from './prepare-note-preview';
+import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
 
 interface VaultSnapshot {
   readonly entryCount?: number;
@@ -41,8 +42,7 @@ export class TauriNoteRepository extends FileSystemNoteRepository {
     this.hydration = null;
     const budget = new ScanBudget(limits);
     try {
-      const recordStartup = performance.getEntriesByName('anehalo:vault-read-start').length === 0;
-      if (recordStartup) performance.mark('anehalo:vault-read-start');
+      markStartupOnce(startupMarks.vaultReadStarted);
       const snapshot = await budget.wait(
         invoke<VaultSnapshot>('read_vault_snapshot', {
           vaultPath: this.resolvedVaultPath,
@@ -53,7 +53,7 @@ export class TauriNoteRepository extends FileSystemNoteRepository {
           },
         }),
       );
-      if (recordStartup) performance.mark('anehalo:vault-read-end');
+      markStartupOnce(startupMarks.vaultReadFinished);
       const { tree } = await this.prepareSnapshot(snapshot, true, budget);
       if (generation === this.snapshotGeneration)
         this.hydration = this.hydrateSnapshot(

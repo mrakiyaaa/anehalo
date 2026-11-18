@@ -14,6 +14,9 @@ import { TauriAttachmentRepository } from '@/features/attachments/TauriAttachmen
 import { TauriExportPlatform } from '@/features/export/TauriExportPlatform';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { observeUnhandledErrors } from '@/features/diagnostics/error-logging';
+import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
+
+markStartupOnce(startupMarks.scriptStarted);
 
 observeUnhandledErrors();
 
