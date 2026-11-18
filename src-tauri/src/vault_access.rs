@@ -189,6 +189,20 @@ pub fn authorize_vault(app: &tauri::AppHandle, root: &Path, create: bool) -> Vau
             "Choose this location in Anehalo before opening it.",
         ));
     }
+    prepare_vault_directory(root, create)?;
+    app.fs_scope().allow_directory(root, true).map_err(|_| {
+        VaultError::new(
+            "permission-denied",
+            "Could not grant access to the Anehalo vault.",
+        )
+    })?;
+    Ok(())
+}
+
+/// Touches only the vault folder itself and its ancestors' metadata. The parent the user
+/// picked can hold any number of unrelated files, so it must never be listed or walked.
+fn prepare_vault_directory(root: &Path, create: bool) -> VaultResult<()> {
+    validate_path(root)?;
     let parent = root.parent().ok_or_else(|| {
         VaultError::new(
             "invalid-path",
@@ -209,14 +223,7 @@ pub fn authorize_vault(app: &tauri::AppHandle, root: &Path, create: bool) -> Vau
         }
         Err(error) => return Err(error.into()),
     }
-    check_writable(root)?;
-    app.fs_scope().allow_directory(root, true).map_err(|_| {
-        VaultError::new(
-            "permission-denied",
-            "Could not grant access to the Anehalo vault.",
-        )
-    })?;
-    Ok(())
+    check_writable(root)
 }
 
 #[tauri::command]
@@ -333,4 +340,187 @@ pub async fn read_vault_directory(
     })
     .await
     .map_err(|_| VaultError::new("unavailable", "The vault directory could not be read."))?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    const LARGE_TREE_FOLDERS: usize = 50;
+    const LARGE_TREE_SUBFOLDERS: usize = 10;
+    const LARGE_TREE_FILES_PER_SUBFOLDER: usize = 10;
+    const SETUP_TIME_LIMIT: Duration = Duration::from_secs(2);
+
+    /// Kept out of the system temp folder because vault paths inside AppData are rejected.
+    struct TestDirectory(PathBuf);
+
+    impl TestDirectory {
+        fn new() -> Self {
+            let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("target")
+                .join("vault-access-tests")
+                .join(uuid::Uuid::new_v4().to_string());
+            fs::create_dir_all(&path).expect("create the test directory");
+            Self(path)
+        }
+    }
+
+    impl Drop for TestDirectory {
+        fn drop(&mut self) {
+            if let Err(error) = fs::remove_dir_all(&self.0) {
+                eprintln!("Could not remove {}: {error}", self.0.display());
+            }
+        }
+    }
+
+    fn create_large_tree(parent: &Path) -> usize {
+        let mut file_count = 0;
+        for folder in 0..LARGE_TREE_FOLDERS {
+            for subfolder in 0..LARGE_TREE_SUBFOLDERS {
+                let directory = parent
+                    .join(format!("Folder {folder}"))
+                    .join(format!("Nested {subfolder}"));
+                fs::create_dir_all(&directory).expect("create a nested folder");
+                for file in 0..LARGE_TREE_FILES_PER_SUBFOLDER {
+                    fs::write(directory.join(format!("File {file}.md")), "Unrelated file.")
+                        .expect("write an unrelated file");
+                    file_count += 1;
+                }
+            }
+        }
+        file_count
+    }
+
+    /// A folder nobody may list. Any recursive walk of its parent fails on it, which is how
+    /// the tests prove that vault setup never walks the folder the user picked.
+    #[cfg(windows)]
+    struct UnlistableFolder(PathBuf);
+
+    #[cfg(windows)]
+    impl UnlistableFolder {
+        const EVERYONE: &'static str = "*S-1-1-0";
+
+        fn lock(path: &Path) -> Self {
+            fs::create_dir_all(path).expect("create the unlistable folder");
+            Self::run_icacls(path, &["/deny", &format!("{}:(RD)", Self::EVERYONE)]);
+            assert!(
+                fs::read_dir(path).is_err(),
+                "the folder must be unlistable for this test to prove anything"
+            );
+            Self(path.to_path_buf())
+        }
+
+        fn run_icacls(path: &Path, arguments: &[&str]) {
+            let status = std::process::Command::new("icacls")
+                .arg(path)
+                .args(arguments)
+                .stdout(std::process::Stdio::null())
+                .status()
+                .expect("run icacls");
+            assert!(status.success(), "icacls {arguments:?} failed");
+        }
+    }
+
+    #[cfg(windows)]
+    impl Drop for UnlistableFolder {
+        fn drop(&mut self) {
+            Self::run_icacls(&self.0, &["/remove:d", Self::EVERYONE]);
+        }
+    }
+
+    fn list_tree(directory: &Path) -> Vec<(PathBuf, u64)> {
+        let mut entries = Vec::new();
+        let mut pending = vec![directory.to_path_buf()];
+        while let Some(current) = pending.pop() {
+            for entry in fs::read_dir(&current).expect("list a test folder") {
+                let entry = entry.expect("read a test entry");
+                let metadata = entry.metadata().expect("read test metadata");
+                let path = entry.path();
+                if metadata.is_dir() {
+                    pending.push(path.clone());
+                }
+                let relative = path
+                    .strip_prefix(directory)
+                    .expect("entry inside the tree")
+                    .to_path_buf();
+                entries.push((relative, metadata.len()));
+            }
+        }
+        entries.sort();
+        entries
+    }
+
+    #[test]
+    fn preparing_a_vault_in_a_large_folder_creates_only_the_anehalo_child() {
+        let test_directory = TestDirectory::new();
+        let parent = test_directory.0.join("Large library");
+        let file_count = create_large_tree(&parent);
+        assert_eq!(file_count, 5_000);
+        let tree_before = list_tree(&parent);
+
+        #[cfg(windows)]
+        let walk_trap = UnlistableFolder::lock(&parent.join("Folder 49").join("Nested 9"));
+        let started = Instant::now();
+        let result = prepare_vault_directory(&parent.join("Anehalo"), true);
+        let elapsed = started.elapsed();
+        #[cfg(windows)]
+        drop(walk_trap);
+
+        assert!(result.is_ok(), "vault setup failed: {:?}", result.err());
+        assert!(
+            elapsed < SETUP_TIME_LIMIT,
+            "vault setup took {elapsed:?} for a parent with {file_count} files"
+        );
+        let vault = parent.join("Anehalo");
+        assert!(vault.is_dir());
+        assert_eq!(
+            fs::read_dir(&vault).expect("list the vault").count(),
+            0,
+            "the access check must not leave files behind"
+        );
+        let mut tree_after = list_tree(&parent);
+        tree_after.retain(|(path, _)| path != Path::new("Anehalo"));
+        assert_eq!(tree_after, tree_before, "files outside the vault changed");
+    }
+
+    #[test]
+    fn preparing_the_parent_itself_is_refused_without_creating_anything() {
+        let test_directory = TestDirectory::new();
+        let parent = test_directory.0.join("Large library");
+        create_large_tree(&parent);
+        let tree_before = list_tree(&parent);
+
+        let error = prepare_vault_directory(&parent, true).expect_err("parent must be refused");
+
+        assert_eq!(error.code, "legacy-vault");
+        assert_eq!(list_tree(&parent), tree_before);
+    }
+
+    #[test]
+    fn an_existing_anehalo_folder_is_reused_in_any_case_without_nesting() {
+        let test_directory = TestDirectory::new();
+        let vault = test_directory.0.join("Restored notes").join("aNeHaLo");
+        fs::create_dir_all(&vault).expect("create the copied vault");
+        fs::write(vault.join("Restored.md"), "Keep me.").expect("write a note");
+
+        prepare_vault_directory(&vault, false).expect("reuse the copied vault");
+
+        let names: Vec<_> = fs::read_dir(&vault)
+            .expect("list the vault")
+            .map(|entry| entry.expect("read an entry").file_name())
+            .collect();
+        assert_eq!(names, vec![std::ffi::OsString::from("Restored.md")]);
+    }
+
+    #[test]
+    fn a_missing_vault_is_not_created_unless_requested() {
+        let test_directory = TestDirectory::new();
+        let vault = test_directory.0.join("Anehalo");
+
+        let error = prepare_vault_directory(&vault, false).expect_err("missing vault");
+
+        assert_eq!(error.code, "not-found");
+        assert!(!vault.exists());
+    }
 }

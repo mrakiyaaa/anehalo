@@ -25,8 +25,10 @@ export class Onboarding {
       this.page.getByRole('button', { name: 'Browse…' }).click(),
     ]);
   }
-  async expectFinalPath(path: string) {
-    await expect(this.page.getByText(/Your notes will be saved in/)).toContainText(path);
+  async expectFinalPath(path: string, timeout = 10_000) {
+    await expect(this.page.getByText(/Your notes will be saved in/)).toContainText(path, {
+      timeout,
+    });
   }
   async finishLocation() {
     await this.page.getByRole('button', { name: 'Next', exact: true }).click();

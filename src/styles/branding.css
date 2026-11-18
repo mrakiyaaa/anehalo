@@ -5,10 +5,9 @@
   object-fit: contain;
   pointer-events: none;
 }
-.logo-mark {
+.logo-note {
   width: 22px;
   height: 22px;
-  border-radius: 7px;
 }
 .logo-full {
   width: 160px;

@@ -1,11 +1,13 @@
 import { mkdir, readFile, writeFile, readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { test, expect } from './fixtures';
 import { Onboarding } from './pages/onboarding';
 import { Sidebar } from './pages/sidebar';
 import { VaultRecovery } from './pages/vault-recovery';
 import { Settings } from './pages/settings';
 import { Editor } from './pages/editor';
+import { createLargeFolder, fiveThousandFiles } from './support/large-folder';
+import { longestMainThreadTask, startMainThreadMonitor } from './support/main-thread-monitor';
 
 test('the native picker creates only an Anehalo child, denies the parent scope, and restores that scope after restart', async ({
   application,
@@ -74,4 +76,38 @@ test('Settings reuses a copied Anehalo folder in any case without nesting anothe
   expect(await application.directoryAllowed(join(application.root, 'Restored notes'))).toBe(false);
   await application.restart();
   await new Editor(application.page).ready('Restored');
+});
+
+test('picking a folder with 5,000 unrelated files keeps onboarding responsive', async ({
+  application,
+}) => {
+  const longestAllowedTaskMilliseconds = 1_000;
+  const locationConfirmedWithinMilliseconds = 5_000;
+  const workspaceReadyWithinMilliseconds = 15_000;
+  test.setTimeout(120_000);
+  await application.seedSettings({ onboardingCompleted: false });
+  const location = join(application.root, 'Large library');
+  expect(await createLargeFolder(location, fiveThousandFiles)).toBe(5_000);
+  const entriesBefore = (await readdir(location, { recursive: true })).sort();
+  await application.start();
+  await startMainThreadMonitor(application.page);
+  const onboarding = new Onboarding(application.page);
+
+  await onboarding.chooseLocation(location, application.processIdentifier);
+  const vault = join(location, 'Anehalo');
+  await onboarding.expectFinalPath(vault, locationConfirmedWithinMilliseconds);
+  const finishStarted = performance.now();
+  await onboarding.finishLocation();
+  await new Sidebar(application.page).ready(workspaceReadyWithinMilliseconds);
+  const finishMilliseconds = performance.now() - finishStarted;
+
+  expect(finishMilliseconds).toBeLessThan(workspaceReadyWithinMilliseconds);
+  expect(await longestMainThreadTask(application.page)).toBeLessThan(
+    longestAllowedTaskMilliseconds,
+  );
+  expect(await application.directoryAllowed(location)).toBe(false);
+  const entriesAfter = (await readdir(location, { recursive: true })).sort();
+  expect(
+    entriesAfter.filter((entry) => entry !== 'Anehalo' && !entry.startsWith(`Anehalo${sep}`)),
+  ).toEqual(entriesBefore);
 });

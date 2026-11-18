@@ -12,7 +12,7 @@ export function TitleBar() {
     <header className="app-titlebar" data-tauri-drag-region>
       <div className="app-brand" data-tauri-drag-region>
         <span className="app-logo" data-tauri-drag-region>
-          <Logo variant="mark" />
+          <Logo variant="note" />
         </span>
         <span data-tauri-drag-region>{APP_NAME}</span>
       </div>
