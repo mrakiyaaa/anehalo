@@ -165,9 +165,31 @@ export class TauriApplication {
     return [
       `WebView2 never opened its DevTools port; the Tauri process ${state}.`,
       `DevTools port file: ${port ?? 'missing'}`,
+      `WebView2 browser command line: ${await this.webviewCommandLine()}`,
       `Native output: ${this.nativeOutput.slice(-2_000) || '(none)'}`,
       `Runtime log: ${runtimeLog || '(empty)'}`,
     ].join('\n');
+  }
+
+  /** Shows whether the debugging argument actually reached this test's WebView2 browser. */
+  private async webviewCommandLine(): Promise<string> {
+    try {
+      const result = await executeFile(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-Command',
+          'Get-CimInstance Win32_Process -Filter "Name=\'msedgewebview2.exe\'" | ForEach-Object { $_.CommandLine }',
+        ],
+        { windowsHide: true, timeout: 10_000 },
+      );
+      const browser = result.stdout
+        .split(/\r?\n/)
+        .find((line) => line.includes(this.root) && !line.includes('--type='));
+      return browser?.slice(0, 1_500) ?? '(no browser process for this test root)';
+    } catch (error) {
+      return `unavailable (${String(error)})`;
+    }
   }
 
   async waitForExit() {
