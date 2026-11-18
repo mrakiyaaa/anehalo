@@ -80,8 +80,6 @@ export class TauriApplication {
       env: {
         ...process.env,
         ANEHALO_TEST_ROOT: this.root,
-        // Port 0 lets WebView2 pick a free port, so a busy port on the machine cannot block tests.
-        WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=0',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,

@@ -8,6 +8,14 @@ mod vault_access;
 mod vault_error;
 mod vault_snapshot;
 
+/// Isolated E2E runs need a DevTools port for Playwright. Some WebView2 runtimes ignore the
+/// WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS variable, so the debug build passes the switch itself.
+/// Setting arguments replaces wry's defaults, so those are repeated here. Port 0 lets WebView2
+/// choose a free port and record it in the profile's DevToolsActivePort file.
+#[cfg(debug_assertions)]
+const E2E_BROWSER_ARGUMENTS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
+    --autoplay-policy=no-user-gesture-required --remote-debugging-port=0";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -20,9 +28,13 @@ pub fn run() {
     let context = {
         let mut context = context;
         if let Some(root) = runtime_paths::test_root() {
-            context.config_mut().app.app_directories_override = Some(
+            let config = context.config_mut();
+            config.app.app_directories_override = Some(
                 tauri::utils::config::AppDirectoriesOverride::Root(root.join("runtime")),
             );
+            for window in &mut config.app.windows {
+                window.additional_browser_args = Some(E2E_BROWSER_ARGUMENTS.into());
+            }
         }
         context
     };
