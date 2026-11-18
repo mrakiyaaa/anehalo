@@ -46,6 +46,9 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
     }),
     content: draft.content,
     contentType: 'markdown',
+    // The editor can mount while the operation that opened the note is still running. Starting
+    // editable and locking in an effect left a moment where typing could start and then fail.
+    editable: !isMutating,
     autofocus: false,
     onCreate: ({ editor: initialized }) => focusEditorWhenReady(initialized, true),
     editorProps: {
