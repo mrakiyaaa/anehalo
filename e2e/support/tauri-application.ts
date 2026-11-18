@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import { once } from 'node:events';
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { chromium, expect, type Browser, type Page } from '@playwright/test';
+import { chromium, type Browser, type Page } from '@playwright/test';
 import { defaultSettings, type AppSettings } from '../../src/features/settings/AppSettings';
 
 const executeFile = promisify(execFile);
@@ -98,22 +98,7 @@ export class TauriApplication {
     this.process.stdout?.on('data', (chunk: Buffer) => {
       this.nativeOutput += chunk.toString();
     });
-    await expect
-      .poll(
-        async () => {
-          if (launchError) throw launchError;
-          if (this.process?.exitCode !== null)
-            throw new Error(`The Tauri process exited before CDP connected: ${this.nativeOutput}`);
-          try {
-            const response = await fetch('http://127.0.0.1:9222/json/version');
-            return response.ok;
-          } catch {
-            return false;
-          }
-        },
-        { timeout: 20_000, intervals: [20, 50, 100] },
-      )
-      .toBe(true);
+    await this.waitForDevtools(() => launchError);
     this.browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
     const context = this.browser.contexts()[0];
     if (!context) throw new Error('WebView2 did not expose a browser context.');
@@ -125,6 +110,42 @@ export class TauriApplication {
     await this.page.emulateMedia({ reducedMotion: 'reduce' });
     await this.page.getByRole('button', { name: 'Close', exact: true }).waitFor();
     this.startupMilliseconds = performance.now() - started;
+  }
+
+  private async waitForDevtools(launchError: () => Error | undefined) {
+    const deadline = performance.now() + 20_000;
+    while (performance.now() < deadline) {
+      const error = launchError();
+      if (error) throw error;
+      if (this.process?.exitCode !== null) break;
+      try {
+        if ((await fetch('http://127.0.0.1:9222/json/version')).ok) return;
+      } catch {
+        // The port opens only once WebView2 has started; keep waiting.
+      }
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    }
+    throw new Error(await this.describeFailedLaunch());
+  }
+
+  /** Startup failures on CI leave no window to look at, so report everything the process left. */
+  private async describeFailedLaunch(): Promise<string> {
+    const exitCode = this.process?.exitCode;
+    const state =
+      exitCode === null || exitCode === undefined
+        ? 'still running after 20 s'
+        : `exited with code ${exitCode}`;
+    let runtimeLog: string;
+    try {
+      runtimeLog = (await this.log()).slice(-2_000);
+    } catch (error) {
+      runtimeLog = `unavailable (${String(error)})`;
+    }
+    return [
+      `WebView2 never opened its DevTools port; the Tauri process ${state}.`,
+      `Native output: ${this.nativeOutput.slice(-2_000) || '(none)'}`,
+      `Runtime log: ${runtimeLog || '(empty)'}`,
+    ].join('\n');
   }
 
   async waitForExit() {
