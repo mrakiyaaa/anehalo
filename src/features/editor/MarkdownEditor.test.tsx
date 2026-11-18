@@ -98,4 +98,18 @@ describe('MarkdownEditor while a note is still opening', () => {
     releaseSave();
     await waitFor(() => expect(content).toHaveAttribute('contenteditable', 'true'));
   });
+
+  it('marks the note editor busy until the opening operation finishes', async () => {
+    const settingsRepository = await renderWorkspace();
+    const user = userEvent.setup();
+    const releaseSave = holdSettingsWrites(settingsRepository.file);
+
+    await user.click(screen.getByRole('button', { name: 'Open Draft' }));
+    await screen.findByRole('textbox', { name: 'Note content' });
+    const region = screen.getByRole('main', { name: 'Note editor' });
+
+    expect(region).toHaveAttribute('aria-busy', 'true');
+    releaseSave();
+    await waitFor(() => expect(region).toHaveAttribute('aria-busy', 'false'));
+  });
 });

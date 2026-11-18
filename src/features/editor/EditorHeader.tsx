@@ -7,10 +7,11 @@ import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { NoteNavigation } from '@/features/note-links/NoteNavigation';
 import { ExportMenu } from '@/features/export/ExportMenu';
 import { NoteTitleField } from '@/features/editor/NoteTitleField';
+import { useEditingLocked } from '@/features/editor/use-editing-locked';
 
 export function EditorHeader({ draft }: { draft: NoteDraft }) {
   const goHome = useWorkspaceStore((state) => state.goHome);
-  const isMutating = useWorkspaceStore((state) => state.isMutating || state.isClosing);
+  const isMutating = useEditingLocked();
   const statusText =
     draft.status === 'saving'
       ? 'Saving...'

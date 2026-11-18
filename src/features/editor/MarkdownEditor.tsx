@@ -16,12 +16,13 @@ import type { EditorActions } from './commands/editor-commands';
 import { updateEditorLinks } from '@/features/note-links/update-editor-links';
 import { useNoteExport } from '@/features/export/export-context';
 import { focusEditorWhenReady } from './focus-editor';
+import { useEditingLocked } from '@/features/editor/use-editing-locked';
 
 export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   const updateContent = useWorkspaceStore((state) => state.updateNoteContent);
   const saveContent = useWorkspaceStore((state) => state.saveNoteContent);
   const reportContentError = useWorkspaceStore((state) => state.reportContentError);
-  const isMutating = useWorkspaceStore((state) => state.isMutating || state.isClosing);
+  const isMutating = useEditingLocked();
   const document = useRef<MarkdownDocument | null>(null);
   const editorReference = useRef<Editor | null>(null);
   const appliedRenames = useRef(draft.linkRenames.length);
