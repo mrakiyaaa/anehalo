@@ -5,21 +5,16 @@ import type {
   RenameNoteOptions,
 } from '@/features/storage/NoteRepository';
 import { noteTitle, sanitizeName, uniqueName } from '@/features/storage/note-names';
+import { createVaultStorage, type VaultStorage } from '@/features/storage/vault-storage';
+import { NOTE_EXTENSION } from '@/features/storage/vault-items';
 import { createSnippet, markdownToPlainText } from '@/features/storage/note-snippet';
-import {
-  describeStorageError,
-  failure,
-  storageFailure,
-  success,
-  type RepositoryResult,
-} from '@/features/storage/repository-result';
+import { storageFailure, type RepositoryResult } from '@/features/storage/repository-result';
 import {
   joinRelativePath,
   parentPath,
   pathName,
   validateRelativePath,
 } from '@/features/storage/storage-paths';
-import { VaultFileService } from '@/features/storage/VaultFileService';
 import type { VaultFileSystem } from '@/features/storage/VaultFileSystem';
 import type { Folder, Note, NoteSummary, VaultTree } from '@/types/notes';
 import { scanVault } from './scan-vault';
@@ -31,38 +26,25 @@ const welcomeContent =
   '# Welcome to Anehalo\n\nYour notes are plain Markdown files in your chosen notes folder.\n\n- Use Quick note to capture a thought.\n- Create folders to keep your notes organized.\n- Rename notes and folders from their actions menu.\n- Deleted items can be recovered from the hidden .trash directory in your vault.\n\nYour files stay on your computer.\n';
 
 export class FileSystemNoteRepository implements NoteRepository {
-  private readonly files: VaultFileService;
-  private queue: Promise<void> = Promise.resolve();
-  private initialized = false;
-  private vaultPath = '';
+  /** Shared with the vault's diagram repository, so both use one operation queue. */
+  readonly storage: VaultStorage;
 
   constructor(
     fileSystem: VaultFileSystem,
     private readonly scanScheduling: ScanScheduling = defaultScanScheduling,
   ) {
-    this.files = new VaultFileService(fileSystem);
+    this.storage = createVaultStorage(fileSystem);
+  }
+
+  private get files() {
+    return this.storage.files;
   }
 
   private run<Value>(
     action: string,
     operation: () => Promise<Value>,
   ): Promise<RepositoryResult<Value>> {
-    const result = this.queue.then(async (): Promise<RepositoryResult<Value>> => {
-      try {
-        await this.initialize();
-        return success(await operation());
-      } catch (error) {
-        return failure(describeStorageError(error, action));
-      }
-    });
-    this.queue = result.then(() => undefined);
-    return result;
-  }
-
-  private async initialize(): Promise<void> {
-    if (this.initialized) return;
-    this.vaultPath = await this.files.fileSystem.initialize();
-    this.initialized = true;
+    return this.storage.operations.run(action, operation);
   }
 
   initializeVault(): Promise<RepositoryResult<void>> {
@@ -114,7 +96,12 @@ export class FileSystemNoteRepository implements NoteRepository {
 
   listTree(limits: ScanLimits = defaultScanLimits): Promise<RepositoryResult<VaultTree>> {
     return this.run('Could not load the vault.', async () => {
-      return scanVault(this.files.fileSystem, this.vaultPath, limits, this.scanScheduling);
+      return scanVault(
+        this.files.fileSystem,
+        this.storage.operations.vaultPath,
+        limits,
+        this.scanScheduling,
+      );
     });
   }
 
@@ -136,15 +123,12 @@ export class FileSystemNoteRepository implements NoteRepository {
   createNote(input: CreateNoteInput = {}): Promise<RepositoryResult<Note>> {
     return this.run('Could not create the note.', async () => {
       const folder = validateRelativePath(input.folder ?? '', true);
-      await this.files.requireEntry(folder, 'directory');
-      const entries = await this.files.fileSystem.readDirectory(folder);
-      const name = uniqueName(
+      const path = await this.files.createUniqueFile(
+        folder,
         noteTitle(input.title ?? 'Untitled note'),
-        '.md',
-        entries.map((entry) => entry.name),
+        NOTE_EXTENSION,
+        input.content ?? '',
       );
-      const path = joinRelativePath(folder, name);
-      await this.files.atomicWrite(path, input.content ?? '', false);
       return this.loadNote(path);
     });
   }
@@ -155,22 +139,12 @@ export class FileSystemNoteRepository implements NoteRepository {
     options: RenameNoteOptions = {},
   ): Promise<RepositoryResult<Note>> {
     return this.run('Could not rename the note.', async () => {
-      const source = this.validateNote(relativePath);
-      await this.files.requireEntry(source, 'file');
-      const directory = parentPath(source);
-      const titleName = noteTitle(title);
-      const destinationName = options.suffixDuplicates
-        ? uniqueName(
-            titleName,
-            '.md',
-            (await this.files.fileSystem.readDirectory(directory))
-              .filter((entry) => entry.name.toLowerCase() !== pathName(source).toLowerCase())
-              .map((entry) => entry.name),
-          )
-        : `${titleName}.md`;
-      const destination = joinRelativePath(directory, destinationName);
-      await this.files.ensureDestinationAvailable(source, destination);
-      if (source !== destination) await this.files.fileSystem.rename(source, destination);
+      const destination = await this.files.renameFile(
+        this.validateNote(relativePath),
+        noteTitle(title),
+        NOTE_EXTENSION,
+        options.suffixDuplicates ?? false,
+      );
       return this.loadNote(destination);
     });
   }

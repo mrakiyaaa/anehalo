@@ -2,6 +2,7 @@ import { storageFailure } from '@/features/storage/repository-result';
 
 export const MAXIMUM_NAME_LENGTH = 80;
 export const DEFAULT_NOTE_TITLE = 'Untitled note';
+export const DEFAULT_DIAGRAM_TITLE = 'Untitled diagram';
 
 export function isReservedName(name: string): boolean {
   return /^(con|prn|aux|nul|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i.test(name);
@@ -36,8 +37,21 @@ export function cleanNoteTitle(value: string): string {
   return cleanName(value.replace(/\.md$/i, ''));
 }
 
+function withoutExtension(value: string, extension: string): string {
+  return value.toLowerCase().endsWith(extension) ? value.slice(0, -extension.length) : value;
+}
+
+/** A safe file title for a vault item: extension removed, Windows rules applied, never empty. */
+export function fileTitle(value: string, extension: string, fallback: string): string {
+  return sanitizeName(withoutExtension(value, extension), fallback);
+}
+
 export function noteTitle(value: string): string {
-  return sanitizeName(value.replace(/\.md$/i, ''), DEFAULT_NOTE_TITLE);
+  return fileTitle(value, '.md', DEFAULT_NOTE_TITLE);
+}
+
+export function diagramTitle(value: string): string {
+  return fileTitle(value, '.excalidraw', DEFAULT_DIAGRAM_TITLE);
 }
 
 export function uniqueName(

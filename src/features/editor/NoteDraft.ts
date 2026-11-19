@@ -1,6 +1,7 @@
 import type { Note } from '@/types/notes';
 import type { RepositoryError } from '@/features/storage/repository-result';
 import type { LinkRename } from '@/features/note-links/NoteLinkRewriter';
+import type { SaveStatus } from '@/features/storage/autosave/save-timing';
 
 export interface NoteDraft {
   readonly identifier: string;
@@ -8,7 +9,7 @@ export interface NoteDraft {
   readonly content: string;
   readonly title: string;
   readonly dirty: boolean;
-  readonly status: 'saving' | 'saved' | 'retrying';
+  readonly status: SaveStatus;
   readonly error: RepositoryError | null;
   readonly externalNote: Note | null;
   readonly isMissing: boolean;

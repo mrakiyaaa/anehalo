@@ -237,7 +237,7 @@ export function createWorkspaceStore(
     }
 
     return {
-      tree: { vaultPath: '', folders: [], notes: [] },
+      tree: { vaultPath: '', folders: [], notes: [], diagrams: [] },
       links: emptyLinkIndex,
       navigation,
       activeFolderPath: null,
