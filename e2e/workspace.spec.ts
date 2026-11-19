@@ -64,6 +64,9 @@ test('rich text formatting survives a reload', async ({ application }) => {
   await editor.name('Formatted');
   await editor.bold('Bold thought');
   await expect.poll(() => application.note('Formatted.md')).toContain('**Bold thought**');
+  // The renamed path is saved to settings in the background; a reload skips the save that a
+  // normal close performs, so wait until the app would reopen the renamed note.
+  await expect.poll(() => application.savedLastOpenedNote()).toBe('Formatted.md');
   await application.page.reload();
   editor = new Editor(application.page);
   await expect(editor.title).toHaveValue('Formatted');

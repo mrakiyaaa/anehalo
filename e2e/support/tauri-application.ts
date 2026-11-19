@@ -264,6 +264,13 @@ export class TauriApplication {
   async settings(): Promise<unknown> {
     return JSON.parse(await readFile(this.settingsPath, 'utf8')) as unknown;
   }
+  /** The note the app reopens on its next start, as saved on disk. */
+  async savedLastOpenedNote(): Promise<unknown> {
+    const settings = await this.settings();
+    return typeof settings === 'object' && settings !== null && 'lastOpenedNotePath' in settings
+      ? settings.lastOpenedNotePath
+      : undefined;
+  }
   async memory(): Promise<unknown> {
     const result = await executeFile(
       'powershell.exe',
