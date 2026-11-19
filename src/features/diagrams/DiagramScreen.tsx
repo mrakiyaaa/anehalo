@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, memo, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { SaveStatusIndicator } from '@/components/ui/SaveStatusIndicator';
@@ -6,9 +6,11 @@ import { useEditingLocked } from '@/features/editor/use-editing-locked';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { DiagramNotice } from './DiagramNotice';
 
+// Memoized: Excalidraw re-rendering thousands of shapes on every save-status change would
+// block the window, and the canvas only reads its scene once anyway.
 const DiagramCanvas = lazy(async () => {
   const module = await import('@/features/diagrams/DiagramCanvas');
-  return { default: module.DiagramCanvas };
+  return { default: memo(module.DiagramCanvas) };
 });
 
 /** The debug-only playground for diagram files; the full diagram screen comes later. */
@@ -94,7 +96,7 @@ export function DiagramScreen() {
         >
           <DiagramCanvas
             key={`${diagram.summary.relativePath}:${diagram.documentVersion}`}
-            scene={diagram.scene}
+            scene={diagram.loadedScene}
             onDocumentChange={updateDiagram}
           />
         </Suspense>

@@ -4,6 +4,7 @@ import { test, expect } from './fixtures';
 import { Sidebar } from './pages/sidebar';
 import { SearchPalette } from './pages/search-palette';
 import { selectedE2eBuild } from './support/e2e-build';
+import { smallDiagram } from './support/diagram-files';
 import { startupBudgets } from './support/startup-budgets';
 import { startupProfileAttachment } from './support/startup-profile-reporter';
 import {
@@ -15,8 +16,9 @@ import {
 } from './support/startup-profile';
 
 const noteCount = 2_000;
+const diagramCount = 500;
 
-test('a generated 2,000-note vault meets startup and search budgets @startup-budget', async ({
+test('a generated vault of 2,000 notes and 500 diagrams meets startup and search budgets @startup-budget', async ({
   application,
 }, testInfo) => {
   test.setTimeout(240_000);
@@ -29,6 +31,20 @@ test('a generated 2,000-note vault meets startup and search budgets @startup-bud
       writeFile(
         join(application.vault, 'Generated', `Note ${index.toString().padStart(4, '0')}.md`),
         `# Note ${index}\n\nA generated thought about gardens and සිංහල. ${index === noteCount - 1 ? 'unique-needle' : 'ordinary'}\n${'Sample content for a realistic small note. '.repeat(30)}`,
+      ),
+    ),
+  );
+  // Diagrams are listed by name only, so they must not slow startup down.
+  await mkdir(join(application.vault, 'Diagrams'));
+  await Promise.all(
+    Array.from({ length: diagramCount }, (_, index) =>
+      writeFile(
+        join(
+          application.vault,
+          'Diagrams',
+          `Diagram ${index.toString().padStart(3, '0')}.excalidraw`,
+        ),
+        smallDiagram(),
       ),
     ),
   );
@@ -60,6 +76,7 @@ test('a generated 2,000-note vault meets startup and search budgets @startup-bud
   const profile = {
     build,
     notes: noteCount,
+    diagrams: diagramCount,
     budgetMilliseconds: budget.medianMilliseconds,
     medianStartupMilliseconds,
     startupSamples,

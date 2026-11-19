@@ -14,6 +14,7 @@ import { DiagramNotice } from './DiagramNotice';
 const draft: DiagramDraft = {
   summary: diagramSummary('Flow.excalidraw', 1),
   scene: sceneWith('start'),
+  loadedScene: sceneWith('start'),
   dirty: true,
   status: 'retrying',
   error: { code: 'conflict', message: 'This diagram changed outside Anehalo.' },

@@ -19,6 +19,8 @@ import { DiagramWriteError } from './diagram-errors';
 
 type DiagramCodec = typeof import('./diagram-codec');
 
+export const DIAGRAM_SAVE_MEASURE = 'anehalo:diagram-save';
+
 export interface LoadedDiagram {
   readonly summary: DiagramSummary;
   readonly scene: DiagramScene;
@@ -98,6 +100,7 @@ export class DiagramRepository {
     relativePath: string,
     scene: DiagramScene,
   ): Promise<RepositoryResult<SavedDiagram>> {
+    const started = performance.now();
     let text: string;
     try {
       // Serializing a large drawing yields between steps, so it runs before taking the queue.
@@ -119,7 +122,10 @@ export class DiagramRepository {
       }
       return { summary: await this.summary(path), text };
     });
-    return result.ok ? result : this.saveFailed(result.error);
+    if (!result.ok) return this.saveFailed(result.error);
+    // Lets diagnostics and the E2E performance test read how long each save took.
+    performance.measure(DIAGRAM_SAVE_MEASURE, { start: started });
+    return result;
   }
 
   private saveFailed(error: RepositoryError): RepositoryResult<never> {

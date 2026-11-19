@@ -18,6 +18,8 @@ export interface DiagramDraft {
   readonly summary: DiagramSummary;
   /** The latest drawing; it may be ahead of the file while a save is pending. */
   readonly scene: DiagramScene;
+  /** The drawing as last loaded from disk, which is what the canvas starts from. */
+  readonly loadedScene: DiagramScene;
   readonly dirty: boolean;
   readonly status: SaveStatus;
   readonly error: RepositoryError | null;
@@ -126,6 +128,7 @@ export class DiagramAutoSaver {
     this.publish(session, {
       summary: loaded.summary,
       scene: loaded.scene,
+      loadedScene: loaded.scene,
       status: 'saved',
       error: null,
       hasExternalChange: false,
@@ -142,6 +145,7 @@ export class DiagramAutoSaver {
       const draft: DiagramDraft = {
         summary: loaded.summary,
         scene: loaded.scene,
+        loadedScene: loaded.scene,
         dirty: false,
         status: 'saved',
         error: null,

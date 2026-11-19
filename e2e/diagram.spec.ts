@@ -83,3 +83,45 @@ test('the diagram editor follows the Anehalo theme switch both ways', async ({ a
   await themeSwitch.click();
   await expect(diagram.container).not.toHaveClass(/theme--dark/);
 });
+
+// "i" (image) is left out: it opens the native file picker.
+const toolShortcuts = ['v', 'r', 'd', 'o', 'a', 'l', 'p', 't', 'e', 'h', 'k', 'f', 'x'];
+const numberShortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+
+test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async ({
+  application,
+}) => {
+  test.setTimeout(90_000);
+  await application.seedSettings();
+  await application.start();
+  const requests: string[] = [];
+  application.page.on('request', (request) => requests.push(request.url()));
+  await new Sidebar(application.page).ready();
+  const diagram = new Diagram(application.page);
+  await diagram.open();
+  await diagram.drawRectangle();
+  await diagram.expectElementCount(1);
+
+  for (const key of [...toolShortcuts, ...numberShortcuts, 'Alt+Shift+D', 'Control+/']) {
+    await application.page.keyboard.press(key);
+    await application.page.keyboard.press('Escape');
+  }
+  await (await diagram.openMoreTools()).waitFor();
+  await diagram.closeMenus();
+  await (await diagram.openMainMenu()).waitFor();
+  await diagram.closeMenus();
+
+  // Excalidraw tries Mermaid on pasted text that looks like it; the stub makes it plain text.
+  await diagram.focusCanvas();
+  await application.page.evaluate(() => {
+    const clipboard = new DataTransfer();
+    clipboard.setData('text/plain', 'flowchart TD\n  Start --> Stop');
+    (document.activeElement ?? document).dispatchEvent(
+      new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true }),
+    );
+  });
+  await expect.poll(() => diagram.elementCount()).toBeGreaterThan(1);
+
+  expect(requests.some((url) => url.includes('text-to-diagram-unavailable'))).toBe(true);
+  expect(requests.filter((url) => /mermaid|katex|cytoscape/i.test(url))).toEqual([]);
+});

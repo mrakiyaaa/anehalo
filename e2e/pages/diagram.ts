@@ -8,9 +8,55 @@ export class Diagram {
   private get canvas() {
     return this.page.locator('.excalidraw__canvas.interactive');
   }
-  async open() {
+  private get playground() {
+    return this.page.getByRole('main', { name: 'Diagram', exact: true });
+  }
+  async openPlayground() {
     await this.page.getByRole('button', { name: 'Diagram (preview)', exact: true }).click();
+    await expect(this.playground.getByRole('button', { name: 'New diagram' })).toBeVisible();
+  }
+  private async canvasReady() {
     await expect(this.canvas).toBeVisible({ timeout: 30_000 });
+    await expect(this.playground).toHaveAttribute('aria-busy', 'false');
+  }
+  /** Opens the playground with a new, saved diagram. */
+  async open() {
+    await this.openPlayground();
+    await this.playground.getByRole('button', { name: 'New diagram' }).click();
+    await this.canvasReady();
+  }
+  async openFromVault(relativePath: string) {
+    await this.playground
+      .getByRole('combobox', { name: 'Open diagram' })
+      .selectOption(relativePath);
+  }
+  async openedFromVault(relativePath: string) {
+    await this.openFromVault(relativePath);
+    await this.canvasReady();
+  }
+  async saved() {
+    await expect(
+      this.playground.getByRole('status').filter({ hasText: 'Saved just now' }),
+    ).toBeVisible();
+  }
+  async expectElementCount(count: number) {
+    await expect(this.playground.getByText(`${count} elements`, { exact: true })).toBeVisible();
+  }
+  async elementCount(): Promise<number> {
+    const text = await this.playground.locator('.diagram-element-count').innerText();
+    return Number.parseInt(text, 10);
+  }
+  alert() {
+    return this.playground.getByRole('alert');
+  }
+  async keepMine() {
+    await this.playground.getByRole('button', { name: 'Keep mine' }).click();
+  }
+  async delete() {
+    await this.playground.getByRole('button', { name: 'Delete diagram' }).click();
+    await expect(
+      this.playground.getByText('Create a diagram or open one from the vault.'),
+    ).toBeVisible();
   }
   private async dragAcrossCanvas() {
     const bounds = await this.canvas.boundingBox();
@@ -25,6 +71,13 @@ export class Diagram {
   /** Tools are radio inputs covered by their icon, so click the label around them. */
   private async chooseTool(testId: string) {
     await this.page.locator(`label:has([data-testid="${testId}"])`).click();
+  }
+  /** Selects the selection tool and clicks an empty spot, as a user does before pasting. */
+  async focusCanvas() {
+    await this.chooseTool('toolbar-selection');
+    const bounds = await this.canvas.boundingBox();
+    if (!bounds) throw new Error('The diagram canvas has no size.');
+    await this.page.mouse.click(bounds.x + bounds.width * 0.85, bounds.y + bounds.height * 0.85);
   }
   async drawRectangle() {
     await this.chooseTool('toolbar-rectangle');
