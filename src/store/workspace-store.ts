@@ -204,6 +204,18 @@ export function createWorkspaceStore(
       return loaded.ok ? success(undefined) : loaded;
     }
 
+    /** Saves and closes the open note before switching to a view that has no note. */
+    function leaveNoteFor(view: 'home' | 'diagram') {
+      return enqueue(async () => {
+        const saved = await leaveCurrentDraft();
+        if (!saved.ok) return saved;
+        const identifier = get().openDraft?.identifier;
+        if (identifier) autoSaver.release(identifier);
+        set({ view, openDraft: null, openingError: null });
+        return success(undefined);
+      });
+    }
+
     function mutate<Value>(
       operation: () => Promise<RepositoryResult<Value>>,
       accept?: (value: Value) => void,
@@ -304,15 +316,8 @@ export function createWorkspaceStore(
           else await refreshTree(false);
           return result;
         }),
-      goHome: () =>
-        enqueue(async () => {
-          const saved = await leaveCurrentDraft();
-          if (!saved.ok) return saved;
-          const identifier = get().openDraft?.identifier;
-          if (identifier) autoSaver.release(identifier);
-          set({ view: 'home', openDraft: null, openingError: null });
-          return success(undefined);
-        }),
+      goHome: () => leaveNoteFor('home'),
+      openDiagram: () => leaveNoteFor('diagram'),
       startQuickNote: (content = '') =>
         enqueue(async () => {
           const left = await leaveCurrentDraft();

@@ -8,6 +8,7 @@ import { FolderList } from '@/features/folders/FolderList';
 import { NoteSearch } from '@/features/notes/NoteSearch';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { SidebarNotes } from '@/features/notes/SidebarNotes';
+import { diagramPreviewEnabled } from '@/features/diagrams/diagram-preview';
 
 interface SidebarProps {
   onQuickNote: () => void;
@@ -18,6 +19,7 @@ export function Sidebar({ onQuickNote }: SidebarProps) {
   const shortcut = useSettingsStore((state) => state.settings?.quickNoteShortcut);
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const vaultReady = useWorkspaceStore((state) => Boolean(state.tree.vaultPath));
+  const openDiagram = useWorkspaceStore((state) => state.openDiagram);
   return (
     <aside aria-label="Sidebar" className="app-sidebar">
       <NoteSearch />
@@ -34,6 +36,19 @@ export function Sidebar({ onQuickNote }: SidebarProps) {
           {shortcut?.replaceAll('+', ' ')}
         </span>
       </Button>
+      {diagramPreviewEnabled && (
+        <Button
+          variant="ghost"
+          className="diagram-preview-button"
+          onClick={() => {
+            void openDiagram();
+          }}
+          disabled={isMutating || !vaultReady}
+        >
+          <Icon name="plus" />
+          Diagram (preview)
+        </Button>
+      )}
       <div className="sidebar-section-label">Folders</div>
       <FolderList />
       <SidebarNotes />

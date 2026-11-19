@@ -32,7 +32,7 @@ export interface WorkspaceState {
   isClosing: boolean;
   error: RepositoryError | null;
   vaultError: RepositoryError | null;
-  view: 'home' | 'editor';
+  view: 'home' | 'editor' | 'diagram';
   openDraft: NoteDraft | null;
   pendingDrafts: readonly NoteDraft[];
   isOpeningNote: boolean;
@@ -45,6 +45,7 @@ export interface WorkspaceState {
   initialize: () => Promise<void>;
   openNote: (path: string) => Promise<RepositoryResult<void>>;
   goHome: () => Promise<RepositoryResult<void>>;
+  openDiagram: () => Promise<RepositoryResult<void>>;
   startQuickNote: (content?: string) => Promise<RepositoryResult<Note>>;
   updateNoteContent: (identifier: string, content: string) => void;
   /** Records title-field typing without renaming; see NoteAutoSaver.editTitle. */

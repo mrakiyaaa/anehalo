@@ -1,35 +1,14 @@
 import { motion, useReducedMotion } from 'motion/react';
-import { useState } from 'react';
-import { flushSync } from 'react-dom';
 import { Icon } from '@/components/ui/Icon';
-import { transitionTheme } from '@/features/theme/transition-theme';
+import { useAnimatedThemeToggle } from '@/features/theme/use-animated-theme-toggle';
 import { useThemeStore } from '@/store/theme-store';
 
 export function ThemeSwitch() {
   const theme = useThemeStore((state) => state.theme);
-  const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const storageError = useThemeStore((state) => state.storageError);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [transitionError, setTransitionError] = useState<string | null>(null);
+  const { isTransitioning, transitionError, toggleFrom } = useAnimatedThemeToggle();
   const reducedMotion = useReducedMotion();
   const isDark = theme === 'dark';
-
-  async function changeTheme(button: HTMLButtonElement) {
-    if (isTransitioning) return;
-    setIsTransitioning(true);
-    setTransitionError(null);
-    const bounds = button.getBoundingClientRect();
-    try {
-      await transitionTheme(
-        { horizontal: bounds.left + bounds.width / 2, vertical: bounds.top + bounds.height / 2 },
-        () => flushSync(toggleTheme),
-      );
-    } catch {
-      setTransitionError('Your theme could not be changed. Please try again.');
-    } finally {
-      setIsTransitioning(false);
-    }
-  }
 
   return (
     <>
@@ -41,7 +20,7 @@ export function ThemeSwitch() {
         aria-busy={isTransitioning}
         className="theme-switch"
         onClick={(event) => {
-          void changeTheme(event.currentTarget);
+          void toggleFrom(event.currentTarget);
         }}
       >
         <motion.span

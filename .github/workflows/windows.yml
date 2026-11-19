@@ -72,6 +72,8 @@ jobs:
 
       - name: Build debug app for E2E
         run: npm run build:debug
+      - name: Check Excalidraw stays out of startup
+        run: node scripts/check-startup-chunks.mjs
       # Published as an annotation, so startup numbers can be read with the WebView2 version.
       - name: Describe the E2E desktop
         shell: pwsh
