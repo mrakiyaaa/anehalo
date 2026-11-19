@@ -18,11 +18,13 @@ if ($null -eq $fileName) {
   exit 0
 }
 $value = $fileName.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
-$value.SetValue($Destination)
 $save = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
   [System.Windows.Automation.AndCondition]::new(
     [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty, '1'),
     [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)))
 if ($null -eq $save) { throw 'The native Save button was not found.' }
 $invoke = $save.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
-$invoke.Invoke()
+Complete-AnehaloDialog -Dialog $dialog -Description 'destination' -Attempt {
+  $value.SetValue($Destination)
+  if ($value.Current.Value -eq $Destination) { $invoke.Invoke() }
+}

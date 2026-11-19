@@ -19,5 +19,7 @@ $windowHandle = [IntPtr]$dialog.Current.NativeWindowHandle
 $folderField = [AnehaloFolderDialog]::GetDlgItem($windowHandle, 1152)
 $selectButton = [AnehaloFolderDialog]::GetDlgItem($windowHandle, 1)
 if ($folderField -eq [IntPtr]::Zero -or $selectButton -eq [IntPtr]::Zero) { throw 'The isolated folder dialog controls were not found.' }
-if ([AnehaloFolderDialog]::SetText($folderField, 12, [IntPtr]::Zero, $Directory) -eq [IntPtr]::Zero) { throw 'The folder dialog path could not be set.' }
-[void][AnehaloFolderDialog]::Send($selectButton, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+Complete-AnehaloDialog -Dialog $dialog -Description 'folder' -Attempt {
+  if ([AnehaloFolderDialog]::SetText($folderField, 12, [IntPtr]::Zero, $Directory) -eq [IntPtr]::Zero) { throw 'The folder dialog path could not be set.' }
+  [void][AnehaloFolderDialog]::Send($selectButton, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
+}
