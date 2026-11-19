@@ -9,6 +9,8 @@ export default mergeConfig(
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.test.{ts,tsx}', 'e2e/support/**/*.test.ts'],
       clearMocks: true,
+      // Excalidraw's package imports JSON the way bundlers allow but Node does not.
+      server: { deps: { inline: [/@excalidraw[\\/]/] } },
       restoreMocks: true,
       testTimeout: 15_000,
       coverage: {

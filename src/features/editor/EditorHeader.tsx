@@ -8,16 +8,11 @@ import { NoteNavigation } from '@/features/note-links/NoteNavigation';
 import { ExportMenu } from '@/features/export/ExportMenu';
 import { NoteTitleField } from '@/features/editor/NoteTitleField';
 import { useEditingLocked } from '@/features/editor/use-editing-locked';
+import { SaveStatusIndicator } from '@/components/ui/SaveStatusIndicator';
 
 export function EditorHeader({ draft }: { draft: NoteDraft }) {
   const goHome = useWorkspaceStore((state) => state.goHome);
   const isMutating = useEditingLocked();
-  const statusText =
-    draft.status === 'saving'
-      ? 'Saving...'
-      : draft.status === 'retrying'
-        ? 'Could not save. Retrying...'
-        : 'Saved just now';
   return (
     <header className="editor-header">
       <div className="editor-navigation">
@@ -36,10 +31,7 @@ export function EditorHeader({ draft }: { draft: NoteDraft }) {
           </Button>
         </div>
         <div className="editor-export-actions">
-          <span role="status" className="editor-save-status" data-state={draft.status}>
-            <Icon name={draft.status === 'retrying' ? 'close' : 'check'} />
-            {statusText}
-          </span>
+          <SaveStatusIndicator status={draft.status} />
           <ExportMenu path={draft.note.relativePath} />
         </div>
       </div>

@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useThemeStore } from '@/store/theme-store';
+import { sceneWith } from '@/test/diagram-helpers';
+import type { DiagramScene } from './diagram-codec';
 
 const excalidraw = vi.hoisted(() => ({
   assetPathWhenLoaded: undefined as string | undefined,
@@ -51,10 +53,25 @@ vi.mock('@excalidraw/excalidraw', () => {
     },
     MainMenu,
     WelcomeScreen,
+    hashElementsVersion: (elements: readonly { version?: number }[]) =>
+      elements.reduce((sum, element) => sum + (element.version ?? 0), 0),
   };
 });
 
 const { DiagramCanvas } = await import('./DiagramCanvas');
+
+type ChangeHandler = (
+  elements: DiagramScene['elements'],
+  appState: DiagramScene['appState'],
+  files: DiagramScene['files'],
+) => void;
+
+function renderCanvas(onDocumentChange: (scene: DiagramScene) => void = () => undefined) {
+  render(<DiagramCanvas scene={sceneWith('start')} onDocumentChange={onDocumentChange} />);
+  const onChange = excalidraw.lastProps?.onChange;
+  if (typeof onChange !== 'function') throw new Error('Excalidraw received no onChange.');
+  return onChange as ChangeHandler;
+}
 
 describe('DiagramCanvas', () => {
   afterEach(() => {
@@ -67,7 +84,7 @@ describe('DiagramCanvas', () => {
 
   it('passes the offline options and follows the Anehalo theme', () => {
     act(() => useThemeStore.setState({ theme: 'dark' }));
-    render(<DiagramCanvas />);
+    renderCanvas();
 
     expect(excalidraw.lastProps).toMatchObject({ theme: 'dark', aiEnabled: false, langCode: 'en' });
     act(() => useThemeStore.setState({ theme: 'light' }));
@@ -75,7 +92,7 @@ describe('DiagramCanvas', () => {
   });
 
   it('offers only Anehalo menu items: theme, clear canvas, and help', () => {
-    render(<DiagramCanvas />);
+    renderCanvas();
 
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Dark mode',
@@ -85,11 +102,27 @@ describe('DiagramCanvas', () => {
   });
 
   it('switches the Anehalo theme from the menu', async () => {
-    render(<DiagramCanvas />);
+    renderCanvas();
 
     await userEvent.setup().click(screen.getByRole('menuitem', { name: 'Dark mode' }));
 
     await waitFor(() => expect(useThemeStore.getState().theme).toBe('dark'));
     expect(await screen.findByRole('menuitem', { name: 'Light mode' })).toBeInTheDocument();
+  });
+
+  it('loads the given drawing and reports only document changes', () => {
+    const changes: DiagramScene[] = [];
+    const onChange = renderCanvas((scene) => changes.push(scene));
+    const start = sceneWith('start');
+    expect(excalidraw.lastProps?.initialData).toMatchObject({ elements: start.elements });
+
+    onChange(start.elements, { ...start.appState, zoom: { value: 2 } } as never, {});
+    onChange(start.elements, { ...start.appState, scrollX: 300 }, {});
+    expect(changes).toEqual([]);
+
+    const moved = start.elements.map((element) => ({ ...element, version: 2 }));
+    onChange(moved, start.appState, {});
+    onChange(moved, { ...start.appState, selectedElementIds: { start: true } } as never, {});
+    expect(changes.map((scene) => scene.elements)).toEqual([moved]);
   });
 });

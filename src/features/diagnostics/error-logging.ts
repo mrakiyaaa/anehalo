@@ -7,6 +7,8 @@ type ErrorEvent =
   | 'unhandled-rejection'
   | 'render-error'
   | 'save-failed'
+  | 'diagram-load-failed'
+  | 'diagram-save-failed'
   | 'update-check-failed'
   | 'update-install-failed';
 

@@ -42,6 +42,11 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       // The DOM decoder cannot run in the search worker; both decode the same entities.
       'decode-named-character-reference': resolveDependency('decode-named-character-reference'),
+      // Excalidraw's Mermaid converter (text-to-diagram) is replaced by a stub, so it is never
+      // bundled and can never load, from a menu, a shortcut, or a paste.
+      '@excalidraw/mermaid-to-excalidraw': fileURLToPath(
+        new URL('./src/features/diagrams/text-to-diagram-unavailable.ts', import.meta.url),
+      ),
     },
   },
   clearScreen: false,

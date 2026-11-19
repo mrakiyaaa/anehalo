@@ -23,6 +23,10 @@ import { validateSavedVaultPath } from '@/features/onboarding/vault-location';
 import { ScanBudget } from '@/features/storage/ScanBudget';
 import { defaultScanLimits } from '@/features/storage/ScanLimits';
 import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
+import { FileSystemNoteRepository } from '@/features/storage/FileSystemNoteRepository';
+import { DiagramRepository } from '@/features/diagrams/DiagramRepository';
+import { DiagramAutoSaver } from '@/features/diagrams/DiagramAutoSaver';
+import { createDiagramActions } from '@/store/diagram-actions';
 
 export function createWorkspaceStore(
   sourceRepository: NoteRepository,
@@ -45,6 +49,11 @@ export function createWorkspaceStore(
     (error) => store.setState({ error }),
   );
   const autoSaver = new NoteAutoSaver(repository);
+  const diagramRepository =
+    sourceRepository instanceof FileSystemNoteRepository
+      ? new DiagramRepository(sourceRepository.storage)
+      : null;
+  const diagramSaver = diagramRepository ? new DiagramAutoSaver(diagramRepository) : null;
   let initialization: Promise<void> | null = null;
   let active = true;
   let hasLoadedVault = false;
@@ -180,6 +189,9 @@ export function createWorkspaceStore(
     }
 
     async function leaveCurrentDraft(): Promise<RepositoryResult<void>> {
+      // Like a note whose save fails, a diagram that cannot be saved stays in memory with its
+      // error and retries; leaving the screen is not blocked.
+      await diagramSaver?.close();
       const draft = get().openDraft;
       if (!draft) return success(undefined);
       const saved = await autoSaver.flush(draft.identifier);
@@ -238,6 +250,17 @@ export function createWorkspaceStore(
 
     return {
       tree: { vaultPath: '', folders: [], notes: [], diagrams: [] },
+      diagramsAvailable: diagramSaver !== null,
+      diagram: null,
+      diagramOpenError: null,
+      ...createDiagramActions({
+        repository: diagramRepository,
+        saver: diagramSaver,
+        enqueue,
+        refreshTree: () => refreshTree(false),
+        getState: get,
+        setState: set,
+      }),
       links: emptyLinkIndex,
       navigation,
       activeFolderPath: null,
@@ -341,7 +364,9 @@ export function createWorkspaceStore(
       saveNoteContent: (identifier) => autoSaver.flushContent(identifier),
       flushNotes: async () => {
         await operationQueue;
-        return autoSaver.flushAll();
+        const notes = await autoSaver.flushAll();
+        const diagram = diagramSaver ? await diagramSaver.flush() : success(undefined);
+        return notes.ok ? diagram : notes;
       },
       checkOpenNote: async () => {
         const current = get().openDraft;
@@ -363,12 +388,14 @@ export function createWorkspaceStore(
       pauseAutoSave: () => {
         active = false;
         autoSaver.pause();
+        diagramSaver?.pause();
         linkIndex.cancel();
         searchIndex.cancel();
       },
       resumeAutoSave: () => {
         active = true;
         autoSaver.resume();
+        diagramSaver?.resume();
       },
       createFolder: (name) => mutate(() => repository.createFolder(name)),
       renameNote: (path, name) =>
@@ -440,6 +467,7 @@ export function createWorkspaceStore(
     if (isCurrent && previousPath !== draft.note.relativePath)
       void rememberNote(draft.note.relativePath);
   });
+  diagramSaver?.subscribe((diagram) => store.setState({ diagram }));
   return store;
 }
 
