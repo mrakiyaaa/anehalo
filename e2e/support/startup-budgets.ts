@@ -11,8 +11,8 @@ export const startupBudgets: Readonly<Record<E2eBuild, StartupBudget>> = {
   // The product target. The optimized build uses release compiler settings, so it stands in
   // for what users install. Do not raise this to make a check pass; fix the regression.
   optimized: { launches: 3, medianMilliseconds: 2_000 },
-  // Debug builds are unoptimized and CI runners are slower than desktops, so this budget comes
-  // from measured CI medians plus a margin (see docs/testing/startup-profile.md). It still
-  // fails on a real regression of that size.
-  debug: { launches: 3, medianMilliseconds: 3_000 },
+  // Debug builds are unoptimized and CI runners vary between runs. Measured CI median: 1,706 ms
+  // (6 launches, WebView2 156); single launches reached about 2,200 ms. 2,500 ms is that median
+  // plus about 45% for runner variance (see docs/testing/startup-profile.md).
+  debug: { launches: 3, medianMilliseconds: 2_500 },
 };

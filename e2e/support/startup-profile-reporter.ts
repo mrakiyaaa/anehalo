@@ -55,7 +55,9 @@ export default class StartupProfileReporter implements Reporter {
             `${stage}: ${milliseconds === null ? 'n/a' : Math.round(milliseconds)}`,
         )
         .join('; ');
-      console.log(`::notice title=${title} (${this.launches.length} launches)::${stages}`);
+      // Commas separate annotation properties, so the title must not contain one.
+      const noticeTitle = `Startup profile - ${selectedE2eBuild()} build - ${this.launches.length} launches`;
+      console.log(`::notice title=${noticeTitle}::${stages}`);
     }
   }
 
