@@ -42,10 +42,6 @@ export class Diagram {
   async expectElementCount(count: number) {
     await expect(this.playground.getByText(`${count} elements`, { exact: true })).toBeVisible();
   }
-  async elementCount(): Promise<number> {
-    const text = await this.playground.locator('.diagram-element-count').innerText();
-    return Number.parseInt(text, 10);
-  }
   alert() {
     return this.playground.getByRole('alert');
   }

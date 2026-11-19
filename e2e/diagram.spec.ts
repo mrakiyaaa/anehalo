@@ -97,7 +97,11 @@ test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async 
   await application.seedSettings();
   await application.start();
   const requests: string[] = [];
+  const warnings: string[] = [];
   application.page.on('request', (request) => requests.push(request.url()));
+  application.page.on('console', (message) => {
+    if (message.type() === 'warning') warnings.push(message.text());
+  });
   await new Sidebar(application.page).ready();
   const diagram = new Diagram(application.page);
   await diagram.open();
@@ -125,6 +129,9 @@ test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async 
   await expect
     .poll(() => requests.some((url) => url.includes('text-to-diagram-unavailable')))
     .toBe(true);
-  await expect.poll(() => diagram.elementCount()).toBeGreaterThan(1);
+  // Excalidraw reports the stub's refusal and carries on with a plain-text paste.
+  await expect
+    .poll(() => warnings.some((text) => text.includes('parsing pasted text as mermaid')))
+    .toBe(true);
   expect(requests.filter((url) => /mermaid|katex|cytoscape/i.test(url))).toEqual([]);
 });
