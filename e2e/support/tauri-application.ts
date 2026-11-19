@@ -1,10 +1,13 @@
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { once } from 'node:events';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { chromium, expect, type Browser, type Page } from '@playwright/test';
 import { defaultSettings, type AppSettings } from '../../src/features/settings/AppSettings';
+import { startupMarks, type StartupMark } from '../../src/features/diagnostics/startup-marks';
+import { e2eExecutable, selectedE2eBuild } from './e2e-build';
+import { parseNativeTimeline, type StartupTimestamps } from './startup-profile';
 
 const executeFile = promisify(execFile);
 
@@ -17,7 +20,13 @@ export class TauriApplication {
   private startedEpoch = 0;
   private nativeOutput = '';
 
-  constructor(readonly root: string) {}
+  private launchCount = 0;
+
+  /** @param traceDirectory Where to keep a Playwright trace of each launch, or null for none. */
+  constructor(
+    readonly root: string,
+    private readonly traceDirectory: string | null = null,
+  ) {}
 
   get vault() {
     return join(this.root, 'Anehalo');
@@ -71,19 +80,15 @@ export class TauriApplication {
   async start(launchArguments: readonly string[] = []) {
     if (process.platform !== 'win32')
       throw new Error('Real Tauri E2E tests require Windows/WebView2.');
-    try {
-      await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(300) });
-      throw new Error('CDP port 9222 is occupied. Close the other debugging session first.');
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith('CDP port')) throw error;
-    }
+    // A port file left by the previous launch would point at a closed port. Its WebView2
+    // process can hold the file for a moment after being killed, hence the retries.
+    await rm(this.devtoolsPortFile, { force: true, maxRetries: 20, retryDelay: 100 });
     const started = performance.now();
     this.startedEpoch = Date.now();
-    this.process = spawn(resolve('src-tauri/target/qa/debug/anehalo.exe'), launchArguments, {
+    this.process = spawn(resolve(e2eExecutable(selectedE2eBuild())), launchArguments, {
       env: {
         ...process.env,
         ANEHALO_TEST_ROOT: this.root,
-        WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
@@ -98,25 +103,12 @@ export class TauriApplication {
     this.process.stdout?.on('data', (chunk: Buffer) => {
       this.nativeOutput += chunk.toString();
     });
-    await expect
-      .poll(
-        async () => {
-          if (launchError) throw launchError;
-          if (this.process?.exitCode !== null)
-            throw new Error(`The Tauri process exited before CDP connected: ${this.nativeOutput}`);
-          try {
-            const response = await fetch('http://127.0.0.1:9222/json/version');
-            return response.ok;
-          } catch {
-            return false;
-          }
-        },
-        { timeout: 20_000, intervals: [20, 50, 100] },
-      )
-      .toBe(true);
-    this.browser = await chromium.connectOverCDP('http://127.0.0.1:9222');
+    const devtoolsEndpoint = await this.waitForDevtools(() => launchError);
+    this.browser = await chromium.connectOverCDP(devtoolsEndpoint);
     const context = this.browser.contexts()[0];
     if (!context) throw new Error('WebView2 did not expose a browser context.');
+    this.launchCount += 1;
+    if (this.traceDirectory) await context.tracing.start({ screenshots: true, snapshots: true });
     this.activePage = context.pages()[0] ?? (await context.waitForEvent('page'));
     this.page.on('pageerror', (error) => this.errors.push(error.stack ?? error.message));
     this.page.on('console', (message) => {
@@ -125,6 +117,88 @@ export class TauriApplication {
     await this.page.emulateMedia({ reducedMotion: 'reduce' });
     await this.page.getByRole('button', { name: 'Close', exact: true }).waitFor();
     this.startupMilliseconds = performance.now() - started;
+  }
+
+  /** WebView2 writes the port it chose to this file inside the isolated profile. */
+  private get devtoolsPortFile() {
+    return join(this.root, 'runtime', 'EBWebView', 'DevToolsActivePort');
+  }
+
+  private async readDevtoolsPort(): Promise<string | null> {
+    try {
+      const port = (await readFile(this.devtoolsPortFile, 'utf8')).split(/\r?\n/)[0]?.trim();
+      return port && /^\d+$/.test(port) ? port : null;
+    } catch (error) {
+      // Missing until WebView2 starts, and locked while WebView2 is still writing it.
+      const notReadyYet = ['ENOENT', 'EBUSY'];
+      if (error instanceof Error && 'code' in error && notReadyYet.includes(String(error.code)))
+        return null;
+      throw error;
+    }
+  }
+
+  private async waitForDevtools(launchError: () => Error | undefined): Promise<string> {
+    const deadline = performance.now() + 20_000;
+    while (performance.now() < deadline) {
+      const error = launchError();
+      if (error) throw error;
+      if (this.process?.exitCode !== null) break;
+      const port = await this.readDevtoolsPort();
+      if (port) {
+        const endpoint = `http://127.0.0.1:${port}`;
+        try {
+          if ((await fetch(`${endpoint}/json/version`)).ok) return endpoint;
+        } catch {
+          // The port file can appear just before the server accepts connections.
+        }
+      }
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    }
+    throw new Error(await this.describeFailedLaunch());
+  }
+
+  /** Startup failures on CI leave no window to look at, so report everything the process left. */
+  private async describeFailedLaunch(): Promise<string> {
+    const exitCode = this.process?.exitCode;
+    const state =
+      exitCode === null || exitCode === undefined
+        ? 'still running after 20 s'
+        : `exited with code ${exitCode}`;
+    let runtimeLog: string;
+    try {
+      runtimeLog = (await this.log()).slice(-2_000);
+    } catch (error) {
+      runtimeLog = `unavailable (${String(error)})`;
+    }
+    const port = await this.readDevtoolsPort();
+    return [
+      `WebView2 never opened its DevTools port; the Tauri process ${state}.`,
+      `DevTools port file: ${port ?? 'missing'}`,
+      `WebView2 browser command line: ${await this.webviewCommandLine()}`,
+      `Native output: ${this.nativeOutput.slice(-2_000) || '(none)'}`,
+      `Runtime log: ${runtimeLog || '(empty)'}`,
+    ].join('\n');
+  }
+
+  /** Shows whether the debugging argument actually reached this test's WebView2 browser. */
+  private async webviewCommandLine(): Promise<string> {
+    try {
+      const result = await executeFile(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-Command',
+          'Get-CimInstance Win32_Process -Filter "Name=\'msedgewebview2.exe\'" | ForEach-Object { $_.CommandLine }',
+        ],
+        { windowsHide: true, timeout: 10_000 },
+      );
+      const browser = result.stdout
+        .split(/\r?\n/)
+        .find((line) => line.includes(this.root) && !line.includes('--type='));
+      return browser?.slice(0, 1_500) ?? '(no browser process for this test root)';
+    } catch (error) {
+      return `unavailable (${String(error)})`;
+    }
   }
 
   async waitForExit() {
@@ -146,6 +220,11 @@ export class TauriApplication {
 
   async stop() {
     const running = this.process;
+    // A trace can be saved only while WebView2 is still connected.
+    if (this.traceDirectory && running?.exitCode === null)
+      await this.browser?.contexts()[0]?.tracing.stop({
+        path: join(this.traceDirectory, `launch-${this.launchCount}.zip`),
+      });
     if (running?.pid && running.exitCode === null) {
       try {
         await executeFile('taskkill', ['/PID', String(running.pid), '/T', '/F'], {
@@ -185,6 +264,13 @@ export class TauriApplication {
   async settings(): Promise<unknown> {
     return JSON.parse(await readFile(this.settingsPath, 'utf8')) as unknown;
   }
+  /** The note the app reopens on its next start, as saved on disk. */
+  async savedLastOpenedNote(): Promise<unknown> {
+    const settings = await this.settings();
+    return typeof settings === 'object' && settings !== null && 'lastOpenedNotePath' in settings
+      ? settings.lastOpenedNotePath
+      : undefined;
+  }
   async memory(): Promise<unknown> {
     const result = await executeFile(
       'powershell.exe',
@@ -199,25 +285,47 @@ export class TauriApplication {
     );
     return JSON.parse(result.stdout) as unknown;
   }
-  async usableMilliseconds(): Promise<number> {
-    const usableEpoch = await this.page.evaluate(() => {
-      const marker = performance.getEntriesByName('anehalo:usable')[0];
-      if (!marker) throw new Error('The workspace has not committed its usable screen.');
-      return performance.timeOrigin + marker.startTime;
+  /** Waits for the background search index too, so every stage of the launch is present. */
+  async startupTimestamps(): Promise<StartupTimestamps> {
+    await expect
+      .poll(() => this.pageMarkTimes().then((marks) => marks[startupMarks.searchIndexFinished]), {
+        timeout: 30_000,
+      })
+      .toBeDefined();
+    const native = await this.page.evaluate(() => {
+      const desktop = window as unknown as {
+        __TAURI_INTERNALS__: { invoke: (command: string) => Promise<unknown> };
+      };
+      return desktop.__TAURI_INTERNALS__.invoke('startup_timeline');
     });
-    return usableEpoch - this.startedEpoch;
+    return {
+      spawned: this.startedEpoch,
+      ...parseNativeTimeline(native),
+      marks: await this.pageMarkTimes(),
+    };
   }
-  async startupProfile(): Promise<unknown> {
-    return this.page.evaluate(() => ({
-      markers: performance
-        .getEntriesByType('mark')
-        .map(({ name, startTime }) => ({ name, startTime })),
-      resources: performance.getEntriesByType('resource').map(({ name, startTime, duration }) => ({
-        name: name.split('/').at(-1),
-        startTime,
-        duration,
-      })),
-    }));
+  private async pageMarkTimes(): Promise<Partial<Record<StartupMark, number>>> {
+    const names: StartupMark[] = Object.values(startupMarks);
+    const entries = await this.page.evaluate(
+      (markNames) =>
+        markNames.flatMap((name) => {
+          const mark = performance.getEntriesByName(name, 'mark')[0];
+          return mark ? [[name, performance.timeOrigin + mark.startTime] as const] : [];
+        }),
+      names,
+    );
+    return Object.fromEntries(entries);
+  }
+  /** A new WebView2 profile makes every measured launch a first launch, as in a fresh install. */
+  async resetWebviewProfile() {
+    if (this.process)
+      throw new Error('Stop the application before resetting its WebView2 profile.');
+    await rm(join(this.root, 'runtime', 'EBWebView'), {
+      recursive: true,
+      force: true,
+      maxRetries: 20,
+      retryDelay: 100,
+    });
   }
   async log(): Promise<string> {
     return readFile(join(this.root, 'runtime', 'logs', 'anehalo.log'), 'utf8');

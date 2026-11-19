@@ -4,13 +4,32 @@ mod export_commands;
 mod export_transaction;
 mod launch_arguments;
 mod runtime_paths;
+mod startup_timeline;
 mod vault_access;
 mod vault_error;
 mod vault_snapshot;
 
+use tauri::Manager;
+
+/// Isolated E2E runs need a DevTools port for Playwright. Some WebView2 runtimes ignore the
+/// WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS variable, so the debug build passes the switch itself.
+/// Setting arguments replaces wry's defaults, so those are repeated here. Port 0 lets WebView2
+/// choose a free port and record it in the profile's DevToolsActivePort file.
+#[cfg(debug_assertions)]
+const E2E_BROWSER_ARGUMENTS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
+    --autoplay-policy=no-user-gesture-required --remote-debugging-port=0";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
+        .manage(startup_timeline::StartupTimeline::starting_now())
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Started {
+                webview
+                    .state::<startup_timeline::StartupTimeline>()
+                    .record_page_load_started();
+            }
+        })
         .manage(launch_arguments::LaunchArguments::new(
             std::env::args().skip(1).collect(),
         ))
@@ -20,9 +39,13 @@ pub fn run() {
     let context = {
         let mut context = context;
         if let Some(root) = runtime_paths::test_root() {
-            context.config_mut().app.app_directories_override = Some(
+            let config = context.config_mut();
+            config.app.app_directories_override = Some(
                 tauri::utils::config::AppDirectoriesOverride::Root(root.join("runtime")),
             );
+            for window in &mut config.app.windows {
+                window.additional_browser_args = Some(E2E_BROWSER_ARGUMENTS.into());
+            }
         }
         context
     };
@@ -67,6 +90,7 @@ pub fn run() {
             attachment_scope::prepare_attachment_scope,
             export_commands::write_note_export,
             runtime_paths::runtime_paths,
+            startup_timeline::startup_timeline,
             launch_arguments::initial_arguments,
             launch_arguments::take_pending_arguments,
             vault_snapshot::read_vault_snapshot,
@@ -86,10 +110,16 @@ pub fn run() {
                 .args(["--autostart"])
                 .build(),
         )
+        .plugin(startup_timeline::plugins_initialized_marker())
         .setup(|app| {
+            app.state::<startup_timeline::StartupTimeline>()
+                .record_setup_started();
             runtime_paths::prepare(app)?;
             std::panic::set_hook(Box::new(|_| log::error!("event=native-panic")));
-            desktop_tray::setup(app)
+            let tray = desktop_tray::setup(app);
+            app.state::<startup_timeline::StartupTimeline>()
+                .record_setup_completed();
+            tray
         });
 
     if let Err(error) = builder.run(context) {

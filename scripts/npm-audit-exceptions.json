@@ -1,0 +1,8 @@
+[
+  {
+    "advisory": "https://github.com/advisories/GHSA-fc5q-39xc-vjpf",
+    "package": "picomatch",
+    "reason": "ReDoS in picomatch <=4.0.7, which is the latest release, so no fix exists. Only build and test tooling (vite, vitest, typescript-eslint) uses it, on glob patterns from this repository. The shipped app does not include it: npm audit --omit=dev is clean.",
+    "expires": "2027-01-31"
+  }
+]

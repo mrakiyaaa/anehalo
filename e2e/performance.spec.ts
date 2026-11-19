@@ -3,51 +3,81 @@ import { join } from 'node:path';
 import { test, expect } from './fixtures';
 import { Sidebar } from './pages/sidebar';
 import { SearchPalette } from './pages/search-palette';
+import { selectedE2eBuild } from './support/e2e-build';
+import { startupBudgets } from './support/startup-budgets';
+import { startupProfileAttachment } from './support/startup-profile-reporter';
+import {
+  measureStages,
+  median,
+  medianStages,
+  startupMilliseconds,
+  type StartupTimestamps,
+} from './support/startup-profile';
 
-test('a generated 2,000-note vault meets startup and search budgets', async ({
+const noteCount = 2_000;
+
+test('a generated 2,000-note vault meets startup and search budgets @startup-budget', async ({
   application,
 }, testInfo) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
+  const build = selectedE2eBuild();
+  const budget = startupBudgets[build];
   await application.seedSettings({ reopenLastNote: false });
   await mkdir(join(application.vault, 'Generated'));
   await Promise.all(
-    Array.from({ length: 2000 }, (_, index) =>
+    Array.from({ length: noteCount }, (_, index) =>
       writeFile(
         join(application.vault, 'Generated', `Note ${index.toString().padStart(4, '0')}.md`),
-        `# Note ${index}\n\nA generated thought about gardens and සිංහල. ${index === 1999 ? 'unique-needle' : 'ordinary'}\n${'Sample content for a realistic small note. '.repeat(30)}`,
+        `# Note ${index}\n\nA generated thought about gardens and සිංහල. ${index === noteCount - 1 ? 'unique-needle' : 'ordinary'}\n${'Sample content for a realistic small note. '.repeat(30)}`,
       ),
     ),
   );
-  const started = performance.now();
-  await application.start();
-  await new Sidebar(application.page).ready(60_000);
-  const observedStartupMilliseconds = performance.now() - started;
-  const startupMilliseconds = await application.usableMilliseconds();
+
+  const launches: StartupTimestamps[] = [];
+  for (let launch = 0; launch < budget.launches; launch++) {
+    if (launch > 0) await application.stop();
+    await application.resetWebviewProfile();
+    await application.start();
+    await new Sidebar(application.page).ready(60_000);
+    launches.push(await application.startupTimestamps());
+  }
+  const startupSamples = launches.map(startupMilliseconds);
+  const medianStartupMilliseconds = median(startupSamples);
+
   const search = new SearchPalette(application.page);
   await search.open();
   await search.query('unique-needle');
   await search.expectResult('Note 1999');
-  const samples: number[] = [];
+  const searchSamples: number[] = [];
   for (let index = 0; index < 5; index++) {
     await search.query(`missing-${index}`);
     const latency = await search.measureQuery('unique-needle');
     await search.expectResult('Note 1999');
-    samples.push(latency);
+    searchSamples.push(latency);
   }
   const session = await application.page.context().newCDPSession(application.page);
   const heap = await session.send('Runtime.getHeapUsage');
-  const metrics = {
-    notes: 2000,
-    startupMilliseconds,
-    observedStartupMilliseconds,
-    searchMilliseconds: samples,
+  const profile = {
+    build,
+    notes: noteCount,
+    budgetMilliseconds: budget.medianMilliseconds,
+    medianStartupMilliseconds,
+    startupSamples,
+    medianStages: medianStages(launches),
+    launches: launches.map((timestamps) => ({ timestamps, stages: measureStages(timestamps) })),
+    searchMilliseconds: searchSamples,
     javascriptHeapMegabytes: heap.usedSize / 1024 / 1024,
     nativeProcesses: await application.memory(),
-    startupProfile: await application.startupProfile(),
   };
-  const metricsPath = testInfo.outputPath('performance.json');
-  await writeFile(metricsPath, JSON.stringify(metrics, null, 2));
-  await testInfo.attach('performance', { path: metricsPath, contentType: 'application/json' });
-  expect(startupMilliseconds).toBeLessThan(2000);
-  expect(Math.max(...samples)).toBeLessThan(100);
+  const profilePath = testInfo.outputPath('startup-profile.json');
+  await writeFile(profilePath, JSON.stringify(profile, null, 2));
+  await testInfo.attach(startupProfileAttachment, {
+    path: profilePath,
+    contentType: 'application/json',
+  });
+
+  expect(medianStartupMilliseconds, `median of ${startupSamples.join(', ')} ms`).toBeLessThan(
+    budget.medianMilliseconds,
+  );
+  expect(Math.max(...searchSamples)).toBeLessThan(100);
 });

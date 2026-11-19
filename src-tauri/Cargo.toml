@@ -47,3 +47,9 @@ strip = true
 
 [profile.dev.package.anehalo]
 opt-level = 1
+
+# Release compiler settings with debug assertions kept, so E2E startup budgets can measure an
+# optimized app while it still accepts the isolated test root (see e2e/support/e2e-build.ts).
+[profile.e2e-release]
+inherits = "release"
+debug-assertions = true

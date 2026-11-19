@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { BacklinksPanel } from '@/features/note-links/BacklinksPanel';
+import { useEditingLocked } from '@/features/editor/use-editing-locked';
 
 const MarkdownEditor = lazy(async () => {
   const module = await import('@/features/editor/MarkdownEditor');
@@ -17,9 +18,10 @@ const MarkdownEditor = lazy(async () => {
 export function EditorScreen() {
   const { draft, isOpening, error } = useOpenNote();
   const goHome = useWorkspaceStore((state) => state.goHome);
+  const busy = useEditingLocked();
   if (isOpening || !draft)
     return (
-      <main className="editor-panel editor-loading" aria-label="Note editor">
+      <main className="editor-panel editor-loading" aria-label="Note editor" aria-busy={busy}>
         {isOpening ? (
           <p role="status">Opening note...</p>
         ) : (
@@ -43,7 +45,7 @@ export function EditorScreen() {
       </main>
     );
   return (
-    <main className="editor-panel" aria-label="Note editor">
+    <main className="editor-panel" aria-label="Note editor" aria-busy={busy}>
       <div className="editor-reading-width">
         <StorageStatus />
         <SettingsNotice />

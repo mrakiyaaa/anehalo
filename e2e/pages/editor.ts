@@ -8,8 +8,16 @@ export class Editor {
   get title() {
     return this.page.getByRole('textbox', { name: 'Note title', exact: true });
   }
+  get region() {
+    return this.page.getByRole('main', { name: 'Note editor', exact: true });
+  }
+  /**
+   * A note's editor appears before the operation that opened it has finished, and TipTap reports
+   * a new editor as editable for one tick, so readiness is the region no longer being busy.
+   */
   async ready(title: string) {
     await expect(this.title).toHaveValue(title);
+    await expect(this.region).toHaveAttribute('aria-busy', 'false');
     await expect(this.content).toBeEditable();
   }
   async name(title: string) {

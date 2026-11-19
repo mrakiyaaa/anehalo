@@ -17,6 +17,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/run-e2e.mjs",
     "build:debug": "node scripts/build-desktop.mjs --debug",
+    "build:e2e-optimized": "node scripts/build-desktop.mjs --e2e-optimized",
     "build:installer": "node scripts/build-desktop.mjs",
     "version:bump": "node scripts/bump-version.mjs"
   },

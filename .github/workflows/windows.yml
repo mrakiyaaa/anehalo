@@ -11,12 +11,20 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: windows-quality-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      CARGO_TARGET_DIR: src-tauri/target/qa
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -26,26 +34,76 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target/qa
-      - run: npm ci
-      - run: node scripts/check-version.mjs
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test:coverage
-      - run: npm audit
+      # NSIS tools that Tauri downloads on first installer build.
+      - uses: actions/cache@v6
+        with:
+          path: ~\AppData\Local\tauri
+          key: tauri-nsis-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+          restore-keys: |
+            tauri-nsis-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+      - name: Check versions match
+        run: node scripts/check-version.mjs
+
+      - name: Lint
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit and component tests
+        run: npm run test:coverage
+      - name: Audit runtime npm dependencies
+        run: npm audit --omit=dev
+      - name: Audit all npm dependencies (reviewed exceptions only)
+        run: node scripts/check-npm-audit.mjs
+
       - uses: taiki-e/install-action@cargo-audit
-      - run: cargo audit --file src-tauri/Cargo.lock
-      - run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
-      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - name: Audit Rust dependencies
+        run: cargo audit --file src-tauri/Cargo.lock
+      - name: Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - name: Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - name: Rust tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build debug app for E2E
+        run: npm run build:debug
+      # Published as an annotation, so startup numbers can be read with the WebView2 version.
+      - name: Describe the E2E desktop
+        shell: pwsh
+        run: |
+          $clientKey = 'SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          $webView = @("HKLM:\$clientKey", "HKCU:\$clientKey") |
+            ForEach-Object { (Get-ItemProperty -Path $_ -ErrorAction SilentlyContinue).pv } |
+            Select-Object -First 1
+          $session = (Get-Process -Id $PID).SessionId
+          $explorer = @(Get-Process explorer -ErrorAction SilentlyContinue).Count
+          "::notice title=E2E desktop::WebView2 $webView; user $env:USERNAME; session $session; interactive $([Environment]::UserInteractive); explorer processes $explorer"
+      # The runner has no visible display, so the real app window runs unattended.
+      - name: End-to-end tests
+        run: npm run test:e2e -- --grep-invert @startup-budget
+      # Budgets live in e2e/support/startup-budgets.ts. Two repeats give six measured launches
+      # for the per-stage profile that the startup reporter adds to the job summary.
+      - name: Startup budget (debug build)
+        run: npm run test:e2e -- --grep @startup-budget --repeat-each=2
+      - name: Build optimized app for the startup budget
+        run: npm run build:e2e-optimized
+      - name: Startup budget (optimized build)
+        run: npm run test:e2e -- --grep @startup-budget --repeat-each=2
         env:
-          CARGO_TARGET_DIR: src-tauri/target/qa
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
-        env:
-          CARGO_TARGET_DIR: src-tauri/target/qa
-      - run: npm run build:debug
-      - run: npm run test:e2e
-      - run: npm run build:installer
-      - run: node scripts/check-release-isolation.mjs
-      - run: node scripts/verify-installer.mjs
+          ANEHALO_E2E_BUILD: optimized
+
+      - name: Build Windows installer
+        run: npm run build:installer
+      - name: Check release build isolation
+        run: node scripts/check-release-isolation.mjs
+      - name: Verify installer
+        run: node scripts/verify-installer.mjs
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
