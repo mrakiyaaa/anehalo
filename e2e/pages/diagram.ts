@@ -77,7 +77,8 @@ export class Diagram {
     await this.chooseTool('toolbar-selection');
     const bounds = await this.canvas.boundingBox();
     if (!bounds) throw new Error('The diagram canvas has no size.');
-    await this.page.mouse.click(bounds.x + bounds.width * 0.85, bounds.y + bounds.height * 0.85);
+    // Open canvas, clear of the drawn shapes and of Excalidraw's corner controls.
+    await this.page.mouse.click(bounds.x + bounds.width * 0.7, bounds.y + bounds.height * 0.6);
   }
   async drawRectangle() {
     await this.chooseTool('toolbar-rectangle');

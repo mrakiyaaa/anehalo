@@ -80,6 +80,8 @@ test('the diagram editor follows the Anehalo theme switch both ways', async ({ a
   await expect(diagram.container).not.toHaveClass(/theme--dark/);
   await themeSwitch.click();
   await expect(diagram.container).toHaveClass(/theme--dark/);
+  // The switch ignores clicks while its animated transition runs, as a user would see.
+  await expect(themeSwitch).toHaveAttribute('aria-busy', 'false');
   await themeSwitch.click();
   await expect(diagram.container).not.toHaveClass(/theme--dark/);
 });
@@ -120,8 +122,9 @@ test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async 
       new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true }),
     );
   });
+  await expect
+    .poll(() => requests.some((url) => url.includes('text-to-diagram-unavailable')))
+    .toBe(true);
   await expect.poll(() => diagram.elementCount()).toBeGreaterThan(1);
-
-  expect(requests.some((url) => url.includes('text-to-diagram-unavailable'))).toBe(true);
   expect(requests.filter((url) => /mermaid|katex|cytoscape/i.test(url))).toEqual([]);
 });
