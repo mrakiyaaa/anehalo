@@ -68,14 +68,6 @@ export class Diagram {
   private async chooseTool(testId: string) {
     await this.page.locator(`label:has([data-testid="${testId}"])`).click();
   }
-  /** Selects the selection tool and clicks an empty spot, as a user does before pasting. */
-  async focusCanvas() {
-    await this.chooseTool('toolbar-selection');
-    const bounds = await this.canvas.boundingBox();
-    if (!bounds) throw new Error('The diagram canvas has no size.');
-    // Open canvas, clear of the drawn shapes and of Excalidraw's corner controls.
-    await this.page.mouse.click(bounds.x + bounds.width * 0.7, bounds.y + bounds.height * 0.6);
-  }
   async drawRectangle() {
     await this.chooseTool('toolbar-rectangle');
     await this.dragAcrossCanvas();

@@ -90,9 +90,7 @@ test('the diagram editor follows the Anehalo theme switch both ways', async ({ a
 const toolShortcuts = ['v', 'r', 'd', 'o', 'a', 'l', 'p', 't', 'e', 'h', 'k', 'f', 'x'];
 const numberShortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
-test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async ({
-  application,
-}) => {
+test('Mermaid never loads from shortcuts or menus', async ({ application }) => {
   test.setTimeout(90_000);
   await application.seedSettings();
   await application.start();
@@ -113,16 +111,9 @@ test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async 
   await (await diagram.openMainMenu()).waitFor();
   await diagram.closeMenus();
 
-  // Excalidraw tries Mermaid on pasted text that looks like it. That import resolves to a stub
-  // (proven in text-to-diagram-unavailable.test.ts), so no request may be for Mermaid code.
-  await diagram.focusCanvas();
-  await application.page.evaluate(() => {
-    const clipboard = new DataTransfer();
-    clipboard.setData('text/plain', 'flowchart TD\n  Start --> Stop');
-    (document.activeElement ?? document).dispatchEvent(
-      new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true }),
-    );
-  });
-  await diagram.saved();
+  // Pasted Mermaid text is not driven here: synthetic clipboard events don't reliably reach
+  // Excalidraw on the unattended CI desktop. That path imports a stub instead of Mermaid
+  // (text-to-diagram-unavailable.test.ts), and check-startup-chunks.mjs fails the build if any
+  // Mermaid, KaTeX or Cytoscape file is bundled, so there is no Mermaid code left to request.
   expect(requests.filter((url) => /mermaid|katex|cytoscape/i.test(url))).toEqual([]);
 });
