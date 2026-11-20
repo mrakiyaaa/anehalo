@@ -105,7 +105,7 @@ Run these from PowerShell. Replace the path if the install folder differs.
 - [ ] With Anehalo **closed**, run `--new-note`. **Expect:** Anehalo starts and opens exactly one new, focused note.
 - [ ] With Anehalo **running** (also try hidden in the tray and minimized), run `--new-note`. **Expect:** one new note in the existing window, no second process.
 - [ ] Run `--open`. **Expect:** the existing window comes to the front with the same view, and no new note is created.
-- [ ] Run `--unknown`. **Expect:** a clear message: "Unknown launch argument. Use --open or --new-note."
+- [ ] Run `--unknown`. **Expect:** a clear message: "Unknown launch argument. Use --open [file], --new-note or --new-diagram."
 
 ## 11. Uninstall
 

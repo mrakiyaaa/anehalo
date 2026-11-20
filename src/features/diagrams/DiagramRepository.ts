@@ -17,7 +17,7 @@ import type { DiagramSummary } from '@/types/notes';
 import type { DiagramScene } from './diagram-codec';
 import { DiagramWriteError } from './diagram-errors';
 
-type DiagramCodec = typeof import('./diagram-codec');
+export type DiagramCodec = typeof import('./diagram-codec');
 
 export const DIAGRAM_SAVE_MEASURE = 'anehalo:diagram-save';
 

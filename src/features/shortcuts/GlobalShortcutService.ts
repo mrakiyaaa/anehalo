@@ -1,6 +1,6 @@
 import type { RepositoryResult } from '@/features/storage/repository-result';
 
-export type GlobalShortcutAction = 'quick-note' | 'open';
+export type GlobalShortcutAction = 'quick-note' | 'new-diagram' | 'open';
 
 export interface ShortcutRegistration {
   shortcut: string;

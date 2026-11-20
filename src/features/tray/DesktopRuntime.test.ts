@@ -9,11 +9,14 @@ import { failure } from '@/features/storage/repository-result';
 import { FakeGlobalShortcutService } from '@/features/shortcuts/FakeGlobalShortcutService';
 import { FakeTrayService } from './FakeTrayService';
 import { DesktopRuntime } from './DesktopRuntime';
+import { fakeDiagramCodec } from '@/test/diagram-helpers';
 
 async function setup() {
   const repository = new InMemoryNoteRepository();
   unwrapResult(await repository.initializeVault());
-  const workspace = createWorkspaceStore(repository);
+  const workspace = createWorkspaceStore(repository, {
+    diagramCodec: () => Promise.resolve(fakeDiagramCodec),
+  });
   await workspace.getState().initialize();
   const settingsRepository = new InMemorySettingsRepository(
     JSON.stringify({ ...defaultSettings('Memory/Anehalo'), onboardingCompleted: true }),
@@ -43,12 +46,12 @@ describe('desktop lifecycle', () => {
     workspace.getState().pauseAutoSave();
   });
 
-  it.each(['quickNoteShortcut', 'openShortcut'] as const)(
+  it.each(['quickNoteShortcut', 'newDiagramShortcut', 'openShortcut'] as const)(
     'rejects an Anehalo conflict from %s before persisting it',
     async (setting) => {
       const { runtime, shortcuts, settingsRepository, workspace } = await setup();
       await runtime.connect();
-      const value = setting === 'quickNoteShortcut' ? 'Alt+Control+A' : 'Alt+Control+N';
+      const value = setting === 'quickNoteShortcut' ? 'Alt+Control+D' : 'Alt+Control+N';
       const result = await runtime.updateSettings({ [setting]: value });
       expect(result.ok).toBe(false);
       if (result.ok) throw new Error('Expected a shortcut conflict.');
@@ -56,6 +59,7 @@ describe('desktop lifecycle', () => {
       expect(result.error.message).toContain('different shortcuts');
       expect(shortcuts.current).toBe('Ctrl+Alt+N');
       expect(shortcuts.registrations.get('open')?.shortcut).toBe('Ctrl+Alt+A');
+      expect(shortcuts.registrations.get('new-diagram')?.shortcut).toBe('Ctrl+Alt+D');
       expect(unwrapResult(await settingsRepository.load()).openShortcut).toBe('Ctrl+Alt+A');
       await runtime.stop();
       workspace.getState().pauseAutoSave();
@@ -275,3 +279,69 @@ describe('desktop lifecycle', () => {
     expect(unwrapResult(await settingsRepository.load()).quickNoteShortcut).toBe('Ctrl+Shift+J');
   });
 });
+
+describe('new diagram entry points', () => {
+  it('creates a diagram from Ctrl+Alt+D, the tray and --new-diagram', async () => {
+    const { runtime, workspace, shortcuts, tray } = await setup();
+    await runtime.connect();
+    expect(shortcuts.registrations.get('new-diagram')?.shortcut).toBe('Ctrl+Alt+D');
+
+    shortcuts.registrations.get('new-diagram')?.pressed();
+    await vi.waitFor(() => expect(workspace.getState().tree.diagrams).toHaveLength(1));
+    expect(workspace.getState().view).toBe('diagram');
+
+    tray.events?.newDiagram();
+    await vi.waitFor(() => expect(workspace.getState().tree.diagrams).toHaveLength(2));
+
+    unwrapResult((await tray.events?.arguments?.(['--new-diagram'])) ?? failure(missingEvents));
+    expect(workspace.getState().tree.diagrams).toHaveLength(3);
+    expect(tray.actions).not.toContain('focus-editor');
+    await runtime.stop();
+    workspace.getState().pauseAutoSave();
+  });
+
+  it('ignores Anehalo shortcuts while text is being typed into a diagram', async () => {
+    const { runtime, workspace, shortcuts } = await setup();
+    await runtime.connect();
+    const text = document.createElement('textarea');
+    text.className = 'excalidraw-wysiwyg';
+    document.body.append(text);
+    text.focus();
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+
+    shortcuts.registrations.get('new-diagram')?.pressed();
+    shortcuts.registrations.get('quick-note')?.pressed();
+    await runtime.stop();
+
+    expect(workspace.getState().tree.diagrams).toHaveLength(0);
+    expect(workspace.getState().tree.notes).toHaveLength(1);
+    text.remove();
+    vi.restoreAllMocks();
+    workspace.getState().pauseAutoSave();
+  });
+
+  it('opens a diagram in the vault given to --open, and refuses files outside it', async () => {
+    const { runtime, workspace, tray } = await setup();
+    await runtime.connect();
+    unwrapResult(await workspace.getState().newDiagram());
+    unwrapResult(await workspace.getState().goHome());
+
+    unwrapResult(
+      (await tray.events?.arguments?.(['--open', 'Untitled diagram.excalidraw'])) ??
+        failure(missingEvents),
+    );
+    expect(workspace.getState().view).toBe('diagram');
+    expect(workspace.getState().diagram?.summary.relativePath).toBe('Untitled diagram.excalidraw');
+
+    const outside = await tray.events?.arguments?.(['--open', 'C:/Elsewhere/Plan.excalidraw']);
+    expect(outside).toMatchObject({ ok: false, error: { code: 'invalid-path' } });
+    expect(runtime.state.getState().error?.message).toBe(
+      'Anehalo can only open files in your vault.',
+    );
+    expect(workspace.getState().view).toBe('diagram');
+    await runtime.stop();
+    workspace.getState().pauseAutoSave();
+  });
+});
+
+const missingEvents = { code: 'unavailable', message: 'The tray was not observed.' } as const;

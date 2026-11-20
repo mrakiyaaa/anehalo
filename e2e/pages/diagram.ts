@@ -8,51 +8,47 @@ export class Diagram {
   private get canvas() {
     return this.page.locator('.excalidraw__canvas.interactive');
   }
-  private get playground() {
+  /** The diagram screen, including its loading and error states. */
+  get screen() {
     return this.page.getByRole('main', { name: 'Diagram', exact: true });
   }
-  async openPlayground() {
-    await this.page.getByRole('button', { name: 'Diagram (preview)', exact: true }).click();
-    await expect(this.playground.getByRole('button', { name: 'New diagram' })).toBeVisible();
+  title() {
+    return this.screen.getByRole('textbox', { name: 'Diagram title', exact: true });
   }
-  private async canvasReady() {
+  /** Waits for the canvas, ready to draw on. */
+  async ready() {
     await expect(this.canvas).toBeVisible({ timeout: 30_000 });
-    await expect(this.playground).toHaveAttribute('aria-busy', 'false');
+    await expect(this.screen).toHaveAttribute('aria-busy', 'false');
   }
-  /** Opens the playground with a new, saved diagram. */
-  async open() {
-    await this.openPlayground();
-    await this.playground.getByRole('button', { name: 'New diagram' }).click();
-    await this.canvasReady();
+  /** Creates a diagram with the sidebar's New diagram button and waits for its canvas. */
+  async create() {
+    await this.page
+      .getByRole('complementary', { name: 'Sidebar' })
+      .getByRole('button', { name: /^New diagram/ })
+      .click();
+    await this.ready();
   }
-  async openFromVault(relativePath: string) {
-    await this.playground
-      .getByRole('combobox', { name: 'Open diagram' })
-      .selectOption(relativePath);
-  }
-  async openedFromVault(relativePath: string) {
-    await this.openFromVault(relativePath);
-    await this.canvasReady();
+  async createFromHome() {
+    await this.page
+      .getByRole('main', { name: 'Workspace' })
+      .getByRole('button', { name: 'New diagram', exact: true })
+      .click();
+    await this.ready();
   }
   async saved() {
     await expect(
-      this.playground.getByRole('status').filter({ hasText: 'Saved just now' }),
+      this.screen.getByRole('status').filter({ hasText: 'Saved just now' }),
     ).toBeVisible();
   }
-  async expectElementCount(count: number) {
-    await expect(this.playground.getByText(`${count} elements`, { exact: true })).toBeVisible();
+  /** Counts drawn elements through the screen's data attribute, so the UI needs no readout. */
+  async expectElementCount(count: number, timeout = 10_000) {
+    await expect(this.screen).toHaveAttribute('data-element-count', String(count), { timeout });
   }
   alert() {
-    return this.playground.getByRole('alert');
+    return this.screen.getByRole('alert');
   }
   async keepMine() {
-    await this.playground.getByRole('button', { name: 'Keep mine' }).click();
-  }
-  async delete() {
-    await this.playground.getByRole('button', { name: 'Delete diagram' }).click();
-    await expect(
-      this.playground.getByText('Create a diagram or open one from the vault.'),
-    ).toBeVisible();
+    await this.screen.getByRole('button', { name: 'Keep mine' }).click();
   }
   private async dragAcrossCanvas() {
     const bounds = await this.canvas.boundingBox();
@@ -72,12 +68,17 @@ export class Diagram {
     await this.chooseTool('toolbar-rectangle');
     await this.dragAcrossCanvas();
   }
-  async writeText(text: string) {
+  /** Starts a text element and types into it, leaving Excalidraw's text editor open. */
+  async startText(text: string) {
     await this.chooseTool('toolbar-text');
     const bounds = await this.canvas.boundingBox();
     if (!bounds) throw new Error('The diagram canvas has no size.');
     await this.page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height * 0.7);
+    await expect(this.page.locator('textarea.excalidraw-wysiwyg')).toBeFocused();
     await this.page.keyboard.type(text);
+  }
+  async writeText(text: string) {
+    await this.startText(text);
     await this.page.keyboard.press('Escape');
   }
   async openMainMenu() {

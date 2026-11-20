@@ -9,6 +9,9 @@ type ErrorEvent =
   | 'save-failed'
   | 'diagram-load-failed'
   | 'diagram-save-failed'
+  | 'diagram-create-failed'
+  | 'diagram-rename-failed'
+  | 'reveal-failed'
   | 'update-check-failed'
   | 'update-install-failed';
 

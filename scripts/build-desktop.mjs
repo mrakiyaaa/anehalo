@@ -30,12 +30,7 @@ const result = spawnSync(
   ],
   {
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      CARGO_TARGET_DIR: resolve('src-tauri/target/qa'),
-      // Debug builds run the E2E suite, which covers the diagram preview; releases hide it.
-      ...(debug ? { VITE_DIAGRAM_PREVIEW: '1' } : {}),
-    },
+    env: { ...process.env, CARGO_TARGET_DIR: resolve('src-tauri/target/qa') },
   },
 );
 if (result.error) throw result.error;

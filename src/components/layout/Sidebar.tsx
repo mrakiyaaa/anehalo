@@ -7,19 +7,20 @@ import { StoragePathCard } from '@/components/layout/StoragePathCard';
 import { FolderList } from '@/features/folders/FolderList';
 import { NoteSearch } from '@/features/notes/NoteSearch';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
-import { SidebarNotes } from '@/features/notes/SidebarNotes';
-import { diagramPreviewEnabled } from '@/features/diagrams/diagram-preview';
+import { SidebarItems } from '@/features/notes/SidebarItems';
 
 interface SidebarProps {
   onQuickNote: () => void;
+  onNewDiagram: () => void;
 }
 
-export function Sidebar({ onQuickNote }: SidebarProps) {
+export function Sidebar({ onQuickNote, onNewDiagram }: SidebarProps) {
   const runtime = useDesktopRuntime();
   const shortcut = useSettingsStore((state) => state.settings?.quickNoteShortcut);
+  const diagramShortcut = useSettingsStore((state) => state.settings?.newDiagramShortcut);
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const vaultReady = useWorkspaceStore((state) => Boolean(state.tree.vaultPath));
-  const openDiagram = useWorkspaceStore((state) => state.openDiagram);
+  const diagramsAvailable = useWorkspaceStore((state) => state.diagramsAvailable);
   return (
     <aside aria-label="Sidebar" className="app-sidebar">
       <NoteSearch />
@@ -36,22 +37,25 @@ export function Sidebar({ onQuickNote }: SidebarProps) {
           {shortcut?.replaceAll('+', ' ')}
         </span>
       </Button>
-      {diagramPreviewEnabled && (
+      {diagramsAvailable && (
         <Button
-          variant="ghost"
-          className="diagram-preview-button"
-          onClick={() => {
-            void openDiagram();
-          }}
+          variant="outline"
+          className="quick-note-button new-diagram-button"
+          onClick={onNewDiagram}
           disabled={isMutating || !vaultReady}
         >
-          <Icon name="plus" />
-          Diagram (preview)
+          <span className="quick-note-label">
+            <Icon name="shapes" />
+            New diagram
+          </span>
+          <span className="shortcut-keys" aria-hidden="true">
+            {diagramShortcut?.replaceAll('+', ' ')}
+          </span>
         </Button>
       )}
       <div className="sidebar-section-label">Folders</div>
       <FolderList />
-      <SidebarNotes />
+      <SidebarItems />
       <div className="sidebar-footer">
         <StoragePathCard />
         <button

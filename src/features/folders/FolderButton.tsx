@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { IconBadge } from '@/components/ui/IconBadge';
 import type { PastelTone } from '@/types/notes';
+import { countLabel } from '@/features/storage/vault-counts';
 
 interface FolderButtonProps {
   name: string;
@@ -16,7 +17,7 @@ export function FolderButton({ name, tone, count, active, onSelect }: FolderButt
       variant="ghost"
       className="folder-button"
       aria-pressed={active}
-      aria-label={`${name}, ${count} ${count === 1 ? 'note' : 'notes'}`}
+      aria-label={`${name}, ${countLabel(count, 'item', 'items')}`}
       onClick={onSelect}
     >
       <IconBadge icon={tone === 'all' ? 'all-notes' : 'folder'} tone={tone} />

@@ -37,6 +37,8 @@ export function DiagramCanvas({ scene, onDocumentChange }: DiagramCanvasProps) {
           onDocumentChange(next);
         }}
         onLinkOpen={preventLinkNavigation}
+        // A new or opened diagram is ready to draw on, with Excalidraw's selection tool active.
+        autoFocus
         {...diagramOptions}
       >
         <MainMenu>

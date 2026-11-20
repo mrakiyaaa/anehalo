@@ -37,6 +37,28 @@ pub fn test_root() -> Option<PathBuf> {
     std::env::var_os("ANEHALO_TEST_ROOT").map(PathBuf::from)
 }
 
+/// Isolated runs leave single-instance off, so a relaunch can never be mistaken for a second
+/// instance of the one being stopped. The test of forwarded launch arguments turns it on.
+#[cfg(debug_assertions)]
+pub fn test_single_instance() -> bool {
+    std::env::var_os("ANEHALO_TEST_SINGLE_INSTANCE").is_some()
+}
+
+/// An app identifier unique to one test root, so a test's single-instance lock never reaches
+/// the user's own Anehalo or another test run.
+#[cfg(debug_assertions)]
+pub fn isolated_identifier(identifier: &str, root: &std::path::Path) -> String {
+    // FNV-1a: stable across runs, unlike the standard library's randomly seeded hasher.
+    let hash = root
+        .as_os_str()
+        .as_encoded_bytes()
+        .iter()
+        .fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
+            (hash ^ u64::from(*byte)).wrapping_mul(0x0100_0000_01b3)
+        });
+    format!("{identifier}.e2e{hash:016x}")
+}
+
 #[tauri::command]
 pub fn runtime_paths(app: tauri::AppHandle) -> Result<RuntimePaths, String> {
     #[cfg(debug_assertions)]
@@ -77,4 +99,29 @@ pub fn prepare(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     let _ = app;
     Ok(())
+}
+
+#[cfg(all(test, debug_assertions))]
+mod tests {
+    use super::isolated_identifier;
+    use std::path::Path;
+
+    #[test]
+    fn isolated_identifiers_are_stable_and_unique_per_test_root() {
+        let first = isolated_identifier("me.lakshitha.anehalo", Path::new("C:/Temp/run-1"));
+        assert_eq!(
+            first,
+            isolated_identifier("me.lakshitha.anehalo", Path::new("C:/Temp/run-1"))
+        );
+        assert_ne!(
+            first,
+            isolated_identifier("me.lakshitha.anehalo", Path::new("C:/Temp/run-2"))
+        );
+        assert!(first.starts_with("me.lakshitha.anehalo.e2e"));
+        assert!(
+            first
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric() || character == '.')
+        );
+    }
 }

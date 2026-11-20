@@ -4,12 +4,23 @@ import { createWorkspaceStore, type WorkspaceStore } from '@/store/workspace-sto
 import { unwrapResult } from '@/test/repository-helpers';
 import { success, failure, type RepositoryResult } from '@/features/storage/repository-result';
 import type { VaultTree } from '@/types/notes';
+import { diagramFile, fakeDiagramCodec, sceneWith } from '@/test/diagram-helpers';
+import type { MemoryEntry } from '@/features/storage/InMemoryVaultFileSystem';
 
 const stores: WorkspaceStore[] = [];
 function workspace(repository = new InMemoryNoteRepository()) {
   const store = createWorkspaceStore(repository);
   stores.push(store);
   return { store, repository };
+}
+/** A workspace whose diagrams use the stand-in codec, so Excalidraw never loads in tests. */
+function diagramWorkspace(seed: readonly MemoryEntry[] = []) {
+  const repository = new InMemoryNoteRepository(seed);
+  const store = createWorkspaceStore(repository, {
+    diagramCodec: () => Promise.resolve(fakeDiagramCodec),
+  });
+  stores.push(store);
+  return { store, repository, files: repository.memoryFileSystem };
 }
 afterEach(() => {
   for (const store of stores.splice(0)) store.getState().pauseAutoSave();
@@ -160,22 +171,6 @@ describe('workspace editor navigation', () => {
     );
   });
 
-  it('saves and closes the open note before opening the diagram view', async () => {
-    const { store, repository } = workspace();
-    unwrapResult(await store.getState().startQuickNote());
-    const draft = store.getState().openDraft;
-    if (!draft) throw new Error('Missing draft');
-    store.getState().updateNoteContent(draft.identifier, 'Saved before the diagram');
-
-    unwrapResult(await store.getState().openDiagram());
-
-    expect(store.getState().view).toBe('diagram');
-    expect(store.getState().openDraft).toBeNull();
-    expect(unwrapResult(await repository.readNote('Untitled note.md')).content).toBe(
-      'Saved before the diagram',
-    );
-  });
-
   it('tracks the open note through folder rename, note rename, and trash', async () => {
     const { store, repository } = workspace();
     unwrapResult(await store.getState().createFolder('Work'));
@@ -245,5 +240,133 @@ describe('workspace editor navigation', () => {
     unwrapResult(await store.getState().openNote(draft.note.relativePath));
     expect(store.getState().openDraft?.content).toBe('Do not lose me');
     expect(store.getState().openDraft?.isMissing).toBe(true);
+  });
+});
+
+describe('workspace diagrams', () => {
+  it('saves and closes the open note, then creates the diagram in the selected folder', async () => {
+    const { store, repository } = diagramWorkspace();
+    unwrapResult(await store.getState().createFolder('Work'));
+    store.getState().selectFolder('Work');
+    unwrapResult(await store.getState().startQuickNote());
+    const draft = store.getState().openDraft;
+    if (!draft) throw new Error('Missing draft');
+    store.getState().updateNoteContent(draft.identifier, 'Saved before the diagram');
+
+    unwrapResult(await store.getState().newDiagram());
+
+    expect(store.getState()).toMatchObject({ view: 'diagram', openDraft: null });
+    expect(store.getState().diagram?.summary.relativePath).toBe('Work/Untitled diagram.excalidraw');
+    expect(store.getState().tree.diagrams.map((item) => item.relativePath)).toEqual([
+      'Work/Untitled diagram.excalidraw',
+    ]);
+    expect(unwrapResult(await repository.readNote('Work/Untitled note.md')).content).toBe(
+      'Saved before the diagram',
+    );
+  });
+
+  it('creates a diagram in the folder it was asked for, not the selected one', async () => {
+    const { store } = diagramWorkspace([{ relativePath: 'Plans', type: 'directory' }]);
+    unwrapResult(await store.getState().refreshTree());
+    unwrapResult(await store.getState().newDiagram('Plans'));
+    expect(store.getState().diagram?.summary.relativePath).toBe(
+      'Plans/Untitled diagram.excalidraw',
+    );
+  });
+
+  it('keeps an untouched new diagram, as notes keep an untouched new note', async () => {
+    const { store } = diagramWorkspace();
+    unwrapResult(await store.getState().newDiagram());
+    unwrapResult(await store.getState().goHome());
+    unwrapResult(await store.getState().refreshTree());
+    expect(store.getState().tree.diagrams).toHaveLength(1);
+  });
+
+  it('goes back and forward between a note and a diagram', async () => {
+    const { store } = diagramWorkspace([
+      { relativePath: 'Idea.md', type: 'file', content: 'An idea' },
+      { relativePath: 'Flow.excalidraw', type: 'file', content: diagramFile('start') },
+    ]);
+    unwrapResult(await store.getState().refreshTree());
+    unwrapResult(await store.getState().openItem('Idea.md'));
+    unwrapResult(await store.getState().openItem('Flow.excalidraw'));
+    expect(store.getState().view).toBe('diagram');
+
+    unwrapResult(await store.getState().navigateHistory(-1));
+    expect(store.getState()).toMatchObject({ view: 'editor', diagram: null });
+    expect(store.getState().openDraft?.note.relativePath).toBe('Idea.md');
+
+    unwrapResult(await store.getState().navigateHistory(1));
+    expect(store.getState()).toMatchObject({ view: 'diagram', openDraft: null });
+    expect(store.getState().diagram?.summary.relativePath).toBe('Flow.excalidraw');
+  });
+
+  it('saves the drawing before leaving it, and follows a rename in the history', async () => {
+    const { store, files } = diagramWorkspace([
+      { relativePath: 'Idea.md', type: 'file', content: 'An idea' },
+      { relativePath: 'Flow.excalidraw', type: 'file', content: diagramFile('start') },
+    ]);
+    unwrapResult(await store.getState().refreshTree());
+    unwrapResult(await store.getState().openItem('Flow.excalidraw'));
+    unwrapResult(await store.getState().renameDiagram('Flow.excalidraw', 'Pipeline'));
+    store.getState().updateDiagram(sceneWith('start', 'end'));
+    unwrapResult(await store.getState().openItem('Idea.md'));
+    expect(await files.readText('Pipeline.excalidraw')).toBe(diagramFile('start', 'end'));
+
+    unwrapResult(await store.getState().navigateHistory(-1));
+    expect(store.getState().diagram?.summary.relativePath).toBe('Pipeline.excalidraw');
+  });
+
+  it('stays on the current item when going back to a diagram deleted outside Anehalo', async () => {
+    const { store, files } = diagramWorkspace([
+      { relativePath: 'Idea.md', type: 'file', content: 'An idea' },
+      { relativePath: 'Flow.excalidraw', type: 'file', content: diagramFile('start') },
+    ]);
+    unwrapResult(await store.getState().refreshTree());
+    unwrapResult(await store.getState().openItem('Flow.excalidraw'));
+    unwrapResult(await store.getState().openItem('Idea.md'));
+    await files.rename('Flow.excalidraw', 'Elsewhere.txt');
+
+    expect(await store.getState().navigateHistory(-1)).toMatchObject({ ok: false });
+    expect(store.getState().view).toBe('editor');
+    expect(store.getState().error?.code).toBe('not-found');
+  });
+
+  it('closes the open diagram when it is moved to trash', async () => {
+    const { store } = diagramWorkspace([
+      { relativePath: 'Flow.excalidraw', type: 'file', content: diagramFile('start') },
+    ]);
+    unwrapResult(await store.getState().refreshTree());
+    unwrapResult(await store.getState().openItem('Flow.excalidraw'));
+    unwrapResult(await store.getState().trashDiagram('Flow.excalidraw'));
+    expect(store.getState()).toMatchObject({ view: 'home', diagram: null });
+    expect(store.getState().tree.diagrams).toEqual([]);
+  });
+
+  it('follows the open diagram through a folder rename and closes it with its folder', async () => {
+    const { store, files } = diagramWorkspace([
+      { relativePath: 'Work', type: 'directory' },
+      { relativePath: 'Work/Flow.excalidraw', type: 'file', content: diagramFile('start') },
+    ]);
+    unwrapResult(await store.getState().refreshTree());
+    unwrapResult(await store.getState().openItem('Work/Flow.excalidraw'));
+    unwrapResult(await store.getState().renameFolder('Work', 'Projects'));
+    store.getState().updateDiagram(sceneWith('start', 'end'));
+    unwrapResult(await store.getState().saveDiagram());
+    expect(await files.readText('Projects/Flow.excalidraw')).toBe(diagramFile('start', 'end'));
+
+    unwrapResult(await store.getState().deleteFolder('Projects'));
+    expect(store.getState()).toMatchObject({ view: 'home', diagram: null });
+  });
+
+  it('shows why a diagram cannot be opened and leaves the file alone', async () => {
+    const { store, files } = diagramWorkspace([
+      { relativePath: 'Broken.excalidraw', type: 'file', content: '{"type":"excal' },
+    ]);
+    unwrapResult(await store.getState().refreshTree());
+    expect(await store.getState().openItem('Broken.excalidraw')).toMatchObject({ ok: false });
+    expect(store.getState()).toMatchObject({ view: 'diagram', diagram: null });
+    expect(store.getState().diagramOpenError?.code).toBe('invalid-diagram');
+    expect(await files.readText('Broken.excalidraw')).toBe('{"type":"excal');
   });
 });

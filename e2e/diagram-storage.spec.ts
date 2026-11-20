@@ -9,18 +9,19 @@ import type { TauriApplication } from './support/tauri-application';
 const newDiagramPath = 'Untitled diagram.excalidraw';
 const fixtures = resolve('src/features/diagrams/fixtures');
 
-async function openPlayground(application: TauriApplication) {
+async function startWorkspace(application: TauriApplication) {
   await application.seedSettings();
   await application.start();
-  await new Sidebar(application.page).ready();
-  return new Diagram(application.page);
+  const sidebar = new Sidebar(application.page);
+  await sidebar.ready();
+  return { sidebar, diagram: new Diagram(application.page) };
 }
 
 test('a new diagram is saved as an Excalidraw file and reopens identically after restart', async ({
   application,
 }) => {
-  const diagram = await openPlayground(application);
-  await diagram.open();
+  const { diagram } = await startWorkspace(application);
+  await diagram.create();
   await diagram.drawRectangle();
   await diagram.expectElementCount(1);
   await diagram.saved();
@@ -36,10 +37,11 @@ test('a new diagram is saved as an Excalidraw file and reopens identically after
   ]);
 
   await application.restart();
-  await new Sidebar(application.page).ready();
+  const sidebar = new Sidebar(application.page);
+  await sidebar.ready();
   const reopened = new Diagram(application.page);
-  await reopened.openPlayground();
-  await reopened.openedFromVault(newDiagramPath);
+  await sidebar.open('Untitled diagram');
+  await reopened.ready();
   await reopened.expectElementCount(1);
   await reopened.saved();
   expect(await application.note(newDiagramPath)).toBe(saved);
@@ -48,8 +50,8 @@ test('a new diagram is saved as an Excalidraw file and reopens identically after
 test('an outside edit while unsaved shows the conflict banner and is never overwritten', async ({
   application,
 }) => {
-  const diagram = await openPlayground(application);
-  await diagram.open();
+  const { diagram } = await startWorkspace(application);
+  await diagram.create();
   await diagram.drawRectangle();
   await diagram.saved();
   const outside = smallDiagram(3);
@@ -64,14 +66,15 @@ test('an outside edit while unsaved shows the conflict banner and is never overw
   expect(readDiagramFile(await application.note(newDiagramPath)).elements).toHaveLength(2);
 });
 
-test('deleting a diagram moves it to the vault trash', async ({ application }) => {
-  const diagram = await openPlayground(application);
-  await diagram.open();
+test('deleting a diagram from the sidebar moves it to the vault trash', async ({ application }) => {
+  const { sidebar, diagram } = await startWorkspace(application);
+  await diagram.create();
   await diagram.drawRectangle();
   await diagram.saved();
 
-  await diagram.delete();
+  await sidebar.delete('diagram', 'Untitled diagram');
 
+  await expect(application.page.getByRole('main', { name: 'Workspace' })).toBeVisible();
   expect(await application.note(newDiagramPath)).toBeNull();
   const trashed = await readdir(join(application.vault, '.trash'), { recursive: true });
   expect(trashed.some((path) => path.endsWith(newDiagramPath))).toBe(true);
@@ -84,11 +87,12 @@ test('a file exported from excalidraw.com opens with every element', async ({ ap
     join(application.vault, 'From excalidraw.com.excalidraw'),
   );
   await application.start();
-  await new Sidebar(application.page).ready();
+  const sidebar = new Sidebar(application.page);
+  await sidebar.ready();
   const diagram = new Diagram(application.page);
 
-  await diagram.openPlayground();
-  await diagram.openedFromVault('From excalidraw.com.excalidraw');
+  await sidebar.open('From excalidraw.com');
+  await diagram.ready();
 
   await diagram.expectElementCount(6);
   await diagram.saved();
@@ -102,11 +106,11 @@ test('a corrupt diagram shows an error and its bytes stay exactly as they were',
   await copyFile(join(fixtures, 'truncated.excalidraw'), corrupt);
   const original = await readFile(corrupt);
   await application.start();
-  await new Sidebar(application.page).ready();
+  const sidebar = new Sidebar(application.page);
+  await sidebar.ready();
   const diagram = new Diagram(application.page);
 
-  await diagram.openPlayground();
-  await diagram.openFromVault('Broken.excalidraw');
+  await sidebar.open('Broken');
 
   await expect(diagram.alert()).toContainText('This diagram can’t be opened.');
   await expect(diagram.alert()).toContainText('The file was not changed.');

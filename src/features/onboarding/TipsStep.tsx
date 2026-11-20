@@ -25,6 +25,16 @@ const tips: { tone: string; icon: IconName; title: string; body: ReactNode }[] =
     body: 'Copy or download any note as .md or PDF.',
   },
   {
+    tone: 'butter',
+    icon: 'shapes',
+    title: 'Diagrams',
+    body: (
+      <>
+        Sketch ideas on a canvas. Press <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>D</kbd> from anywhere.
+      </>
+    ),
+  },
+  {
     tone: 'peach',
     icon: 'bolt',
     title: 'Quick note',

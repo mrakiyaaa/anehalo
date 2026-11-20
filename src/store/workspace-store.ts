@@ -27,6 +27,7 @@ import { FileSystemNoteRepository } from '@/features/storage/FileSystemNoteRepos
 import { DiagramRepository } from '@/features/diagrams/DiagramRepository';
 import { DiagramAutoSaver } from '@/features/diagrams/DiagramAutoSaver';
 import { createDiagramActions } from '@/store/diagram-actions';
+import { itemKind } from '@/features/storage/vault-items';
 
 export function createWorkspaceStore(
   sourceRepository: NoteRepository,
@@ -51,7 +52,7 @@ export function createWorkspaceStore(
   const autoSaver = new NoteAutoSaver(repository);
   const diagramRepository =
     sourceRepository instanceof FileSystemNoteRepository
-      ? new DiagramRepository(sourceRepository.storage)
+      ? new DiagramRepository(sourceRepository.storage, options.diagramCodec)
       : null;
   const diagramSaver = diagramRepository ? new DiagramAutoSaver(diagramRepository) : null;
   let initialization: Promise<void> | null = null;
@@ -216,23 +217,50 @@ export function createWorkspaceStore(
       return loaded.ok ? success(undefined) : loaded;
     }
 
-    /** Saves and closes the open note before switching to a view that has no note. */
-    function leaveNoteFor(view: 'home' | 'diagram') {
-      return enqueue(async () => {
-        const saved = await leaveCurrentDraft();
-        if (!saved.ok) return saved;
-        const identifier = get().openDraft?.identifier;
-        if (identifier) autoSaver.release(identifier);
-        set({ view, openDraft: null, openingError: null });
-        return success(undefined);
-      });
+    async function revisitNote(path: string): Promise<RepositoryResult<void>> {
+      const available = await repository.readNote(path);
+      if (!available.ok) {
+        set({ error: available.error });
+        return available;
+      }
+      const result = await loadNote(path, false);
+      if (!result.ok) set({ error: result.error });
+      return result;
     }
+
+    /** Saves and closes the open note (and diagram) before showing something else. */
+    async function closeOpenItem(): Promise<RepositoryResult<void>> {
+      const saved = await leaveCurrentDraft();
+      if (!saved.ok) return saved;
+      const identifier = get().openDraft?.identifier;
+      if (identifier) autoSaver.release(identifier);
+      set({ openDraft: null, openingError: null });
+      return success(undefined);
+    }
+
+    const { revisitDiagram, ...diagramActions } = createDiagramActions({
+      repository: diagramRepository,
+      saver: diagramSaver,
+      enqueue,
+      refreshTree: () => refreshTree(false),
+      getState: get,
+      setState: set,
+      leaveNote: closeOpenItem,
+      history: {
+        visit: (path) => navigation.getState().visit(path),
+        rename: (previousPath, nextPath) =>
+          navigation.getState().rename({ previousPath, nextPath }),
+      },
+    });
 
     function mutate<Value>(
       operation: () => Promise<RepositoryResult<Value>>,
       accept?: (value: Value) => void,
     ) {
       return enqueue(async () => {
+        // Folder changes move files, so the open diagram is saved first, like open notes.
+        const diagramSaved = diagramSaver ? await diagramSaver.flush() : success(undefined);
+        if (!diagramSaved.ok) return diagramSaved;
         const result = await autoSaver.withSavedNotes(operation, accept);
         if (!result.ok) set({ error: result.error });
         else {
@@ -252,15 +280,9 @@ export function createWorkspaceStore(
       tree: { vaultPath: '', folders: [], notes: [], diagrams: [] },
       diagramsAvailable: diagramSaver !== null,
       diagram: null,
+      isOpeningDiagram: false,
       diagramOpenError: null,
-      ...createDiagramActions({
-        repository: diagramRepository,
-        saver: diagramSaver,
-        enqueue,
-        refreshTree: () => refreshTree(false),
-        getState: get,
-        setState: set,
-      }),
+      ...diagramActions,
       links: emptyLinkIndex,
       navigation,
       activeFolderPath: null,
@@ -310,19 +332,16 @@ export function createWorkspaceStore(
         return initialization;
       },
       openNote: (path) => enqueue(() => loadNote(path)),
+      openItem: (path) =>
+        itemKind(path) === 'diagram' ? get().openDiagramFile(path) : get().openNote(path),
       navigateHistory: (direction) =>
         enqueue(async () => {
           const history = navigation.getState();
           const path = history.paths[history.position + direction];
           if (!path) return success(undefined);
-          const available = await repository.readNote(path);
-          if (!available.ok) {
-            set({ error: available.error });
-            return available;
-          }
-          const result = await loadNote(path, false);
+          const result =
+            itemKind(path) === 'diagram' ? await revisitDiagram(path) : await revisitNote(path);
           if (result.ok) navigation.getState().move(direction);
-          else set({ error: result.error });
           return result;
         }),
       createLinkedNote: (title, folder) =>
@@ -339,8 +358,12 @@ export function createWorkspaceStore(
           else await refreshTree(false);
           return result;
         }),
-      goHome: () => leaveNoteFor('home'),
-      openDiagram: () => leaveNoteFor('diagram'),
+      goHome: () =>
+        enqueue(async () => {
+          const closed = await closeOpenItem();
+          if (closed.ok) set({ view: 'home' });
+          return closed;
+        }),
       startQuickNote: (content = '') =>
         enqueue(async () => {
           const left = await leaveCurrentDraft();
@@ -419,6 +442,7 @@ export function createWorkspaceStore(
           () => repository.renameFolder(path, name),
           (folder) => {
             autoSaver.relocateFolder(path, folder.relativePath);
+            diagramSaver?.relocateFolder(path, folder.relativePath);
             if (lastOpenedPath && isInsideFolder(lastOpenedPath, path))
               void rememberNote(`${folder.relativePath}${lastOpenedPath.slice(path.length)}`);
             const selected = get().activeFolderPath;
@@ -431,6 +455,7 @@ export function createWorkspaceStore(
           () => repository.deleteFolder(path),
           () => {
             autoSaver.forgetDeletedPath(path);
+            if (diagramSaver?.forgetInside(path) && get().view === 'diagram') set({ view: 'home' });
             if (lastOpenedPath && isInsideFolder(lastOpenedPath, path)) void rememberNote(null);
           },
         ),

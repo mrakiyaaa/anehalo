@@ -18,7 +18,11 @@ export function NoteCard({ note, currentTime }: NoteCardProps) {
     <ItemMenu
       kind="note"
       name={note.title}
-      notePath={note.relativePath}
+      path={note.relativePath}
+      folder={note.folder}
+      onOpen={() => {
+        void openNote(note.relativePath);
+      }}
       onRename={(name) => renameNote(note.relativePath, name)}
       onDelete={() => deleteNote(note.relativePath)}
     >

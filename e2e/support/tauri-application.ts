@@ -77,6 +77,46 @@ export class TauriApplication {
     );
   }
 
+  private singleInstance = false;
+
+  /** The environment of every app process this harness starts. */
+  private get environment(): NodeJS.ProcessEnv {
+    return {
+      ...process.env,
+      ANEHALO_TEST_ROOT: this.root,
+      ...(this.singleInstance ? { ANEHALO_TEST_SINGLE_INSTANCE: '1' } : {}),
+    };
+  }
+
+  /**
+   * Starts the app with single-instance on, as installed builds run, so launchAgain reaches it.
+   * Other tests leave it off, so stopping and restarting can never race the old process's lock.
+   */
+  async startSingleInstance(launchArguments: readonly string[] = []) {
+    this.singleInstance = true;
+    await this.start(launchArguments);
+  }
+
+  /** Runs the app again with arguments; it hands them to the running app and exits. */
+  async launchAgain(launchArguments: readonly string[]) {
+    if (!this.singleInstance) throw new Error('Start the app with startSingleInstance first.');
+    const second = spawn(resolve(e2eExecutable(selectedE2eBuild())), launchArguments, {
+      env: this.environment,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    const [exitCode] = (await Promise.race([
+      once(second, 'exit'),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          second.kill();
+          reject(new Error('The second launch did not hand over to the running app.'));
+        }, 30_000).unref();
+      }),
+    ])) as [number | null];
+    expect(exitCode).toBe(0);
+  }
+
   async start(launchArguments: readonly string[] = []) {
     if (process.platform !== 'win32')
       throw new Error('Real Tauri E2E tests require Windows/WebView2.');
@@ -86,10 +126,7 @@ export class TauriApplication {
     const started = performance.now();
     this.startedEpoch = Date.now();
     this.process = spawn(resolve(e2eExecutable(selectedE2eBuild())), launchArguments, {
-      env: {
-        ...process.env,
-        ANEHALO_TEST_ROOT: this.root,
-      },
+      env: this.environment,
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });

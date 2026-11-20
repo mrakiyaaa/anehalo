@@ -155,6 +155,38 @@ describe('Phase 7 keyboard and settings flows', () => {
     expect(shortcuts.current).toBe('Ctrl+Alt+N');
   });
 
+  it('records New diagram (Ctrl+Alt+D by default) with the same conflict handling', async () => {
+    const { user, shortcuts, settingsRepository } = await setup();
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    const field = within(dialog).getByRole('textbox', { name: 'Record new diagram shortcut' });
+    expect(field).toHaveValue('Ctrl+Alt+D');
+    await waitFor(() =>
+      expect(shortcuts.registrations.get('new-diagram')?.shortcut).toBe('Ctrl+Alt+D'),
+    );
+
+    await user.click(field);
+    fireEvent.keyDown(field, { key: 'n', code: 'KeyN', ctrlKey: true, altKey: true });
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('different shortcuts');
+
+    shortcuts.conflicts.add('Ctrl+Alt+G');
+    fireEvent.keyDown(field, { key: 'g', code: 'KeyG', ctrlKey: true, altKey: true });
+    await waitFor(() =>
+      expect(within(dialog).getByRole('alert')).toHaveTextContent('already taken'),
+    );
+    expect(shortcuts.registrations.get('new-diagram')?.shortcut).toBe('Ctrl+Alt+D');
+
+    fireEvent.keyDown(field, { key: 'j', code: 'KeyJ', ctrlKey: true, shiftKey: true });
+    await waitFor(async () =>
+      expect(unwrapResult(await settingsRepository.load()).newDiagramShortcut).toBe('Ctrl+Shift+J'),
+    );
+    expect(shortcuts.registrations.get('new-diagram')?.shortcut).toBe('Ctrl+Shift+J');
+    await user.click(within(dialog).getByRole('button', { name: 'Reset New diagram shortcut' }));
+    await waitFor(() =>
+      expect(shortcuts.registrations.get('new-diagram')?.shortcut).toBe('Ctrl+Alt+D'),
+    );
+  });
+
   it('dispatches the registered hotkey while the window is in the tray', async () => {
     const { tray, shortcuts } = await setup();
     await waitFor(() => expect(shortcuts.pressed).toBeTypeOf('function'));

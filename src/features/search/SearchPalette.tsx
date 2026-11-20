@@ -5,6 +5,7 @@ import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { folderTone } from '@/lib/folder-tone';
 import { formatRelativeTime } from '@/lib/relative-time';
 import type { SearchResult } from './SearchEngine';
+import { isTypingInDiagramText } from '@/features/shortcuts/typing-target';
 
 export function HighlightedSnippet({ snippet }: { snippet: SearchResult['snippet'] }) {
   const parts = snippet.ranges.map((range, index) => {
@@ -151,6 +152,8 @@ export function SearchPalette() {
     const keydown = (event: KeyboardEvent) => {
       if (event.target instanceof HTMLElement && event.target.matches('[data-shortcut-recorder]'))
         return;
+      if (isTypingInDiagramText(event.target)) return;
+      // Capturing first also keeps Excalidraw's own Ctrl+K (add link) from running on diagrams.
       if (
         (event.ctrlKey || event.metaKey) &&
         !event.altKey &&

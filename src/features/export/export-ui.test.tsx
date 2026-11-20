@@ -48,7 +48,7 @@ describe('export entry points and notifications', () => {
   it('offers all four actions from a sidebar note context menu', async () => {
     await setup();
     fireEvent.contextMenu(
-      within(screen.getByRole('navigation', { name: 'Notes' })).getByRole('button', {
+      within(screen.getByRole('navigation', { name: 'Items' })).getByRole('button', {
         name: 'Export note',
       }),
     );

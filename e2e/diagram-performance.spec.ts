@@ -17,27 +17,23 @@ test('saving 5,000 elements and five 2 MB images keeps every frame under 100 ms'
   const content = largeDiagram();
   await writeFile(join(application.vault, heavyDiagram), content);
   await application.start();
-  await new Sidebar(application.page).ready();
+  const sidebar = new Sidebar(application.page);
+  await sidebar.ready();
   const diagram = new Diagram(application.page);
-  await diagram.openPlayground();
-  await diagram.openFromVault(heavyDiagram);
-  await expect(application.page.getByText('5005 elements', { exact: true })).toBeVisible({
-    timeout: 120_000,
-  });
+  await sidebar.open('Heavy');
+  await diagram.expectElementCount(5005, 120_000);
   await diagram.saved();
 
   await diagram.drawRectangle();
-  await expect(application.page.getByRole('status').filter({ hasText: 'Saving...' })).toBeVisible();
+  await expect(diagram.screen.getByRole('status').filter({ hasText: 'Saving...' })).toBeVisible();
   // Drawing redraws 5,000 shapes; measuring starts after that, so it covers only the save.
   await application.page.evaluate(
     () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
   );
   await startMainThreadMonitor(application.page);
   await expect(
-    application.page.getByRole('status').filter({ hasText: 'Saved just now' }),
-  ).toBeVisible({
-    timeout: 120_000,
-  });
+    diagram.screen.getByRole('status').filter({ hasText: 'Saved just now' }),
+  ).toBeVisible({ timeout: 120_000 });
 
   const longestTaskMilliseconds = await longestMainThreadTask(application.page);
   const saveMilliseconds = await application.page.evaluate(

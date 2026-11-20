@@ -1,6 +1,11 @@
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut';
 import { failure, success, type RepositoryResult } from '@/features/storage/repository-result';
-import { validateShortcut, shortcutConflictMessage } from './shortcut-validation';
+import {
+  shortcutConflictMessage,
+  shortcutFromEvent,
+  validateShortcut,
+} from './shortcut-validation';
+import { isTypingInDiagramText } from './typing-target';
 import { runtimePaths } from '@/app/runtime-paths';
 import type {
   GlobalShortcutAction,
@@ -11,6 +16,28 @@ import type {
 export class TauriGlobalShortcutService implements GlobalShortcutService {
   private registrations = new Map<GlobalShortcutAction, ShortcutRegistration>();
   private queue: Promise<unknown> = Promise.resolve();
+  private listeningInWindow = false;
+
+  /**
+   * Isolated (test) runs must not take system-wide hotkeys from the user's own Anehalo, so
+   * their shortcuts work only while the window has focus, with the same rules as global ones.
+   */
+  private listenInWindow() {
+    if (this.listeningInWindow) return;
+    this.listeningInWindow = true;
+    window.addEventListener('keydown', (event) => {
+      if (event.repeat || isTypingInDiagramText(event.target)) return;
+      if (event.target instanceof HTMLElement && event.target.matches('[data-shortcut-recorder]'))
+        return;
+      const pressed = shortcutFromEvent(event);
+      for (const registration of this.registrations.values())
+        if (registration.shortcut === pressed) {
+          event.preventDefault();
+          registration.pressed();
+        }
+    });
+  }
+
   replace(
     shortcut: string,
     pressed: () => void,
@@ -37,6 +64,7 @@ export class TauriGlobalShortcutService implements GlobalShortcutService {
       try {
         if ((await runtimePaths()).isolated) {
           this.registrations.set(action, { shortcut: validated.value, pressed });
+          this.listenInWindow();
           return success(undefined);
         }
         let held = false;

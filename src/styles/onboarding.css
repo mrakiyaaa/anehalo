@@ -399,6 +399,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
+/* An odd last tip takes the full row instead of leaving a gap beside it. */
+.onboarding-tip:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
 .onboarding-tip {
   display: flex;
   flex-direction: column;

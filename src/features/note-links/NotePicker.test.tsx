@@ -6,7 +6,7 @@ import { NotePicker } from './NotePicker';
 import { filterNotes } from './filter-notes';
 import { PageNotePicker } from './PageNotePicker';
 import { BacklinksPanel } from './BacklinksPanel';
-import { NoteNavigation } from './NoteNavigation';
+import { HistoryNavigation } from '@/features/navigation/HistoryNavigation';
 import { SlashMenu } from '@/features/editor/tools/SlashMenu';
 import { editorExtensions } from '@/features/editor/editor-extensions';
 import { InMemoryNoteRepository } from '@/features/storage/InMemoryNoteRepository';
@@ -216,14 +216,14 @@ describe('note chips and backlinks', () => {
     render(
       <WorkspaceContext.Provider value={store}>
         <EditorContent editor={editor} />
-        <NoteNavigation />
+        <HistoryNavigation />
       </WorkspaceContext.Provider>,
     );
     fireEvent.keyDown(editor.view.dom, { key: 'ArrowLeft', altKey: true });
     await waitFor(() =>
       expect(store.getState().openDraft?.note.relativePath).toBe('Work/Source.md'),
     );
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Next note' })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Forward' })).toBeEnabled());
     fireEvent.keyDown(editor.view.dom, { key: 'ArrowRight', altKey: true });
     await waitFor(() => expect(store.getState().openDraft?.note.relativePath).toBe('Target.md'));
   });
