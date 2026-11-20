@@ -1,4 +1,5 @@
 import {
+  defaultNewDiagramShortcut,
   defaultOpenShortcut,
   defaultQuickNoteShortcut,
 } from '@/features/shortcuts/shortcut-validation';
@@ -22,6 +23,13 @@ export function ShortcutSettings({
         shortcut={settings.quickNoteShortcut}
         defaultShortcut={defaultQuickNoteShortcut}
         change={(shortcut) => change({ quickNoteShortcut: shortcut })}
+      />
+      <ShortcutRecorder
+        label="New diagram"
+        accessibleName="Record new diagram shortcut"
+        shortcut={settings.newDiagramShortcut}
+        defaultShortcut={defaultNewDiagramShortcut}
+        change={(shortcut) => change({ newDiagramShortcut: shortcut })}
       />
       <ShortcutRecorder
         label="Open Anehalo"

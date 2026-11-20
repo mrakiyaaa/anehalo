@@ -18,6 +18,22 @@ describe('settings persistence', () => {
       openShortcut: 'Ctrl+Alt+O',
     });
   });
+  it('gives New diagram Ctrl+Alt+D unless an older setting already uses it', async () => {
+    const load = async (extra: Record<string, unknown>) =>
+      unwrapResult(
+        await new InMemorySettingsRepository(
+          JSON.stringify({ ...defaultSettings('Memory/Anehalo'), ...extra }),
+        ).load(),
+      );
+    expect((await load({ newDiagramShortcut: undefined })).newDiagramShortcut).toBe('Ctrl+Alt+D');
+    expect(
+      (await load({ quickNoteShortcut: 'Ctrl+Alt+D', newDiagramShortcut: undefined }))
+        .newDiagramShortcut,
+    ).toBe('Ctrl+Alt+Shift+D');
+    expect((await load({ newDiagramShortcut: 'Ctrl+Shift+G' })).newDiagramShortcut).toBe(
+      'Ctrl+Shift+G',
+    );
+  });
   it('migrates settings from before the editor without restarting onboarding', async () => {
     const repository = new InMemorySettingsRepository(
       JSON.stringify({

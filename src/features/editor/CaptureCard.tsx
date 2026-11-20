@@ -7,6 +7,8 @@ export function CaptureCard() {
   const folder = useWorkspaceStore((state) => state.activeFolderPath);
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const vaultReady = useWorkspaceStore((state) => Boolean(state.tree.vaultPath));
+  const newDiagram = useWorkspaceStore((state) => state.newDiagram);
+  const diagramsAvailable = useWorkspaceStore((state) => state.diagramsAvailable);
   return (
     <div className="capture-card">
       <button
@@ -30,6 +32,19 @@ export function CaptureCard() {
           <Icon name="pen" />
           Start writing
         </span>
+        {diagramsAvailable && (
+          <button
+            type="button"
+            className="capture-action"
+            disabled={!vaultReady || isMutating}
+            onClick={() => {
+              void newDiagram();
+            }}
+          >
+            <Icon name="shapes" />
+            New diagram
+          </button>
+        )}
       </div>
     </div>
   );

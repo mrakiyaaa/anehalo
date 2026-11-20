@@ -1,5 +1,6 @@
 import type { Theme } from '@/types/theme';
 import {
+  defaultNewDiagramShortcut,
   defaultOpenShortcut,
   defaultQuickNoteShortcut,
   validateShortcut,
@@ -17,6 +18,7 @@ export interface AppSettings {
   readonly lastExportFolder: string | null;
   readonly quickNoteShortcut: string;
   readonly openShortcut: string;
+  readonly newDiagramShortcut: string;
   readonly keepRunningInTray: boolean;
   readonly startWithWindows: boolean;
   readonly trayNoticeShown: boolean;
@@ -50,6 +52,7 @@ export function defaultSettings(vaultPath: string): AppSettings {
     lastExportFolder: null,
     quickNoteShortcut: defaultQuickNoteShortcut,
     openShortcut: defaultOpenShortcut,
+    newDiagramShortcut: defaultNewDiagramShortcut,
     keepRunningInTray: true,
     startWithWindows: false,
     trayNoticeShown: false,
@@ -91,6 +94,19 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
   // Preserve a pre-existing custom quick-note binding when adding the new shortcut.
   if (openShortcut === quickNoteShortcut)
     openShortcut = quickNoteShortcut === defaultOpenShortcut ? 'Ctrl+Alt+O' : defaultOpenShortcut;
+  const newDiagram = validateShortcut(
+    'newDiagramShortcut' in value && typeof value.newDiagramShortcut === 'string'
+      ? value.newDiagramShortcut
+      : defaultNewDiagramShortcut,
+  );
+  const taken = [quickNoteShortcut, openShortcut];
+  // Settings from before diagrams may already use Ctrl+Alt+D for another action.
+  const newDiagramShortcut =
+    newDiagram.ok && !taken.includes(newDiagram.value)
+      ? newDiagram.value
+      : ([defaultNewDiagramShortcut, 'Ctrl+Alt+Shift+D', 'Ctrl+Alt+G'].find(
+          (shortcut) => !taken.includes(shortcut),
+        ) ?? defaultNewDiagramShortcut);
   return {
     onboardingCompleted: value.onboardingCompleted,
     userName: normalizeUserName(value.userName),
@@ -106,6 +122,7 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
         : true,
     quickNoteShortcut,
     openShortcut,
+    newDiagramShortcut,
     keepRunningInTray:
       'keepRunningInTray' in value && typeof value.keepRunningInTray === 'boolean'
         ? value.keepRunningInTray

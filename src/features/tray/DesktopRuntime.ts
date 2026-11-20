@@ -16,6 +16,9 @@ import { parseCommandLineArguments } from '@/features/launch/command-line-argume
 import { DisabledUpdateService } from '@/features/updates/DisabledUpdateService';
 import { UpdateController } from '@/features/updates/UpdateController';
 import type { UpdateService } from '@/features/updates/UpdateService';
+import { launchItemPath } from '@/features/launch/launch-item-path';
+import { isTypingInFocusedDiagramText } from '@/features/shortcuts/typing-target';
+import { itemKind } from '@/features/storage/vault-items';
 
 export class DesktopRuntime {
   readonly state = createStore<{
@@ -28,10 +31,13 @@ export class DesktopRuntime {
   private lifecycle: Promise<void> = Promise.resolve();
   private closing = false;
   private readonly shortcutPressed = () => {
-    if (!this.state.getState().recordingShortcut) void this.quickNote();
+    if (this.acceptsShortcut()) void this.quickNote();
+  };
+  private readonly newDiagramShortcutPressed = () => {
+    if (this.acceptsShortcut()) void this.newDiagram();
   };
   private readonly openShortcutPressed = () => {
-    if (!this.state.getState().recordingShortcut) void this.toggle();
+    if (this.acceptsShortcut()) void this.toggle();
   };
   readonly visibility: WindowVisibilityController;
   readonly updates: UpdateController;
@@ -52,6 +58,7 @@ export class DesktopRuntime {
     });
     this.shortcutController = new DesktopShortcutController(shortcuts, {
       'quick-note': this.shortcutPressed,
+      'new-diagram': this.newDiagramShortcutPressed,
       open: this.openShortcutPressed,
     });
     this.visibility = new WindowVisibilityController(tray, {
@@ -62,6 +69,10 @@ export class DesktopRuntime {
         !this.state.getState().settingsOpen,
       flushPendingSaves: () => this.flushPendingSaves(),
     });
+  }
+
+  private acceptsShortcut(): boolean {
+    return !this.state.getState().recordingShortcut && !isTypingInFocusedDiagramText();
   }
 
   private async flushPendingSaves(): Promise<RepositoryResult<void>> {
@@ -102,9 +113,27 @@ export class DesktopRuntime {
       this.report(parsed);
       return parsed;
     }
-    if (parsed.value === 'background') return success(undefined);
+    const action = parsed.value;
+    if (action?.kind === 'background') return success(undefined);
     await this.workspace.getState().initialize();
-    return parsed.value === 'new-note' ? this.quickNote() : this.show();
+    if (action?.kind === 'new-note') return this.quickNote();
+    if (action?.kind === 'new-diagram') return this.newDiagram();
+    if (action?.kind === 'open' && action.path) return this.openLaunchedItem(action.path);
+    return this.show();
+  }
+
+  private async openLaunchedItem(path: string): Promise<RepositoryResult<void>> {
+    const shown = await this.bringForward();
+    if (!shown.ok) return shown;
+    const relative = launchItemPath(this.workspace.getState().tree.vaultPath, path);
+    if (!relative.ok) {
+      this.report(relative);
+      return relative;
+    }
+    const opened = await this.workspace.getState().openItem(relative.value);
+    this.report(opened);
+    if (opened.ok && itemKind(relative.value) === 'note') this.visibility.focusEditor();
+    return opened;
   }
 
   private report(result: RepositoryResult<unknown>) {
@@ -128,6 +157,9 @@ export class DesktopRuntime {
         },
         quickNote: () => {
           void this.quickNote();
+        },
+        newDiagram: () => {
+          void this.newDiagram();
         },
         settings: () => {
           this.openSettings();
@@ -169,7 +201,8 @@ export class DesktopRuntime {
     this.report(await state.checkOpenNote());
     this.report(await state.refreshTree());
   }
-  async quickNote(): Promise<RepositoryResult<void>> {
+  /** Shows the window with nothing covering the workspace, before opening something in it. */
+  private async bringForward(): Promise<RepositoryResult<void>> {
     const shown = await this.visibility.show(false);
     if (!shown.ok) {
       this.report(shown);
@@ -177,11 +210,26 @@ export class DesktopRuntime {
     }
     this.openSettings(false);
     this.workspace.getState().setSearchOpen(false);
+    return success(undefined);
+  }
+
+  async quickNote(): Promise<RepositoryResult<void>> {
+    const shown = await this.bringForward();
+    if (!shown.ok) return shown;
     const created = await this.workspace.getState().startQuickNote();
     this.report(created);
     if (!created.ok) return created;
     this.visibility.focusEditor();
     return success(undefined);
+  }
+
+  /** The new diagram's canvas takes focus itself once it has loaded. */
+  async newDiagram(): Promise<RepositoryResult<void>> {
+    const shown = await this.bringForward();
+    if (!shown.ok) return shown;
+    const created = await this.workspace.getState().newDiagram();
+    this.report(created);
+    return created;
   }
   updateSettings(patch: Partial<AppSettings>): Promise<RepositoryResult<void>> {
     if (this.closing)
@@ -196,7 +244,9 @@ export class DesktopRuntime {
     const previous = this.settings.getState().settings;
     if (!previous) return failure({ code: 'unavailable', message: 'Settings have not loaded.' });
     const shortcutsChanged =
-      patch.quickNoteShortcut !== undefined || patch.openShortcut !== undefined;
+      patch.quickNoteShortcut !== undefined ||
+      patch.newDiagramShortcut !== undefined ||
+      patch.openShortcut !== undefined;
     if (shortcutsChanged) {
       const registered = await this.shortcutController.configure({ ...previous, ...patch });
       if (!registered.ok) {

@@ -1,22 +1,21 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import type { NoteSummary } from '@/types/notes';
-
-interface VirtualNotesProps {
-  readonly notes: readonly NoteSummary[];
+interface VirtualItemsProps<Item> {
+  readonly items: readonly Item[];
   readonly layout: 'grid' | 'list';
-  readonly renderNote: (note: NoteSummary) => ReactNode;
+  readonly renderItem: (item: Item) => ReactNode;
 }
 
-export function VirtualNotes(props: VirtualNotesProps) {
-  return props.notes.length > 100 ? (
-    <WindowedNotes {...props} />
+/** Renders long lists of notes or diagrams in windows, so thousands stay responsive. */
+export function VirtualItems<Item>(props: VirtualItemsProps<Item>) {
+  return props.items.length > 100 ? (
+    <WindowedItems {...props} />
   ) : (
-    <>{props.notes.map(props.renderNote)}</>
+    <>{props.items.map(props.renderItem)}</>
   );
 }
 
-function WindowedNotes({ notes, layout, renderNote }: VirtualNotesProps) {
+function WindowedItems<Item>({ items, layout, renderItem }: VirtualItemsProps<Item>) {
   'use no memo';
   const container = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ columns: layout === 'grid' ? 2 : 1, margin: 0 });
@@ -42,7 +41,7 @@ function WindowedNotes({ notes, layout, renderNote }: VirtualNotesProps) {
   }, [layout]);
   // eslint-disable-next-line react-hooks/incompatible-library -- Mutable layout measurements intentionally stay outside compiler memoization.
   const rows = useVirtualizer({
-    count: Math.ceil(notes.length / dimensions.columns),
+    count: Math.ceil(items.length / dimensions.columns),
     getScrollElement: () =>
       container.current?.closest<HTMLElement>(layout === 'grid' ? '.home-panel' : '.app-sidebar') ??
       null,
@@ -69,9 +68,9 @@ function WindowedNotes({ notes, layout, renderNote }: VirtualNotesProps) {
             paddingBottom: layout === 'grid' ? 14 : 0,
           }}
         >
-          {notes
+          {items
             .slice(row.index * dimensions.columns, (row.index + 1) * dimensions.columns)
-            .map(renderNote)}
+            .map(renderItem)}
         </div>
       ))}
     </div>

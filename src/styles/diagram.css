@@ -7,16 +7,43 @@
   border-top-left-radius: 22px;
   background: var(--bg);
 }
-.diagram-toolbar {
+/* The note screen's header and notices, above a canvas that takes the rest of the panel. */
+.diagram-chrome {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 24px 8px;
 }
-.diagram-preview-note {
-  margin: 0;
-  color: var(--muted-ink);
-  font-size: 13px;
+/*
+ * The shared header laid out on one row. Excalidraw switches to its phone layout when the
+ * canvas is under 500px tall, which the note screen's taller header would cause in a
+ * normal-sized window.
+ */
+.diagram-chrome .editor-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 16px;
+  padding-bottom: 10px;
+}
+.diagram-chrome .editor-navigation {
+  display: contents;
+}
+.diagram-chrome .editor-navigation-buttons {
+  grid-area: 1 / 1;
+}
+.diagram-chrome .editor-title-row {
+  grid-area: 1 / 2;
+}
+.diagram-chrome .editor-folder-chip {
+  grid-area: 1 / 3;
+}
+.diagram-chrome .editor-export-actions {
+  grid-area: 1 / 4;
+}
+.diagram-chrome .editor-title {
+  padding: 2px 0;
+  font-size: 22px;
 }
 /* Excalidraw fills its container, so the container needs a real size. */
 .diagram-canvas {

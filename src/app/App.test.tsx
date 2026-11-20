@@ -68,7 +68,7 @@ describe('vault home', () => {
       await user.click(screen.getByRole('button', { name: 'New folder' }));
       await user.type(screen.getByRole('textbox', { name: 'Folder name' }), 'Work');
       await user.click(screen.getByRole('button', { name: 'Save name' }));
-      await user.click(await screen.findByRole('button', { name: 'Work, 0 notes' }));
+      await user.click(await screen.findByRole('button', { name: 'Work, 0 items' }));
       await user.click(screen.getByRole('button', { name: 'Quick note' }));
       expect(await screen.findByRole('textbox', { name: 'Note title' })).toHaveValue(
         'Untitled note',
@@ -153,7 +153,7 @@ describe('vault home', () => {
     await screen.findByRole('textbox', { name: 'Note content' });
     expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue('Welcome');
     await user.click(screen.getByRole('button', { name: 'Home' }));
-    const sidebar = screen.getByRole('navigation', { name: 'Notes' });
+    const sidebar = screen.getByRole('navigation', { name: 'Items' });
     await user.click(within(sidebar).getByRole('button', { name: 'Welcome' }));
     await screen.findByRole('textbox', { name: 'Note content' });
     expect(unwrapResult(await repository.readNote('Getting started/Welcome.md'))).toEqual(original);

@@ -38,6 +38,7 @@ function events(): TrayEvents {
     close: vi.fn(),
     quit: vi.fn(),
     quickNote: vi.fn(),
+    newDiagram: vi.fn(),
     settings: vi.fn(),
     focus: vi.fn(),
     open: vi.fn(),

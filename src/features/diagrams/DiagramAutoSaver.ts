@@ -11,10 +11,14 @@ import {
   type RepositoryResult,
 } from '@/features/storage/repository-result';
 import type { DiagramSummary } from '@/types/notes';
+import { isInsideFolder } from '@/features/storage/storage-paths';
+import { diagramSummary } from '@/features/storage/vault-items';
 import type { DiagramScene } from './diagram-codec';
 import type { DiagramRepository, LoadedDiagram } from './DiagramRepository';
 
 export interface DiagramDraft {
+  /** Stays the same across renames while the diagram is open; a new open gets a new one. */
+  readonly identifier: number;
   readonly summary: DiagramSummary;
   /** The latest drawing; it may be ahead of the file while a save is pending. */
   readonly scene: DiagramScene;
@@ -65,6 +69,7 @@ export class DiagramAutoSaver {
   private readonly tasks = new SerialTaskQueue();
   private readonly listeners = new Set<(draft: DiagramDraft | null) => void>();
   private paused = false;
+  private openCount = 0;
 
   constructor(private readonly repository: DiagramRepository) {}
 
@@ -142,7 +147,9 @@ export class DiagramAutoSaver {
     return this.tasks.run(async () => {
       const closed = await this.closeSession();
       if (!closed.ok) return closed;
+      this.openCount += 1;
       const draft: DiagramDraft = {
+        identifier: this.openCount,
         summary: loaded.summary,
         scene: loaded.scene,
         loadedScene: loaded.scene,
@@ -290,6 +297,22 @@ export class DiagramAutoSaver {
     if (session?.draft.summary.relativePath !== previousPath) return;
     session.savedModifiedAt = summary.modifiedAt;
     this.publish(session, { summary });
+  }
+
+  /** Follows a folder rename made in Anehalo when the open diagram is inside that folder. */
+  relocateFolder(previousFolder: string, nextFolder: string) {
+    const summary = this.session?.draft.summary;
+    if (!summary || !isInsideFolder(summary.relativePath, previousFolder)) return;
+    const nextPath = `${nextFolder}${summary.relativePath.slice(previousFolder.length)}`;
+    this.relocate(summary.relativePath, diagramSummary(nextPath, summary.modifiedAt));
+  }
+
+  /** Drops the open diagram when its folder was moved to trash. Returns whether it did. */
+  forgetInside(folder: string): boolean {
+    const path = this.session?.draft.summary.relativePath;
+    if (!path || !isInsideFolder(path, folder)) return false;
+    this.forget(path);
+    return true;
   }
 
   pause() {

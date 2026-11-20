@@ -26,7 +26,7 @@ test('the diagram editor runs offline with bundled fonts and no network features
   await new Sidebar(application.page).ready();
   const diagram = new Diagram(application.page);
 
-  await diagram.open();
+  await diagram.create();
   await diagram.drawRectangle();
   await diagram.writeText('Offline');
 
@@ -74,7 +74,7 @@ test('the diagram editor follows the Anehalo theme switch both ways', async ({ a
   await application.start();
   await new Sidebar(application.page).ready();
   const diagram = new Diagram(application.page);
-  await diagram.open();
+  await diagram.create();
   const themeSwitch = application.page.getByRole('switch', { name: 'Dark mode' });
 
   await expect(diagram.container).not.toHaveClass(/theme--dark/);
@@ -98,7 +98,7 @@ test('Mermaid never loads from shortcuts or menus', async ({ application }) => {
   application.page.on('request', (request) => requests.push(request.url()));
   await new Sidebar(application.page).ready();
   const diagram = new Diagram(application.page);
-  await diagram.open();
+  await diagram.create();
   await diagram.drawRectangle();
   await diagram.expectElementCount(1);
 

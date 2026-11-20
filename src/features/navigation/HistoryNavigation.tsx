@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import { useStore } from 'zustand';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { isTypingInDiagramText } from '@/features/shortcuts/typing-target';
 
-export function NoteNavigation() {
+/** Back and forward through the notes and diagrams opened in this session. */
+export function HistoryNavigation() {
   const navigation = useWorkspaceStore((state) => state.navigation);
   const navigate = useWorkspaceStore((state) => state.navigateHistory);
   const disabled = useWorkspaceStore((state) => state.isClosing || state.isMutating);
@@ -16,7 +18,8 @@ export function NoteNavigation() {
         event.ctrlKey ||
         event.metaKey ||
         event.shiftKey ||
-        !['ArrowLeft', 'ArrowRight'].includes(event.key)
+        !['ArrowLeft', 'ArrowRight'].includes(event.key) ||
+        isTypingInDiagramText(event.target)
       )
         return;
       event.preventDefault();
@@ -27,11 +30,11 @@ export function NoteNavigation() {
     return () => window.removeEventListener('keydown', handleKey, true);
   }, [navigate, disabled]);
   return (
-    <span className="note-navigation" role="group" aria-label="Note navigation">
+    <span className="history-navigation" role="group" aria-label="History">
       <button
         type="button"
-        aria-label="Previous note"
-        title="Previous note (Alt+Left)"
+        aria-label="Back"
+        title="Back (Alt+Left)"
         disabled={disabled || position <= 0}
         onClick={() => {
           void navigate(-1);
@@ -41,8 +44,8 @@ export function NoteNavigation() {
       </button>
       <button
         type="button"
-        aria-label="Next note"
-        title="Next note (Alt+Right)"
+        aria-label="Forward"
+        title="Forward (Alt+Right)"
         disabled={disabled || position >= length - 1}
         onClick={() => {
           void navigate(1);

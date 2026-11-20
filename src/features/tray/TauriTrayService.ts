@@ -76,6 +76,7 @@ export class TauriTrayService implements TrayService {
         await listen<string>('anehalo:tray', ({ payload }) => {
           if (payload === 'quit') events.quit();
           else if (payload === 'quick-note') events.quickNote();
+          else if (payload === 'new-diagram') events.newDiagram();
           else if (payload === 'settings') events.settings();
           else if (payload === 'open') events.open();
           else if (payload === 'toggle') events.toggle();

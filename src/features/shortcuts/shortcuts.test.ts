@@ -31,6 +31,42 @@ describe('shortcut validation', () => {
     expect(register).not.toHaveBeenCalled();
     expect(unregister).not.toHaveBeenCalled();
   });
+  it('answers isolated shortcuts inside the window, but not while typing diagram text', async () => {
+    vi.mocked(runtimePaths).mockResolvedValue({
+      isolated: true,
+      vault: 'C:/Test/vault',
+      settings: 'C:/Test/settings',
+    });
+    const service = new TauriGlobalShortcutService();
+    const pressed = vi.fn();
+    expect((await service.replace('Ctrl+Alt+D', pressed, 'new-diagram')).ok).toBe(true);
+    const press = (target: EventTarget) =>
+      target.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'd',
+          code: 'KeyD',
+          ctrlKey: true,
+          altKey: true,
+          bubbles: true,
+        }),
+      );
+
+    press(document.body);
+    expect(pressed).toHaveBeenCalledTimes(1);
+
+    const text = document.createElement('textarea');
+    text.className = 'excalidraw-wysiwyg';
+    document.body.append(text);
+    press(text);
+    expect(pressed).toHaveBeenCalledTimes(1);
+    text.remove();
+    expect((await service.unregister(pressed, 'new-diagram')).ok).toBe(true);
+    vi.mocked(runtimePaths).mockResolvedValue({
+      isolated: false,
+      vault: 'C:/Test/vault',
+      settings: 'C:/Test/settings',
+    });
+  });
   it.each([
     'N',
     'Ctrl',

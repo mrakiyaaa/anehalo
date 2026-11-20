@@ -10,6 +10,7 @@ export interface TrayEvents {
   close: () => void;
   quit: () => void;
   quickNote: () => void;
+  newDiagram: () => void;
   settings: () => void;
   focus: () => void;
   open: () => void;

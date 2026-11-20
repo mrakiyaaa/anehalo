@@ -46,6 +46,9 @@ pub fn run() {
             for window in &mut config.app.windows {
                 window.additional_browser_args = Some(E2E_BROWSER_ARGUMENTS.into());
             }
+            if runtime_paths::test_single_instance() {
+                config.identifier = runtime_paths::isolated_identifier(&config.identifier, &root);
+            }
         }
         context
     };
@@ -57,10 +60,10 @@ pub fn run() {
         }
     });
     #[cfg(all(desktop, debug_assertions))]
-    let builder = if runtime_paths::test_root().is_some() {
-        builder
-    } else {
+    let builder = if runtime_paths::test_root().is_none() || runtime_paths::test_single_instance() {
         builder.plugin(single_instance)
+    } else {
+        builder
     };
     #[cfg(all(desktop, not(debug_assertions)))]
     let builder = builder.plugin(single_instance);

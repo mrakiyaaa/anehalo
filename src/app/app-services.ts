@@ -10,6 +10,7 @@ export interface AppServices {
     shortcuts: import('@/features/shortcuts/GlobalShortcutService').GlobalShortcutService;
     tray: import('@/features/tray/TrayService').TrayService;
     updater?: import('@/features/updates/UpdateService').UpdateService;
+    fileExplorer?: import('@/features/storage/FileExplorer').FileExplorer;
   };
   settingsRepository: SettingsRepository;
   folderAccess: FolderAccess;

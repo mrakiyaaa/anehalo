@@ -1,9 +1,16 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { InlineNameForm } from '@/components/ui/InlineNameForm';
 import type { RepositoryResult } from '@/features/storage/repository-result';
+import type { MenuItemKind } from '@/components/ui/ItemMenu';
+
+const nameLabels: Readonly<Record<MenuItemKind, string>> = {
+  note: 'Note title',
+  diagram: 'Diagram title',
+  folder: 'Folder name',
+};
 
 interface RenameItemDialogProps {
-  kind: 'note' | 'folder';
+  kind: MenuItemKind;
   name: string;
   onRename: (name: string) => Promise<RepositoryResult<unknown>>;
   onClose: () => void;
@@ -23,7 +30,7 @@ export function RenameItemDialog({ kind, name, onRename, onClose }: RenameItemDi
           <Dialog.Title>Rename {kind}</Dialog.Title>
           <Dialog.Description>Choose a name for “{name}”.</Dialog.Description>
           <InlineNameForm
-            label={`${kind === 'note' ? 'Note title' : 'Folder name'}`}
+            label={nameLabels[kind]}
             initialValue={name}
             onCancel={onClose}
             onSubmit={async (nextName) => {

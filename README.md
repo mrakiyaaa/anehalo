@@ -81,6 +81,7 @@ The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, an
 | Shortcut                       | Action                                        |
 | ------------------------------ | --------------------------------------------- |
 | `Ctrl+Alt+N`                   | Global quick note; configurable in Settings   |
+| `Ctrl+Alt+D`                   | Global new diagram; configurable in Settings  |
 | `Ctrl+Alt+A`                   | Open/toggle Anehalo; configurable in Settings |
 | `Ctrl+K`                       | Search all notes                              |
 | `Ctrl+F`                       | Find in the current note                      |
@@ -89,16 +90,16 @@ The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, an
 | `Ctrl+Shift+K` or `/page`      | Insert a page link                            |
 | `Ctrl+Shift+C`                 | Copy as Markdown                              |
 | `Ctrl+Shift+E`                 | Open Export                                   |
-| `Alt+Left` / `Alt+Right`       | Navigation history                            |
+| `Alt+Left` / `Alt+Right`       | Back / forward through notes and diagrams     |
 | `Ctrl+Z` / `Ctrl+Y`            | Undo / redo                                   |
 | `Ctrl+Alt+1` / `2` / `3`       | Headings                                      |
 | `Escape`                       | Close menu, search, or dialog                 |
 
-Toolbar tooltips and slash commands show additional shortcuts. `Ctrl+K` always opens global search; use the link toolbar for web links.
+Toolbar tooltips and slash commands show additional shortcuts. `Ctrl+K` always opens global search, on diagrams too, where it takes the place of Excalidraw's own Ctrl+K (add link); add a link to a shape from its context menu instead. While you type text inside a diagram, Anehalo's shortcuts stay quiet, because Ctrl+Alt is AltGr on many keyboard layouts. Excalidraw's other shortcuts work as usual.
 
-Open Anehalo restores and focuses the last view without creating a note. If the window is already focused, it hides to the tray when Keep running in the tray is enabled, or minimizes otherwise. Both global shortcuts work while the app is running and must use different keys. An older custom quick-note binding on `Ctrl+Alt+A` is preserved during migration; Open Anehalo then starts on `Ctrl+Alt+O`.
+Open Anehalo restores and focuses the last view without creating a note. If the window is already focused, it hides to the tray when Keep running in the tray is enabled, or minimizes otherwise. The global shortcuts work while the app is running and must all use different keys. If an older setting already uses `Ctrl+Alt+D`, New diagram starts on `Ctrl+Alt+Shift+D`. An older custom quick-note binding on `Ctrl+Alt+A` is preserved during migration; Open Anehalo then starts on `Ctrl+Alt+O`.
 
-The installer creates Start menu and desktop shortcuts. To launch an action even when Anehalo is closed, create a Windows shortcut to `anehalo.exe --open` or `anehalo.exe --new-note`, then set its **Properties → Shortcut key**. `--open` shows the last view; `--new-note` performs the existing quick-note action. A running instance receives the action; a cold start queues it until loading and onboarding complete. Launching without arguments opens the existing view. Left-clicking the tray icon toggles show/hide; its menu also has Open Anehalo and New quick note.
+The installer creates Start menu and desktop shortcuts. To launch an action even when Anehalo is closed, create a Windows shortcut to `anehalo.exe --open`, `anehalo.exe --new-note` or `anehalo.exe --new-diagram`, then set its **Properties → Shortcut key**. `--open` shows the last view, and `--open <file>` opens a `.md` note or `.excalidraw` diagram inside your vault; `--new-note` and `--new-diagram` create one in the selected folder. A running instance receives the action; a cold start queues it until loading and onboarding complete. Launching without arguments opens the existing view. Left-clicking the tray icon toggles show/hide; its menu also has Open Anehalo, New quick note and New diagram.
 
 ## Folder layout
 

@@ -22,18 +22,26 @@ export class Sidebar {
       .getByRole('button', { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')},`) })
       .click();
   }
+  get items() {
+    return this.sidebar.getByRole('navigation', { name: 'Items', exact: true });
+  }
+  /** Opens a note or diagram by its title. */
+  async open(title: string) {
+    await this.items.getByRole('button', { name: title, exact: true }).click();
+  }
+  async newDiagramIn(folder: string) {
+    await this.sidebar
+      .getByRole('navigation', { name: 'Folders' })
+      .getByRole('button', { name: `Actions for ${folder}`, exact: true })
+      .click();
+    await this.page.getByRole('menuitem', { name: 'New diagram here', exact: true }).click();
+  }
   async createNote() {
     await this.sidebar.getByRole('button', { name: 'Quick note', exact: true }).click();
   }
-  async openNote(title: string) {
-    await this.sidebar
-      .getByRole('navigation', { name: 'Notes', exact: true })
-      .getByRole('button', { name: title, exact: true })
-      .click();
-  }
-  async rename(kind: 'note' | 'folder', name: string, nextName: string) {
+  async rename(kind: 'note' | 'diagram' | 'folder', name: string, nextName: string) {
     const navigation = this.sidebar.getByRole('navigation', {
-      name: kind === 'note' ? 'Notes' : 'Folders',
+      name: kind === 'folder' ? 'Folders' : 'Items',
       exact: true,
     });
     await navigation.getByRole('button', { name: `Actions for ${name}`, exact: true }).click();
@@ -43,9 +51,9 @@ export class Sidebar {
     await dialog.getByRole('button', { name: 'Save name' }).click();
     await expect(dialog).toBeHidden();
   }
-  async delete(kind: 'note' | 'folder', name: string) {
+  async delete(kind: 'note' | 'diagram' | 'folder', name: string) {
     const navigation = this.sidebar.getByRole('navigation', {
-      name: kind === 'note' ? 'Notes' : 'Folders',
+      name: kind === 'folder' ? 'Folders' : 'Items',
       exact: true,
     });
     await navigation.getByRole('button', { name: `Actions for ${name}`, exact: true }).click();

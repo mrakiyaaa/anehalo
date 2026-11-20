@@ -2,8 +2,9 @@ import { failure, success, type RepositoryResult } from '@/features/storage/repo
 
 export const defaultQuickNoteShortcut = 'Ctrl+Alt+N';
 export const defaultOpenShortcut = 'Ctrl+Alt+A';
+export const defaultNewDiagramShortcut = 'Ctrl+Alt+D';
 export const shortcutConflictMessage =
-  'Open Anehalo and New quick note must use different shortcuts.';
+  'New quick note, New diagram and Open Anehalo must use different shortcuts.';
 export function validateShortcut(shortcut: string): RepositoryResult<string> {
   const parts = shortcut.split('+').map((part) => part.trim());
   const key = parts.pop() ?? '';

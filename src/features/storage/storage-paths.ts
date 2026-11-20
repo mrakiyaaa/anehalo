@@ -40,6 +40,11 @@ export function joinRelativePath(parent: string, name: string): string {
   return parent ? `${parent}/${name}` : name;
 }
 
+/** The Windows path of a vault item, for handing to the operating system. */
+export function absoluteVaultPath(vaultPath: string, relativePath: string): string {
+  return `${vaultPath.replace(/[\\/]+$/, '')}/${relativePath}`.replaceAll('/', '\\');
+}
+
 export function isInsideFolder(path: string, folder: string): boolean {
   return path === folder || path.startsWith(`${folder}/`);
 }

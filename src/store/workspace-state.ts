@@ -1,6 +1,7 @@
 import type { DiagramSummary, Folder, Note, VaultTree } from '@/types/notes';
 import type { DiagramDraft } from '@/features/diagrams/DiagramAutoSaver';
 import type { DiagramScene } from '@/features/diagrams/diagram-codec';
+import type { DiagramCodec } from '@/features/diagrams/DiagramRepository';
 import type { NoteRepository, TrashEntry } from '@/features/storage/NoteRepository';
 import type { RepositoryError, RepositoryResult } from '@/features/storage/repository-result';
 import type { NoteDraft } from '@/features/editor/NoteDraft';
@@ -14,6 +15,8 @@ export interface WorkspaceOptions {
   readonly lastOpenedNotePath?: string | null;
   readonly reopenLastNote?: boolean;
   readonly rememberNote?: (path: string | null) => Promise<void>;
+  /** Replaces Excalidraw's serializer, so store tests do not load Excalidraw. */
+  readonly diagramCodec?: () => Promise<DiagramCodec>;
 }
 
 export interface WorkspaceState {
@@ -46,8 +49,9 @@ export interface WorkspaceState {
   refreshTree: () => ReturnType<NoteRepository['listTree']>;
   initialize: () => Promise<void>;
   openNote: (path: string) => Promise<RepositoryResult<void>>;
+  /** Opens a note or a diagram, decided by the file's extension. */
+  openItem: (path: string) => Promise<RepositoryResult<void>>;
   goHome: () => Promise<RepositoryResult<void>>;
-  openDiagram: () => Promise<RepositoryResult<void>>;
   startQuickNote: (content?: string) => Promise<RepositoryResult<Note>>;
   updateNoteContent: (identifier: string, content: string) => void;
   /** Records title-field typing without renaming; see NoteAutoSaver.editTitle. */
@@ -73,16 +77,18 @@ export interface WorkspaceState {
   diagramsAvailable: boolean;
   /** The open diagram, saved by its own auto-saver. */
   diagram: DiagramDraft | null;
+  isOpeningDiagram: boolean;
   /** Why the last diagram could not be opened; the file was left untouched. */
   diagramOpenError: RepositoryError | null;
-  newDiagram: () => Promise<RepositoryResult<void>>;
+  /** Creates "Untitled diagram" in the given folder (the selected one by default) and opens it. */
+  newDiagram: (folder?: string | null) => Promise<RepositoryResult<void>>;
   openDiagramFile: (path: string) => Promise<RepositoryResult<void>>;
   /** Called only for real document changes; see diagram-fingerprint.ts. */
   updateDiagram: (scene: DiagramScene) => void;
   saveDiagram: () => Promise<RepositoryResult<void>>;
   checkOpenDiagram: () => Promise<RepositoryResult<void>>;
   resolveDiagramConflict: (choice: 'mine' | 'theirs') => Promise<RepositoryResult<void>>;
-  trashOpenDiagram: () => Promise<RepositoryResult<TrashEntry>>;
+  trashDiagram: (path: string) => Promise<RepositoryResult<TrashEntry>>;
   renameDiagram: (path: string, title: string) => Promise<RepositoryResult<DiagramSummary>>;
   moveDiagram: (path: string, folder: string | null) => Promise<RepositoryResult<DiagramSummary>>;
 }

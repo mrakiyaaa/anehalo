@@ -36,7 +36,7 @@
   background: var(--sidebar);
 }
 .note-link-chip:focus-visible,
-.note-navigation button:focus-visible,
+.history-navigation button:focus-visible,
 .backlinks-panel summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
@@ -138,12 +138,12 @@
   color: var(--danger);
 }
 .editor-navigation-buttons,
-.note-navigation {
+.history-navigation {
   display: inline-flex;
   gap: 6px;
   align-items: center;
 }
-.note-navigation button {
+.history-navigation button {
   display: grid;
   place-items: center;
   width: 30px;
@@ -153,11 +153,11 @@
   background: var(--surface);
   color: var(--muted-ink);
 }
-.note-navigation button:hover:enabled {
+.history-navigation button:hover:enabled {
   background: var(--sidebar);
   color: var(--ink);
 }
-.note-navigation button:disabled {
+.history-navigation button:disabled {
   opacity: 0.4;
 }
 .backlinks-panel {

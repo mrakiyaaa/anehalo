@@ -21,6 +21,7 @@ const draft: DiagramDraft = {
   hasExternalChange: true,
   isMissing: false,
   documentVersion: 0,
+  identifier: 1,
 };
 
 function renderNotice(diagram: DiagramDraft) {

@@ -1,9 +1,9 @@
-import { filterNotes } from '@/features/notes/filter-notes';
+import { filterItems } from '@/features/notes/filter-items';
 import { NoteCard } from '@/features/notes/NoteCard';
 import { useCurrentTime } from '@/lib/use-current-time';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { Logo } from '@/components/ui/Logo';
-import { VirtualNotes } from './VirtualNotes';
+import { VirtualItems } from './VirtualItems';
 
 export function RecentNotes() {
   const tree = useWorkspaceStore((state) => state.tree);
@@ -11,7 +11,7 @@ export function RecentNotes() {
   const searchText = useWorkspaceStore((state) => state.searchText);
   const isLoading = useWorkspaceStore((state) => state.isLoading);
   const currentTime = useCurrentTime();
-  const notes = filterNotes(tree.notes, { activeFolderPath, searchText });
+  const notes = filterItems(tree.notes, { activeFolderPath, searchText });
   const activeFolder = tree.folders.find((folder) => folder.relativePath === activeFolderPath);
   return (
     <section aria-labelledby="recent-notes-heading" aria-busy={isLoading}>
@@ -24,10 +24,10 @@ export function RecentNotes() {
         </span>
       </div>
       <div className="notes-grid">
-        <VirtualNotes
-          notes={notes}
+        <VirtualItems
+          items={notes}
           layout="grid"
-          renderNote={(note) => (
+          renderItem={(note) => (
             <NoteCard key={note.relativePath} note={note} currentTime={currentTime.getTime()} />
           )}
         />

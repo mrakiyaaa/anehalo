@@ -51,6 +51,14 @@ const iconPaths = {
   ),
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   pen: <path d="m4 20 1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" />,
+  /** Lucide's "shapes", the mark for diagrams. */
+  shapes: (
+    <>
+      <path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <circle cx="17.5" cy="17.5" r="3.5" />
+    </>
+  ),
   minimize: <path d="M5 12h14" />,
   maximize: <rect x="6" y="6" width="12" height="12" rx="2" />,
   restore: (
@@ -74,6 +82,7 @@ export function Icon({ name, className }: IconProps) {
     <svg
       aria-hidden="true"
       focusable="false"
+      data-icon={name}
       viewBox="0 0 24 24"
       className={mergeClassNames('icon', className)}
     >

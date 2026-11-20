@@ -69,7 +69,7 @@ test('Settings reuses a copied Anehalo folder in any case without nesting anothe
   await settings.open();
   await settings.chooseVault(vault, application.processIdentifier);
   await settings.confirmVault(vault);
-  await new Sidebar(application.page).openNote('Restored');
+  await new Sidebar(application.page).open('Restored');
   await new Editor(application.page).ready('Restored');
   expect((await readdir(vault)).some((name) => name.toLowerCase() === 'anehalo')).toBe(false);
   expect(await readFile(join(vault, 'Restored.md'), 'utf8')).toBe('Keep the copied note intact.');

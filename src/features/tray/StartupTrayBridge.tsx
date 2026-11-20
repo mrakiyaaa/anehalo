@@ -32,7 +32,7 @@ export function StartupTrayBridge() {
       if (disposed) return;
       const action = result.ok ? parseCommandLineArguments(result.value) : result;
       if (!action.ok) setError(action.error.message);
-      if (!action.ok || action.value !== 'background') {
+      if (!action.ok || action.value?.kind !== 'background') {
         const shown = await visibility.show();
         if (shown.ok) markStartupOnce(startupMarks.windowShown);
         else if (!disposed) setError(shown.error.message);
@@ -58,6 +58,7 @@ export function StartupTrayBridge() {
       try {
         if (!accept(await flushSettings())) return;
         if (!accept(await desktop.shortcuts.unregister())) return;
+        if (!accept(await desktop.shortcuts.unregister(undefined, 'new-diagram'))) return;
         if (!accept(await desktop.shortcuts.unregister(undefined, 'open'))) return;
         accept(await desktop.tray.quit());
       } finally {
@@ -76,6 +77,7 @@ export function StartupTrayBridge() {
           void quit();
         },
         quickNote: show,
+        newDiagram: show,
         settings: show,
         open: show,
         toggle: () => {

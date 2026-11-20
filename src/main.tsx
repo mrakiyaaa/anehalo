@@ -12,6 +12,7 @@ import { TauriFolderAccess } from '@/features/onboarding/TauriFolderAccess';
 import type { AppServices } from '@/app/app-services';
 import { TauriAttachmentRepository } from '@/features/attachments/TauriAttachmentRepository';
 import { TauriExportPlatform } from '@/features/export/TauriExportPlatform';
+import { TauriFileExplorer } from '@/features/storage/TauriFileExplorer';
 import { ErrorBoundary } from '@/app/ErrorBoundary';
 import { observeUnhandledErrors } from '@/features/diagnostics/error-logging';
 import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
@@ -25,6 +26,7 @@ const services: AppServices = {
     shortcuts: new TauriGlobalShortcutService(),
     tray: new TauriTrayService(),
     updater: new TauriUpdateService(),
+    fileExplorer: new TauriFileExplorer(),
   },
   settingsRepository: new TauriSettingsRepository(),
   folderAccess: new TauriFolderAccess(),

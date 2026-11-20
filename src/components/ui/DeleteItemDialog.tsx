@@ -2,9 +2,10 @@ import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { RepositoryResult } from '@/features/storage/repository-result';
+import type { MenuItemKind } from '@/components/ui/ItemMenu';
 
 interface DeleteItemDialogProps {
-  kind: 'note' | 'folder';
+  kind: MenuItemKind;
   name: string;
   onDelete: () => Promise<RepositoryResult<unknown>>;
   onClose: () => void;

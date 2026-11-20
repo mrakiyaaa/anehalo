@@ -4,7 +4,7 @@ import { IconBadge } from '@/components/ui/IconBadge';
 import { InlineNameForm } from '@/components/ui/InlineNameForm';
 import { ItemMenu } from '@/components/ui/ItemMenu';
 import { FolderButton } from '@/features/folders/FolderButton';
-import { isInsideFolder } from '@/features/storage/storage-paths';
+import { countItems } from '@/features/storage/vault-counts';
 import { folderTone } from '@/lib/folder-tone';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 
@@ -17,12 +17,14 @@ export function FolderList() {
   const renameFolder = useWorkspaceStore((state) => state.renameFolder);
   const deleteFolder = useWorkspaceStore((state) => state.deleteFolder);
   const isMutating = useWorkspaceStore((state) => state.isMutating);
+  const newDiagram = useWorkspaceStore((state) => state.newDiagram);
+  const diagramsAvailable = useWorkspaceStore((state) => state.diagramsAvailable);
   return (
     <nav className="folder-list" aria-label="Folders">
       <FolderButton
-        name="All notes"
+        name="All items"
         tone="all"
-        count={tree.notes.length}
+        count={countItems(tree, null)}
         active={activeFolderPath === null}
         onSelect={() => selectFolder(null)}
       />
@@ -31,6 +33,14 @@ export function FolderList() {
           key={folder.relativePath}
           kind="folder"
           name={folder.name}
+          path={folder.relativePath}
+          {...(diagramsAvailable
+            ? {
+                onNewDiagram: () => {
+                  void newDiagram(folder.relativePath);
+                },
+              }
+            : {})}
           onRename={(name) => renameFolder(folder.relativePath, name)}
           onDelete={() => deleteFolder(folder.relativePath)}
         >
@@ -42,10 +52,7 @@ export function FolderList() {
             <FolderButton
               name={folder.name}
               tone={folderTone(folder.relativePath)}
-              count={
-                tree.notes.filter((note) => isInsideFolder(note.relativePath, folder.relativePath))
-                  .length
-              }
+              count={countItems(tree, folder.relativePath)}
               active={activeFolderPath === folder.relativePath}
               onSelect={() => selectFolder(folder.relativePath)}
             />

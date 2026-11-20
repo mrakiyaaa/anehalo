@@ -6,7 +6,8 @@ import { MainArea } from '@/components/layout/MainArea';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { StatusBar } from '@/components/layout/StatusBar';
 import { TitleBar } from '@/components/layout/TitleBar';
-import { useQuickCaptureShortcut } from '@/features/editor/use-quick-capture-shortcut';
+import { useInAppShortcut } from '@/features/shortcuts/use-in-app-shortcut';
+import { useSettingsStore } from '@/features/settings/use-settings-store';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { EditorScreen } from '@/features/editor/EditorScreen';
 import { DiagramScreen } from '@/features/diagrams/DiagramScreen';
@@ -15,9 +16,12 @@ import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-ma
 
 export function AppShell() {
   const startQuickNote = useWorkspaceStore((state) => state.startQuickNote);
+  const newDiagram = useWorkspaceStore((state) => state.newDiagram);
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const view = useWorkspaceStore((state) => state.view);
   const vaultReady = useWorkspaceStore((state) => Boolean(state.tree.vaultPath));
+  const quickNoteShortcut = useSettingsStore((state) => state.settings?.quickNoteShortcut);
+  const newDiagramShortcut = useSettingsStore((state) => state.settings?.newDiagramShortcut);
   useLayoutEffect(() => {
     if (vaultReady) markStartupOnce(startupMarks.usable);
   }, [vaultReady]);
@@ -25,7 +29,12 @@ export function AppShell() {
     if (isMutating) return;
     await startQuickNote();
   }
-  useQuickCaptureShortcut(createQuickNote);
+  async function createDiagram() {
+    if (isMutating) return;
+    await newDiagram();
+  }
+  useInAppShortcut(quickNoteShortcut, createQuickNote);
+  useInAppShortcut(newDiagramShortcut, createDiagram);
 
   return (
     <div className="app-shell">
@@ -33,6 +42,9 @@ export function AppShell() {
       <Sidebar
         onQuickNote={() => {
           void createQuickNote();
+        }}
+        onNewDiagram={() => {
+          void createDiagram();
         }}
       />
       {view === 'editor' ? <EditorScreen /> : view === 'diagram' ? <DiagramScreen /> : <MainArea />}
