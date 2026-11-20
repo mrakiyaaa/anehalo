@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { startupMarks } from '../../src/features/diagnostics/startup-marks';
 import {
+  appMilliseconds,
   formatStartupTable,
   measureStages,
   median,
@@ -98,6 +99,11 @@ describe('startup stages', () => {
     expect(table).toContain('### Debug build (median of 3 launches)');
     expect(table).toContain('| Setup to page navigation | 400 |');
     expect(table).toContain('| Total: spawn to Home usable | 900 |');
+  });
+
+  it('measures the app’s own share from page load to the usable Home screen', () => {
+    expect(appMilliseconds(launch(0))).toBe(300);
+    expect(() => appMilliseconds({ ...launch(0), pageLoadStarted: null })).toThrow('page-load');
   });
 
   it('measures startup from spawn to the usable Home screen', () => {

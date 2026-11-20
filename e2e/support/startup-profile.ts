@@ -115,6 +115,17 @@ export function startupMilliseconds(timestamps: StartupTimestamps): number {
   return usable - timestamps.spawned;
 }
 
+/**
+ * Anehalo's own share of a start: from the moment the page starts loading to a usable Home.
+ * Everything before that is the WebView2 browser starting up, which the app does not control.
+ */
+export function appMilliseconds(timestamps: StartupTimestamps): number {
+  const usable = timestamps.marks[startupMarks.usable];
+  if (usable === undefined || timestamps.pageLoadStarted === null)
+    throw new Error('The launch has no page-load or usable-Home time.');
+  return usable - timestamps.pageLoadStarted;
+}
+
 export function median(values: readonly number[]): number {
   if (values.length === 0) throw new Error('A median needs at least one value.');
   const sorted = [...values].sort((left, right) => left - right);

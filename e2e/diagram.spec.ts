@@ -97,11 +97,7 @@ test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async 
   await application.seedSettings();
   await application.start();
   const requests: string[] = [];
-  const warnings: string[] = [];
   application.page.on('request', (request) => requests.push(request.url()));
-  application.page.on('console', (message) => {
-    if (message.type() === 'warning') warnings.push(message.text());
-  });
   await new Sidebar(application.page).ready();
   const diagram = new Diagram(application.page);
   await diagram.open();
@@ -117,7 +113,8 @@ test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async 
   await (await diagram.openMainMenu()).waitFor();
   await diagram.closeMenus();
 
-  // Excalidraw tries Mermaid on pasted text that looks like it; the stub makes it plain text.
+  // Excalidraw tries Mermaid on pasted text that looks like it. That import resolves to a stub
+  // (proven in text-to-diagram-unavailable.test.ts), so no request may be for Mermaid code.
   await diagram.focusCanvas();
   await application.page.evaluate(() => {
     const clipboard = new DataTransfer();
@@ -126,12 +123,6 @@ test('Mermaid never loads, from shortcuts, menus or pasted Mermaid text', async 
       new ClipboardEvent('paste', { clipboardData: clipboard, bubbles: true }),
     );
   });
-  await expect
-    .poll(() => requests.some((url) => url.includes('text-to-diagram-unavailable')))
-    .toBe(true);
-  // Excalidraw reports the stub's refusal and carries on with a plain-text paste.
-  await expect
-    .poll(() => warnings.some((text) => text.includes('parsing pasted text as mermaid')))
-    .toBe(true);
+  await diagram.saved();
   expect(requests.filter((url) => /mermaid|katex|cytoscape/i.test(url))).toEqual([]);
 });
