@@ -50,12 +50,39 @@ pub struct SnapshotNote {
     modified_at: u128,
 }
 
+/// Diagrams are listed by path and time only; their content (often megabytes of images) is
+/// read when one is opened, never during a vault scan.
+#[derive(Serialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapshotDiagram {
+    relative_path: String,
+    modified_at: u128,
+}
+
 #[derive(Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultSnapshot {
     folders: Vec<String>,
     notes: Vec<SnapshotNote>,
+    diagrams: Vec<SnapshotDiagram>,
     entry_count: usize,
+}
+
+#[derive(Debug, PartialEq)]
+enum VaultItemKind {
+    Note,
+    Diagram,
+}
+
+fn vault_item_kind(name: &str) -> Option<VaultItemKind> {
+    let name = name.to_ascii_lowercase();
+    if name.ends_with(".md") {
+        Some(VaultItemKind::Note)
+    } else if name.ends_with(".excalidraw") {
+        Some(VaultItemKind::Diagram)
+    } else {
+        None
+    }
 }
 
 struct PendingNote {
@@ -113,17 +140,25 @@ fn scan(
             if metadata.is_dir() {
                 snapshot.folders.push(path.clone());
                 directories.push((entry.path(), path));
-            } else if metadata.is_file() && name.to_ascii_lowercase().ends_with(".md") {
-                pending.push(PendingNote {
-                    path: entry.path(),
-                    relative_path: path,
-                    length: metadata.len(),
-                    modified_at: metadata
-                        .modified()?
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or_default()
-                        .as_millis(),
-                });
+            } else if metadata.is_file() {
+                let modified_at = metadata
+                    .modified()?
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis();
+                match vault_item_kind(&name) {
+                    Some(VaultItemKind::Note) => pending.push(PendingNote {
+                        path: entry.path(),
+                        relative_path: path,
+                        length: metadata.len(),
+                        modified_at,
+                    }),
+                    Some(VaultItemKind::Diagram) => snapshot.diagrams.push(SnapshotDiagram {
+                        relative_path: path,
+                        modified_at,
+                    }),
+                    None => {}
+                }
             }
         }
     }
@@ -246,9 +281,10 @@ pub async fn read_vault_snapshot(
         let started = Instant::now();
         let snapshot = read_snapshot(&root, include_content, limits)?;
         log::info!(
-            "event=vault-snapshot elapsed_ms={} notes={}",
+            "event=vault-snapshot elapsed_ms={} notes={} diagrams={}",
             started.elapsed().as_millis(),
-            snapshot.notes.len()
+            snapshot.notes.len(),
+            snapshot.diagrams.len()
         );
         Ok(snapshot)
     })
@@ -295,5 +331,57 @@ mod tests {
             "scan-limit"
         );
         fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn snapshot_lists_diagrams_by_metadata_without_reading_them() {
+        let root = std::env::temp_dir().join(format!("anehalo-snapshot-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(root.join("Plans")).unwrap();
+        fs::create_dir_all(root.join(".trash")).unwrap();
+        fs::write(
+            root.join("Plans/Flow.excalidraw"),
+            "{\"type\":\"excalidraw\"}",
+        )
+        .unwrap();
+        // Diagrams are never parsed during a scan, so even an invalid one is listed.
+        fs::write(root.join("Broken.EXCALIDRAW"), "not json").unwrap();
+        fs::write(root.join(".trash/Deleted.excalidraw"), "{}").unwrap();
+        fs::write(root.join("Idea.md"), "A note").unwrap();
+        fs::write(root.join("Flow.excalidraw.png"), "An image").unwrap();
+
+        let snapshot = read_snapshot(&root, true, ScanLimits::default()).unwrap();
+
+        let mut diagrams: Vec<_> = snapshot
+            .diagrams
+            .iter()
+            .map(|diagram| diagram.relative_path.as_str())
+            .collect();
+        diagrams.sort_unstable();
+        assert_eq!(diagrams, vec!["Broken.EXCALIDRAW", "Plans/Flow.excalidraw"]);
+        assert!(
+            snapshot
+                .diagrams
+                .iter()
+                .all(|diagram| diagram.modified_at > 0)
+        );
+        assert_eq!(snapshot.notes.len(), 1);
+        assert_eq!(snapshot.notes[0].content, "A note");
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn item_kind_follows_the_extension_only() {
+        assert_eq!(vault_item_kind("Plan.md"), Some(VaultItemKind::Note));
+        assert_eq!(vault_item_kind("Plan.MD"), Some(VaultItemKind::Note));
+        assert_eq!(
+            vault_item_kind("Flow.excalidraw"),
+            Some(VaultItemKind::Diagram)
+        );
+        assert_eq!(
+            vault_item_kind("Flow.Excalidraw"),
+            Some(VaultItemKind::Diagram)
+        );
+        assert_eq!(vault_item_kind("Flow.excalidraw.json"), None);
+        assert_eq!(vault_item_kind("photo.png"), None);
     }
 }

@@ -24,9 +24,29 @@ import type {
   VaultFileSystem,
   VaultMetadata,
 } from '@/features/storage/VaultFileSystem';
-import { ScanBudget } from './ScanBudget';
+import { ScanBudget, defaultScanScheduling } from './ScanBudget';
 
 const windowsReparsePointAttribute = 0x400;
+
+/**
+ * Files larger than this go to disk in pieces, yielding between them: encoding and passing a
+ * diagram with large images in one call would freeze the window for a noticeable moment.
+ */
+export const WRITE_CHUNK_CHARACTERS = 1024 * 1024;
+
+/** Splits text into pieces of at most the given length without cutting a character in two. */
+export function textChunks(content: string, chunkLength = WRITE_CHUNK_CHARACTERS): string[] {
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < content.length || chunks.length === 0) {
+    let end = Math.min(start + chunkLength, content.length);
+    const lastCode = content.charCodeAt(end - 1);
+    if (end < content.length && lastCode >= 0xd800 && lastCode <= 0xdbff) end -= 1;
+    chunks.push(content.slice(start, end));
+    start = end;
+  }
+  return chunks;
+}
 
 function metadataFromFileInfo(fileInformation: FileInfo): VaultMetadata {
   return {
@@ -155,7 +175,13 @@ export class TauriVaultFileSystem implements VaultFileSystem {
   }
 
   async writeText(relativePath: string, content: string): Promise<void> {
-    await writeTextFile(await this.absolutePath(relativePath), content, { createNew: true });
+    const path = await this.absolutePath(relativePath);
+    const [first = '', ...rest] = textChunks(content);
+    await writeTextFile(path, first, { createNew: true });
+    for (const chunk of rest) {
+      await defaultScanScheduling.yieldToInput();
+      await writeTextFile(path, chunk, { append: true });
+    }
   }
 
   async writeBytes(relativePath: string, content: Uint8Array): Promise<void> {

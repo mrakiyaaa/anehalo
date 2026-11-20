@@ -7,6 +7,7 @@ export function useVaultLifecycle(store: WorkspaceStore) {
     const refresh = () => {
       void (async () => {
         await store.getState().checkOpenNote();
+        await store.getState().checkOpenDiagram();
         await store.getState().refreshTree();
       })();
     };

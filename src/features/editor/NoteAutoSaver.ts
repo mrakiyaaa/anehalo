@@ -17,6 +17,8 @@ import { isInsideFolder, pathName, parentPath } from '@/features/storage/storage
 import { DEFAULT_NOTE_TITLE, cleanNoteTitle } from '@/features/storage/note-names';
 import type { Note } from '@/types/notes';
 import { logFailure } from '@/features/diagnostics/error-logging';
+import { SerialTaskQueue } from '@/features/storage/autosave/SerialTaskQueue';
+import { SAVE_DEBOUNCE_MS, retryDelay } from '@/features/storage/autosave/save-timing';
 import {
   renamedLink,
   rewriteNoteLinks,
@@ -50,7 +52,7 @@ const conflictError: RepositoryError = {
 export class NoteAutoSaver {
   private readonly sessions = new Map<string, DraftSession>();
   private readonly listeners = new Set<(change: DraftChange) => void>();
-  private queue: Promise<void> = Promise.resolve();
+  private readonly tasks = new SerialTaskQueue();
   private paused = false;
 
   constructor(private readonly repository: NoteRepository) {}
@@ -72,7 +74,7 @@ export class NoteAutoSaver {
   private run<Value>(
     operation: () => Promise<RepositoryResult<Value>>,
   ): Promise<RepositoryResult<Value>> {
-    const task = this.queue.then(async () => {
+    return this.tasks.run(async () => {
       try {
         return await operation();
       } catch (error) {
@@ -82,8 +84,6 @@ export class NoteAutoSaver {
         return failure(described);
       }
     });
-    this.queue = task.then(() => undefined);
-    return task;
   }
 
   private publish(
@@ -106,7 +106,7 @@ export class NoteAutoSaver {
     session.titleTimer = null;
   }
 
-  private schedule(session: DraftSession, delay = 500) {
+  private schedule(session: DraftSession, delay = SAVE_DEBOUNCE_MS) {
     this.clearTimer(session);
     if (
       this.paused ||
@@ -129,7 +129,7 @@ export class NoteAutoSaver {
     const isMissing = error.code === 'not-found' || session.draft.isMissing;
     this.publish(session, { error, isMissing, status: 'retrying' });
     if (!isMissing && error.code !== 'conflict' && error.code !== 'invalid-name') {
-      const delay = Math.min(1000 * 2 ** session.retryCount, 30000);
+      const delay = retryDelay(session.retryCount);
       session.retryCount += 1;
       this.schedule(session, delay);
     }
@@ -313,7 +313,7 @@ export class NoteAutoSaver {
       this.publish(session, { status: session.draft.dirty ? 'saving' : 'saved', error: null });
     }
     if (session.draft.dirty)
-      this.schedule(session, Math.max(0, session.lastEditedAt + 500 - Date.now()));
+      this.schedule(session, Math.max(0, session.lastEditedAt + SAVE_DEBOUNCE_MS - Date.now()));
     else {
       this.clearTimer(session);
       if (session.draft.status !== 'saved' && !session.draft.error)

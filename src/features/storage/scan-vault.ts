@@ -1,4 +1,4 @@
-import type { Folder, NoteSummary, VaultTree } from '@/types/notes';
+import type { DiagramSummary, Folder, NoteSummary, VaultTree } from '@/types/notes';
 import type { VaultFileSystem } from './VaultFileSystem';
 import { ScanBudget, defaultScanScheduling, type ScanScheduling } from './ScanBudget';
 import { defaultScanLimits, type ScanLimits } from './ScanLimits';
@@ -9,6 +9,7 @@ import { compareFolderPaths } from './folder-order';
 import { storageFailure } from './repository-result';
 import { SearchTextProcessor } from '@/features/search/SearchTextProcessor';
 import { prepareNotePreview } from './prepare-note-preview';
+import { compareDiagramRecency, diagramSummary, itemKind } from './vault-items';
 
 export async function scanVault(
   files: VaultFileSystem,
@@ -19,6 +20,7 @@ export async function scanVault(
   const budget = new ScanBudget(limits, scheduling);
   const folders: Folder[] = [];
   const notes: NoteSummary[] = [];
+  const diagrams: DiagramSummary[] = [];
   const directories = [''];
   const processor = new SearchTextProcessor();
   try {
@@ -33,10 +35,14 @@ export async function scanVault(
         if (entry.type === 'directory') {
           folders.push({ name: entry.name, relativePath: path, parent: directory || null });
           directories.push(path);
-        } else if (/\.md$/i.test(entry.name)) {
+        } else if (itemKind(entry.name) !== null) {
           const metadata = await budget.wait(files.metadata(path));
           if (!metadata || metadata.type !== 'file')
             storageFailure('invalid-type', 'The notes folder changed while it was being read.');
+          if (itemKind(entry.name) === 'diagram') {
+            diagrams.push(diagramSummary(path, metadata.modifiedAt));
+            continue;
+          }
           const content = await budget.wait(files.readText(path));
           const searchText = await prepareNotePreview(content, processor, budget);
           notes.push({
@@ -53,8 +59,9 @@ export async function scanVault(
     budget.check();
     folders.sort(compareFolderPaths);
     notes.sort(compareNoteRecency);
+    diagrams.sort(compareDiagramRecency);
     budget.check();
-    return { vaultPath, folders, notes };
+    return { vaultPath, folders, notes, diagrams };
   } finally {
     processor.cancel();
   }

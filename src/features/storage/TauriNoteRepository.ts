@@ -10,7 +10,8 @@ import {
   storageFailure,
   type RepositoryResult,
 } from './repository-result';
-import type { Note, NoteSummary, VaultTree } from '@/types/notes';
+import type { DiagramSummary, Note, NoteSummary, VaultTree } from '@/types/notes';
+import { compareDiagramRecency, diagramSummary } from './vault-items';
 import { compareNoteRecency } from './note-order';
 import { compareFolderPaths } from './folder-order';
 import { ScanBudget } from './ScanBudget';
@@ -24,6 +25,8 @@ interface VaultSnapshot {
   readonly entryCount?: number;
   readonly folders: readonly string[];
   readonly notes: readonly { relativePath: string; content: string; modifiedAt: number }[];
+  /** Absent when the vault has no diagrams. */
+  readonly diagrams?: readonly { relativePath: string; modifiedAt: number }[];
 }
 
 export class TauriNoteRepository extends FileSystemNoteRepository {
@@ -111,10 +114,17 @@ export class TauriNoteRepository extends FileSystemNoteRepository {
         });
       }
       folders.sort(compareFolderPaths);
+      const diagrams: DiagramSummary[] = [];
+      for (const { relativePath, modifiedAt } of snapshot.diagrams ?? []) {
+        await budget.entry();
+        diagrams.push(diagramSummary(validateRelativePath(relativePath), modifiedAt));
+      }
+      diagrams.sort(compareDiagramRecency);
       budget.check();
       const tree: VaultTree = {
         vaultPath: this.resolvedVaultPath,
         folders,
+        diagrams,
         notes: notes.map(({ title, folder, relativePath, modifiedAt, snippet, searchText }) => ({
           title,
           folder,

@@ -11,6 +11,7 @@ export type RepositoryErrorCode =
   | 'invalid-type'
   | 'permission-denied'
   | 'unavailable'
+  | 'invalid-diagram'
   | 'io-error';
 
 export interface RepositoryError {
@@ -63,6 +64,7 @@ export function describeStorageError(error: unknown, action: string): Repository
       'invalid-type',
       'permission-denied',
       'unavailable',
+      'invalid-diagram',
       'io-error',
     ].includes(error.code)
   )

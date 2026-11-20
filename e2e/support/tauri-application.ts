@@ -115,7 +115,11 @@ export class TauriApplication {
       if (message.type() === 'error') this.errors.push(message.text());
     });
     await this.page.emulateMedia({ reducedMotion: 'reduce' });
-    await this.page.getByRole('button', { name: 'Close', exact: true }).waitFor();
+    // Shared CI machines sometimes take several seconds to start WebView2; how fast startup is
+    // is checked by the startup budget, not by every test.
+    await this.page
+      .getByRole('button', { name: 'Close', exact: true })
+      .waitFor({ timeout: 30_000 });
     this.startupMilliseconds = performance.now() - started;
   }
 

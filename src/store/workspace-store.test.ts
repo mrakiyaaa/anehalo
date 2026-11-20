@@ -160,6 +160,22 @@ describe('workspace editor navigation', () => {
     );
   });
 
+  it('saves and closes the open note before opening the diagram view', async () => {
+    const { store, repository } = workspace();
+    unwrapResult(await store.getState().startQuickNote());
+    const draft = store.getState().openDraft;
+    if (!draft) throw new Error('Missing draft');
+    store.getState().updateNoteContent(draft.identifier, 'Saved before the diagram');
+
+    unwrapResult(await store.getState().openDiagram());
+
+    expect(store.getState().view).toBe('diagram');
+    expect(store.getState().openDraft).toBeNull();
+    expect(unwrapResult(await repository.readNote('Untitled note.md')).content).toBe(
+      'Saved before the diagram',
+    );
+  });
+
   it('tracks the open note through folder rename, note rename, and trash', async () => {
     const { store, repository } = workspace();
     unwrapResult(await store.getState().createFolder('Work'));

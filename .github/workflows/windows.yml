@@ -72,6 +72,8 @@ jobs:
 
       - name: Build debug app for E2E
         run: npm run build:debug
+      - name: Check Excalidraw stays out of startup
+        run: node scripts/check-startup-chunks.mjs
       # Published as an annotation, so startup numbers can be read with the WebView2 version.
       - name: Describe the E2E desktop
         shell: pwsh
@@ -86,14 +88,14 @@ jobs:
       # The runner has no visible display, so the real app window runs unattended.
       - name: End-to-end tests
         run: npm run test:e2e -- --grep-invert @startup-budget
-      # Budgets live in e2e/support/startup-budgets.ts. Two repeats give six measured launches
-      # for the per-stage profile that the startup reporter adds to the job summary.
+      # Budgets live in e2e/support/startup-budgets.ts. Each check measures one first start and
+      # five normal starts; the startup reporter adds the per-stage profile to the job summary.
       - name: Startup budget (debug build)
-        run: npm run test:e2e -- --grep @startup-budget --repeat-each=2
+        run: npm run test:e2e -- --grep @startup-budget
       - name: Build optimized app for the startup budget
         run: npm run build:e2e-optimized
       - name: Startup budget (optimized build)
-        run: npm run test:e2e -- --grep @startup-budget --repeat-each=2
+        run: npm run test:e2e -- --grep @startup-budget
         env:
           ANEHALO_E2E_BUILD: optimized
 

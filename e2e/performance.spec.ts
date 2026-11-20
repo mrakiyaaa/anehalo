@@ -4,9 +4,11 @@ import { test, expect } from './fixtures';
 import { Sidebar } from './pages/sidebar';
 import { SearchPalette } from './pages/search-palette';
 import { selectedE2eBuild } from './support/e2e-build';
+import { smallDiagram } from './support/diagram-files';
 import { startupBudgets } from './support/startup-budgets';
 import { startupProfileAttachment } from './support/startup-profile-reporter';
 import {
+  appMilliseconds,
   measureStages,
   median,
   medianStages,
@@ -15,8 +17,9 @@ import {
 } from './support/startup-profile';
 
 const noteCount = 2_000;
+const diagramCount = 500;
 
-test('a generated 2,000-note vault meets startup and search budgets @startup-budget', async ({
+test('a generated vault of 2,000 notes and 500 diagrams meets startup and search budgets @startup-budget', async ({
   application,
 }, testInfo) => {
   test.setTimeout(240_000);
@@ -32,17 +35,38 @@ test('a generated 2,000-note vault meets startup and search budgets @startup-bud
       ),
     ),
   );
+  // Diagrams are listed by name only, so they must not slow startup down.
+  await mkdir(join(application.vault, 'Diagrams'));
+  await Promise.all(
+    Array.from({ length: diagramCount }, (_, index) =>
+      writeFile(
+        join(
+          application.vault,
+          'Diagrams',
+          `Diagram ${index.toString().padStart(3, '0')}.excalidraw`,
+        ),
+        smallDiagram(),
+      ),
+    ),
+  );
 
-  const launches: StartupTimestamps[] = [];
-  for (let launch = 0; launch < budget.launches; launch++) {
-    if (launch > 0) await application.stop();
-    await application.resetWebviewProfile();
+  async function launch(): Promise<StartupTimestamps> {
     await application.start();
     await new Sidebar(application.page).ready(60_000);
-    launches.push(await application.startupTimestamps());
+    return application.startupTimestamps();
+  }
+  // The first start after installing also creates the WebView2 profile; it is reported only.
+  await application.resetWebviewProfile();
+  const firstLaunch = await launch();
+  const launches: StartupTimestamps[] = [];
+  for (let index = 0; index < budget.warmLaunches; index++) {
+    await application.stop();
+    launches.push(await launch());
   }
   const startupSamples = launches.map(startupMilliseconds);
   const medianStartupMilliseconds = median(startupSamples);
+  const appSamples = [firstLaunch, ...launches].map(appMilliseconds);
+  const medianAppMilliseconds = median(appSamples);
 
   const search = new SearchPalette(application.page);
   await search.open();
@@ -60,9 +84,13 @@ test('a generated 2,000-note vault meets startup and search budgets @startup-bud
   const profile = {
     build,
     notes: noteCount,
-    budgetMilliseconds: budget.medianMilliseconds,
+    diagrams: diagramCount,
+    budget,
     medianStartupMilliseconds,
     startupSamples,
+    medianAppMilliseconds,
+    appSamples,
+    firstLaunch: { timestamps: firstLaunch, stages: measureStages(firstLaunch) },
     medianStages: medianStages(launches),
     launches: launches.map((timestamps) => ({ timestamps, stages: measureStages(timestamps) })),
     searchMilliseconds: searchSamples,
@@ -76,8 +104,12 @@ test('a generated 2,000-note vault meets startup and search budgets @startup-bud
     contentType: 'application/json',
   });
 
-  expect(medianStartupMilliseconds, `median of ${startupSamples.join(', ')} ms`).toBeLessThan(
-    budget.medianMilliseconds,
+  expect(medianAppMilliseconds, `app time, median of ${appSamples.join(', ')} ms`).toBeLessThan(
+    budget.appMedianMilliseconds,
   );
+  expect(
+    medianStartupMilliseconds,
+    `normal start, median of ${startupSamples.join(', ')} ms`,
+  ).toBeLessThan(budget.warmMedianMilliseconds);
   expect(Math.max(...searchSamples)).toBeLessThan(100);
 });

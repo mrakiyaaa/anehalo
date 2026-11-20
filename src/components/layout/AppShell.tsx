@@ -9,6 +9,7 @@ import { TitleBar } from '@/components/layout/TitleBar';
 import { useQuickCaptureShortcut } from '@/features/editor/use-quick-capture-shortcut';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { EditorScreen } from '@/features/editor/EditorScreen';
+import { DiagramScreen } from '@/features/diagrams/DiagramScreen';
 import { useLayoutEffect } from 'react';
 import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
 
@@ -34,7 +35,7 @@ export function AppShell() {
           void createQuickNote();
         }}
       />
-      {view === 'editor' ? <EditorScreen /> : <MainArea />}
+      {view === 'editor' ? <EditorScreen /> : view === 'diagram' ? <DiagramScreen /> : <MainArea />}
       <StatusBar />
       <SearchPalette />
       <SettingsScreen />

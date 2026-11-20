@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { ConflictNotice } from '@/components/ui/ConflictNotice';
 import type { NoteDraft } from '@/features/editor/NoteDraft';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 
@@ -10,27 +11,15 @@ export function EditorNotice({ draft }: { draft: NoteDraft }) {
   const recoverNote = useWorkspaceStore((state) => state.recoverNote);
   if (draft.externalNote)
     return (
-      <div className="editor-notice" role="alert">
-        <p>This note changed outside Anehalo.</p>
-        <div className="editor-notice-actions">
-          <Button
-            variant="outline"
-            onClick={() => {
-              void resolveConflict('mine');
-            }}
-          >
-            Keep mine
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void resolveConflict('theirs');
-            }}
-          >
-            Load theirs
-          </Button>
-        </div>
-      </div>
+      <ConflictNotice
+        subject="note"
+        onKeepMine={() => {
+          void resolveConflict('mine');
+        }}
+        onLoadTheirs={() => {
+          void resolveConflict('theirs');
+        }}
+      />
     );
   if (draft.isMissing)
     return (

@@ -26,3 +26,6 @@ test-results
 *.njsproj
 *.sln
 *.sw?
+
+# Copied from @excalidraw/excalidraw by scripts/copy-excalidraw-assets.mjs
+public/excalidraw/

@@ -1,0 +1,15 @@
+/* The library sidebar links to libraries.excalidraw.com, which needs network access. */
+.excalidraw .library-menu-browse-button {
+  display: none;
+}
+
+/*
+ * In the "More tools" menu, Excalidraw 0.18 gives both "Web Embed" and "Mermaid to Excalidraw"
+ * this test id. Web embeds load websites (and every URL is refused anyway), and Mermaid is the
+ * text-to-diagram feature, so both are hidden, with the unstyled "Generate" heading above them.
+ * e2e/diagram.spec.ts fails if an upgrade changes this markup.
+ */
+.excalidraw .App-toolbar__extra-tools-dropdown [data-testid='toolbar-embeddable'],
+.excalidraw .App-toolbar__extra-tools-dropdown .dropdown-menu-container > div:not([class]) {
+  display: none;
+}

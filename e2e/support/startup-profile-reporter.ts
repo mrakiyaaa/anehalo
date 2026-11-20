@@ -3,7 +3,9 @@ import type { Reporter, TestCase, TestResult } from '@playwright/test/reporter';
 import { selectedE2eBuild } from './e2e-build';
 import {
   formatStartupTable,
+  median,
   medianStages,
+  startupMilliseconds,
   parseNativeTimeline,
   type StartupTimestamps,
 } from './startup-profile';
@@ -29,21 +31,32 @@ function parseLaunch(value: unknown): StartupTimestamps {
  */
 export default class StartupProfileReporter implements Reporter {
   private readonly launches: StartupTimestamps[] = [];
+  private readonly firstLaunches: StartupTimestamps[] = [];
 
   onTestEnd(_test: TestCase, result: TestResult) {
     for (const attachment of result.attachments) {
       if (attachment.name !== startupProfileAttachment || !attachment.path) continue;
-      const profile = JSON.parse(readFileSync(attachment.path, 'utf8')) as { launches?: unknown };
+      const profile = JSON.parse(readFileSync(attachment.path, 'utf8')) as {
+        launches?: unknown;
+        firstLaunch?: unknown;
+      };
       if (!Array.isArray(profile.launches))
         throw new Error(`${attachment.path} has no launch records.`);
       this.launches.push(...profile.launches.map(parseLaunch));
+      if (profile.firstLaunch) this.firstLaunches.push(parseLaunch(profile.firstLaunch));
     }
   }
 
   onEnd() {
     if (this.launches.length === 0) return;
-    const title = `Startup profile, ${selectedE2eBuild()} build`;
-    const table = formatStartupTable(title, this.launches);
+    const title = `Startup profile, ${selectedE2eBuild()} build, normal starts`;
+    const firstStart =
+      this.firstLaunches.length > 0
+        ? `First start after installing (creates the WebView2 profile, not checked): ${Math.round(median(this.firstLaunches.map(startupMilliseconds)))} ms`
+        : '';
+    const table = [formatStartupTable(title, this.launches), firstStart]
+      .filter(Boolean)
+      .join('\n\n');
     console.log(`\n${table}\n`);
     const summary = process.env.GITHUB_STEP_SUMMARY;
     if (summary) appendFileSync(summary, `${table}\n\n`);
@@ -57,7 +70,7 @@ export default class StartupProfileReporter implements Reporter {
         .join('; ');
       // Commas separate annotation properties, so the title must not contain one.
       const noticeTitle = `Startup profile - ${selectedE2eBuild()} build - ${this.launches.length} launches`;
-      console.log(`::notice title=${noticeTitle}::${stages}`);
+      console.log(`::notice title=${noticeTitle}::${stages}${firstStart ? `; ${firstStart}` : ''}`);
     }
   }
 

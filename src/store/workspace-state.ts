@@ -1,4 +1,6 @@
-import type { Folder, Note, VaultTree } from '@/types/notes';
+import type { DiagramSummary, Folder, Note, VaultTree } from '@/types/notes';
+import type { DiagramDraft } from '@/features/diagrams/DiagramAutoSaver';
+import type { DiagramScene } from '@/features/diagrams/diagram-codec';
 import type { NoteRepository, TrashEntry } from '@/features/storage/NoteRepository';
 import type { RepositoryError, RepositoryResult } from '@/features/storage/repository-result';
 import type { NoteDraft } from '@/features/editor/NoteDraft';
@@ -32,7 +34,7 @@ export interface WorkspaceState {
   isClosing: boolean;
   error: RepositoryError | null;
   vaultError: RepositoryError | null;
-  view: 'home' | 'editor';
+  view: 'home' | 'editor' | 'diagram';
   openDraft: NoteDraft | null;
   pendingDrafts: readonly NoteDraft[];
   isOpeningNote: boolean;
@@ -45,6 +47,7 @@ export interface WorkspaceState {
   initialize: () => Promise<void>;
   openNote: (path: string) => Promise<RepositoryResult<void>>;
   goHome: () => Promise<RepositoryResult<void>>;
+  openDiagram: () => Promise<RepositoryResult<void>>;
   startQuickNote: (content?: string) => Promise<RepositoryResult<Note>>;
   updateNoteContent: (identifier: string, content: string) => void;
   /** Records title-field typing without renaming; see NoteAutoSaver.editTitle. */
@@ -66,4 +69,20 @@ export interface WorkspaceState {
   deleteFolder: (path: string) => Promise<RepositoryResult<TrashEntry>>;
   renameNote: (path: string, name: string) => Promise<RepositoryResult<Note>>;
   deleteNote: (path: string) => Promise<RepositoryResult<TrashEntry>>;
+  /** False when the vault's storage cannot hold diagrams (for example a test double). */
+  diagramsAvailable: boolean;
+  /** The open diagram, saved by its own auto-saver. */
+  diagram: DiagramDraft | null;
+  /** Why the last diagram could not be opened; the file was left untouched. */
+  diagramOpenError: RepositoryError | null;
+  newDiagram: () => Promise<RepositoryResult<void>>;
+  openDiagramFile: (path: string) => Promise<RepositoryResult<void>>;
+  /** Called only for real document changes; see diagram-fingerprint.ts. */
+  updateDiagram: (scene: DiagramScene) => void;
+  saveDiagram: () => Promise<RepositoryResult<void>>;
+  checkOpenDiagram: () => Promise<RepositoryResult<void>>;
+  resolveDiagramConflict: (choice: 'mine' | 'theirs') => Promise<RepositoryResult<void>>;
+  trashOpenDiagram: () => Promise<RepositoryResult<TrashEntry>>;
+  renameDiagram: (path: string, title: string) => Promise<RepositoryResult<DiagramSummary>>;
+  moveDiagram: (path: string, folder: string | null) => Promise<RepositoryResult<DiagramSummary>>;
 }
