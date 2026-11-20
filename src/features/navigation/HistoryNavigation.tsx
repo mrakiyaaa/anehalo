@@ -3,6 +3,7 @@ import { useStore } from 'zustand';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { isTypingInDiagramText } from '@/features/shortcuts/typing-target';
+import { appShortcuts } from '@/features/shortcuts/app-shortcuts';
 
 /** Back and forward through the notes and diagrams opened in this session. */
 export function HistoryNavigation() {
@@ -13,18 +14,15 @@ export function HistoryNavigation() {
   const length = useStore(navigation, (state) => state.paths.length);
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (
-        !event.altKey ||
-        event.ctrlKey ||
-        event.metaKey ||
-        event.shiftKey ||
-        !['ArrowLeft', 'ArrowRight'].includes(event.key) ||
-        isTypingInDiagramText(event.target)
-      )
-        return;
+      const direction = appShortcuts.back.matches(event)
+        ? -1
+        : appShortcuts.forward.matches(event)
+          ? 1
+          : null;
+      if (direction === null || isTypingInDiagramText(event.target)) return;
       event.preventDefault();
       event.stopPropagation();
-      if (!disabled) void navigate(event.key === 'ArrowLeft' ? -1 : 1);
+      if (!disabled) void navigate(direction);
     };
     window.addEventListener('keydown', handleKey, true);
     return () => window.removeEventListener('keydown', handleKey, true);

@@ -69,7 +69,7 @@ describe('native vault filesystem safety and failures', () => {
     await files.initialize();
     vi.mocked(readTextFile).mockResolvedValue('සිංහල 🌼');
     vi.mocked(readFile).mockResolvedValue(new Uint8Array([1, 2]));
-    expect(await files.metadata('Note.md')).toEqual({ type: 'file', modifiedAt: 1234 });
+    expect(await files.metadata('Note.md')).toEqual({ type: 'file', modifiedAt: 1234, size: 20 });
     expect(await files.readText('Note.md')).toBe('සිංහල 🌼');
     expect(await files.readBytes('.attachments/image.png')).toEqual(new Uint8Array([1, 2]));
     expect(readTextFile).toHaveBeenCalledWith('C:/Vault/Note.md');

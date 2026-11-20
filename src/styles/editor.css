@@ -83,7 +83,7 @@
   height: 6px;
   flex: none;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-strong);
 }
 .sidebar-notes .item-menu-trigger {
   width: 24px;
@@ -172,7 +172,7 @@
   color: var(--subtle-ink);
 }
 .editor-title:focus-visible {
-  box-shadow: 0 2px 0 var(--accent);
+  box-shadow: 0 2px 0 var(--accent-strong);
 }
 .editor-title[aria-invalid='true'] {
   box-shadow: 0 2px 0 var(--danger);
@@ -369,7 +369,7 @@
   background: transparent;
 }
 .note-prose a {
-  color: var(--accent);
+  color: var(--accent-strong);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -386,7 +386,7 @@
   pointer-events: none;
 }
 .note-prose ::selection {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--accent-soft);
 }
 @media (max-width: 1000px) {
   .editor-panel {

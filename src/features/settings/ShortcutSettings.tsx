@@ -3,6 +3,7 @@ import {
   defaultOpenShortcut,
   defaultQuickNoteShortcut,
 } from '@/features/shortcuts/shortcut-validation';
+import { appShortcuts } from '@/features/shortcuts/app-shortcuts';
 import type { ChangeSettings } from './GeneralSettings';
 import type { AppSettings } from './AppSettings';
 import { ShortcutRecorder } from './ShortcutRecorder';
@@ -39,6 +40,17 @@ export function ShortcutSettings({
         change={(shortcut) => change({ openShortcut: shortcut })}
       />
       <p>Focus a field and press a modifier and a key. Works while Anehalo is in the tray.</p>
+      <h4>In the window</h4>
+      <dl className="app-shortcut-list">
+        {Object.values(appShortcuts).map((shortcut) => (
+          <div key={shortcut.keys}>
+            <dt>{shortcut.label}</dt>
+            <dd>
+              <kbd>{shortcut.keys}</kbd>
+            </dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }

@@ -1,4 +1,7 @@
 import type { Theme } from '@/types/theme';
+import { defaultAccent, isAccentId, type AccentId } from '@/features/theme/accent-palette';
+import { logFailure } from '@/features/diagnostics/error-logging';
+import { isHomeFilter, type HomeFilter } from '@/store/home-filter-store';
 import {
   defaultNewDiagramShortcut,
   defaultOpenShortcut,
@@ -13,6 +16,9 @@ export interface AppSettings {
   readonly userName: string;
   readonly vaultPath: string;
   readonly theme: ThemePreference;
+  readonly accent: AccentId;
+  readonly sidebarCollapsed: boolean;
+  readonly homeFilter: HomeFilter;
   readonly lastOpenedNotePath: string | null;
   readonly reopenLastNote: boolean;
   readonly lastExportFolder: string | null;
@@ -47,6 +53,9 @@ export function defaultSettings(vaultPath: string): AppSettings {
     userName: '',
     vaultPath,
     theme: 'system',
+    accent: defaultAccent,
+    sidebarCollapsed: false,
+    homeFilter: 'all',
     lastOpenedNotePath: null,
     reopenLastNote: true,
     lastExportFolder: null,
@@ -60,12 +69,21 @@ export function defaultSettings(vaultPath: string): AppSettings {
   };
 }
 
+/** Settings from before accents have none and get the default; an unknown id is logged. */
+function parseAccent(value: unknown): AccentId {
+  if (value === undefined) return defaultAccent;
+  if (isAccentId(value)) return value;
+  logFailure('unknown-accent');
+  return defaultAccent;
+}
+
 export function parseSettings(content: string, defaults: AppSettings): AppSettings {
   let value: unknown;
   try {
     value = JSON.parse(content);
   } catch {
     // An interrupted or manually edited settings file must not prevent startup.
+    logFailure('settings-unreadable');
     return defaults;
   }
   if (
@@ -77,8 +95,10 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
     typeof value.userName !== 'string' ||
     !('theme' in value) ||
     (value.theme !== 'light' && value.theme !== 'dark' && value.theme !== 'system')
-  )
+  ) {
+    logFailure('settings-unreadable');
     return defaults;
+  }
   const quickNote = validateShortcut(
     'quickNoteShortcut' in value && typeof value.quickNoteShortcut === 'string'
       ? value.quickNoteShortcut
@@ -109,6 +129,12 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
         ) ?? defaultNewDiagramShortcut);
   return {
     onboardingCompleted: value.onboardingCompleted,
+    accent: parseAccent('accent' in value ? value.accent : undefined),
+    sidebarCollapsed:
+      'sidebarCollapsed' in value && typeof value.sidebarCollapsed === 'boolean'
+        ? value.sidebarCollapsed
+        : false,
+    homeFilter: 'homeFilter' in value && isHomeFilter(value.homeFilter) ? value.homeFilter : 'all',
     userName: normalizeUserName(value.userName),
     vaultPath: 'vaultPath' in value && typeof value.vaultPath === 'string' ? value.vaultPath : '',
     theme: value.theme,

@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const logFailure = vi.hoisted(() => vi.fn());
+vi.mock('@/features/diagnostics/error-logging', () => ({ logFailure }));
 import { defaultSettings, normalizeUserName } from '@/features/settings/AppSettings';
 import { InMemorySettingsRepository } from '@/features/settings/InMemorySettingsRepository';
 import { createSettingsStore } from '@/features/settings/settings-store';
@@ -33,6 +36,21 @@ describe('settings persistence', () => {
     expect((await load({ newDiagramShortcut: 'Ctrl+Shift+G' })).newDiagramShortcut).toBe(
       'Ctrl+Shift+G',
     );
+  });
+  it('gives settings without an accent the sky default, and logs an unknown accent', async () => {
+    const load = async (extra: Record<string, unknown>) =>
+      unwrapResult(
+        await new InMemorySettingsRepository(
+          JSON.stringify({ ...defaultSettings('Memory/Anehalo'), ...extra }),
+        ).load(),
+      );
+    expect(await load({ accent: undefined, sidebarCollapsed: undefined })).toMatchObject({
+      accent: 'sky',
+      sidebarCollapsed: false,
+    });
+    expect((await load({ accent: 'mint', sidebarCollapsed: true })).accent).toBe('mint');
+    expect((await load({ accent: 'teal' })).accent).toBe('sky');
+    expect(logFailure).toHaveBeenCalledWith('unknown-accent');
   });
   it('migrates settings from before the editor without restarting onboarding', async () => {
     const repository = new InMemorySettingsRepository(

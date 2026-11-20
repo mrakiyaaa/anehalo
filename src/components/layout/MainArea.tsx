@@ -1,6 +1,6 @@
 import { CaptureCard } from '@/features/editor/CaptureCard';
 import { HomeGreeting } from '@/features/notes/HomeGreeting';
-import { RecentNotes } from '@/features/notes/RecentNotes';
+import { RecentItems } from '@/features/notes/RecentItems';
 import { StorageStatus } from '@/features/storage/StorageStatus';
 import { SettingsNotice } from '@/features/settings/SettingsNotice';
 
@@ -11,7 +11,7 @@ export function MainArea() {
       <SettingsNotice />
       <HomeGreeting />
       <CaptureCard />
-      <RecentNotes />
+      <RecentItems />
     </main>
   );
 }

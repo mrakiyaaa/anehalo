@@ -60,6 +60,7 @@ function metadataFromFileInfo(fileInformation: FileInfo): VaultMetadata {
           ? 'directory'
           : 'file',
     modifiedAt: fileInformation.mtime?.getTime() ?? fileInformation.birthtime?.getTime() ?? 0,
+    size: fileInformation.size,
   };
 }
 

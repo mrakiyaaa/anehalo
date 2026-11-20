@@ -23,7 +23,7 @@
   color: var(--sky-fg);
 }
 .editor-export-button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-strong);
   outline-offset: 3px;
 }
 .export-menu {
@@ -71,7 +71,7 @@
   border: 0;
   background: transparent;
   padding: 4px;
-  color: var(--accent);
+  color: var(--accent-strong);
   white-space: nowrap;
 }
 .export-toast .export-toast-close {
@@ -96,7 +96,7 @@
 .export-progress progress {
   width: 100%;
   height: 5px;
-  accent-color: var(--accent);
+  accent-color: var(--accent-strong);
 }
 .export-spinner {
   animation: export-spin 1s linear infinite;

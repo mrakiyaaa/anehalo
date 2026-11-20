@@ -13,3 +13,24 @@
 .excalidraw .App-toolbar__extra-tools-dropdown .dropdown-menu-container > div:not([class]) {
   display: none;
 }
+
+/*
+ * Excalidraw's primary colours follow Anehalo's accent tokens, so a diagram changes colour
+ * together with the rest of the app, in both themes. Excalidraw sets these on the same
+ * selectors, and this file loads after its stylesheet.
+ */
+.excalidraw,
+.excalidraw.theme--dark {
+  --color-primary: var(--accent-strong);
+  --color-primary-darker: var(--accent-strong);
+  --color-primary-darkest: var(--accent-strong);
+  --color-primary-hover: var(--accent-strong);
+  --color-brand-hover: var(--accent-strong);
+  --color-brand-active: var(--accent-strong);
+  --color-selection: var(--accent-strong);
+  --focus-highlight-color: var(--accent-strong);
+  --color-primary-light: var(--accent-tint);
+  --color-primary-light-darker: var(--accent-tint);
+  --color-surface-primary-container: var(--accent-soft);
+  --color-on-primary-container: var(--accent-on-soft);
+}

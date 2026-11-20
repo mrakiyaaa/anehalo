@@ -9,6 +9,7 @@ import { useSettingsStore } from '@/features/settings/use-settings-store';
 import { ExportProvider } from '@/features/export/ExportProvider';
 import { VaultRecovery } from './VaultRecovery';
 import { TitleBar } from '@/components/layout/TitleBar';
+import { useAppServices } from '@/app/app-services';
 
 type WorkspaceProviderProps = PropsWithChildren<{
   repository: NoteRepository;
@@ -18,12 +19,14 @@ type WorkspaceProviderProps = PropsWithChildren<{
 export function WorkspaceProvider({ repository, children, recovered }: WorkspaceProviderProps) {
   const settings = useSettingsStore((state) => state.settings);
   const rememberNote = useSettingsStore((state) => state.updateLastOpenedNote);
+  const services = useAppServices();
   const [store] = useState(() =>
     createWorkspaceStore(repository, {
       ...(settings ? { vaultPath: settings.vaultPath } : {}),
       lastOpenedNotePath: settings?.lastOpenedNotePath ?? null,
       reopenLastNote: settings?.reopenLastNote ?? true,
       rememberNote,
+      ...(services.createThumbnailFiles ? { thumbnailFiles: services.createThumbnailFiles() } : {}),
     }),
   );
   useVaultLifecycle(store);

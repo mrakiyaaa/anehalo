@@ -91,6 +91,7 @@ The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, an
 | `Ctrl+Shift+C`                 | Copy as Markdown                              |
 | `Ctrl+Shift+E`                 | Open Export                                   |
 | `Alt+Left` / `Alt+Right`       | Back / forward through notes and diagrams     |
+| `Ctrl+`                        | Collapse or expand the sidebar                |
 | `Ctrl+Z` / `Ctrl+Y`            | Undo / redo                                   |
 | `Ctrl+Alt+1` / `2` / `3`       | Headings                                      |
 | `Escape`                       | Close menu, search, or dialog                 |

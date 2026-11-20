@@ -18,7 +18,7 @@ export interface MemoryEntry {
   readonly modifiedAt?: number;
 }
 
-interface StoredEntry extends VaultMetadata {
+interface StoredEntry extends Omit<VaultMetadata, 'size'> {
   readonly content: string;
 }
 
@@ -76,7 +76,11 @@ export class InMemoryVaultFileSystem implements VaultFileSystem {
     const entry = this.entries.get(this.key(path) ?? '\u0000');
     if (!entry) return Promise.resolve(null);
     this.require(path);
-    return Promise.resolve({ type: entry.type, modifiedAt: entry.modifiedAt });
+    return Promise.resolve({
+      type: entry.type,
+      modifiedAt: entry.modifiedAt,
+      size: new TextEncoder().encode(entry.content).length,
+    });
   }
 
   readDirectory(path: string, maximumEntries?: number): Promise<readonly VaultEntry[]> {

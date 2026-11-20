@@ -130,6 +130,10 @@
   position: relative;
   margin-top: auto;
 }
+.app-sidebar[data-collapsed='true'] .settings-button {
+  position: static;
+  transform: none;
+}
 .sidebar-footer .storage-path-card {
   padding-right: 46px;
 }
@@ -145,7 +149,7 @@
 }
 .settings-button:hover {
   background: var(--surface);
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 .settings-dialog {
   padding: 28px;
@@ -210,7 +214,7 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  accent-color: var(--accent);
+  accent-color: var(--accent-strong);
 }
 .settings-inline {
   display: flex;
@@ -320,11 +324,11 @@
   flex: 1 1 100%;
   width: 100%;
   height: 5px;
-  accent-color: var(--accent);
+  accent-color: var(--accent-strong);
 }
 .update-banner :focus-visible,
 .update-check button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-strong);
   outline-offset: 2px;
 }
 .search-palette :focus-visible,
@@ -332,11 +336,107 @@
 .vault-confirmation :focus-visible,
 .find-bar :focus-visible,
 .settings-button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-strong);
   outline-offset: 3px;
 }
 .settings-dialog button:disabled,
 .vault-confirmation button:disabled {
   opacity: 0.5;
   cursor: wait;
+}
+
+.app-tooltip {
+  z-index: 60;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+/* Accent swatches: colours come from accent-palette.ts through inline custom properties. */
+.accent-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.accent-swatch {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ink) 14%, transparent);
+  border-radius: 50%;
+  background: var(--swatch-light);
+  color: var(--swatch-light-ink);
+  font-size: 15px;
+  transition: transform 150ms ease;
+}
+[data-theme='dark'] .accent-swatch {
+  background: var(--swatch-dark);
+  color: var(--swatch-dark-ink);
+}
+.accent-swatch:hover {
+  transform: scale(1.08);
+}
+.accent-swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--accent-strong);
+}
+.accent-swatch .icon {
+  stroke-width: 2.6;
+}
+.accent-popover {
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.accent-popover-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.accent-trigger .icon {
+  font-size: 17px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .accent-swatch {
+    transition: none;
+  }
+  .accent-swatch:hover {
+    transform: none;
+  }
+}
+
+.app-shortcut-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.app-shortcut-list > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13.5px;
+}
+.app-shortcut-list dd {
+  margin: 0;
+}
+.app-shortcut-list kbd {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  font:
+    600 12px 'Figtree Variable',
+    sans-serif;
 }

@@ -6,6 +6,7 @@ import { WindowVisibilityController } from '@/features/window/WindowVisibilityCo
 import { parseCommandLineArguments } from '@/features/launch/command-line-arguments';
 import { SettingsContext } from '@/features/settings/settings-context';
 import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
+import { settingsReady } from '@/features/settings/settings-ready';
 
 export function StartupTrayBridge() {
   const { desktop } = useAppServices();
@@ -33,6 +34,8 @@ export function StartupTrayBridge() {
       const action = result.ok ? parseCommandLineArguments(result.value) : result;
       if (!action.ok) setError(action.error.message);
       if (!action.ok || action.value?.kind !== 'background') {
+        if (settings) await settingsReady(settings);
+        if (disposed) return;
         const shown = await visibility.show();
         if (shown.ok) markStartupOnce(startupMarks.windowShown);
         else if (!disposed) setError(shown.error.message);
@@ -41,7 +44,7 @@ export function StartupTrayBridge() {
     return () => {
       disposed = true;
     };
-  }, [desktop, visibility]);
+  }, [desktop, settings, visibility]);
 
   useEffect(() => {
     if (completed || !desktop || !visibility) return;

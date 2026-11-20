@@ -345,7 +345,7 @@ export class TauriApplication {
       marks: await this.pageMarkTimes(),
     };
   }
-  private async pageMarkTimes(): Promise<Partial<Record<StartupMark, number>>> {
+  async pageMarkTimes(): Promise<Partial<Record<StartupMark, number>>> {
     const names: StartupMark[] = Object.values(startupMarks);
     const entries = await this.page.evaluate(
       (markNames) =>

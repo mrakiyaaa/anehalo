@@ -6,6 +6,8 @@ export interface VaultEntry {
 export interface VaultMetadata {
   readonly type: VaultEntry['type'];
   readonly modifiedAt: number;
+  /** In bytes; 0 for directories. */
+  readonly size: number;
 }
 
 export interface VaultFileSystem {

@@ -19,6 +19,7 @@ import type { UpdateService } from '@/features/updates/UpdateService';
 import { launchItemPath } from '@/features/launch/launch-item-path';
 import { isTypingInFocusedDiagramText } from '@/features/shortcuts/typing-target';
 import { itemKind } from '@/features/storage/vault-items';
+import { flushPreferenceSaves } from '@/features/settings/preference-sync';
 
 export class DesktopRuntime {
   readonly state = createStore<{
@@ -79,6 +80,7 @@ export class DesktopRuntime {
     await this.changes;
     const notes = await this.workspace.getState().flushNotes();
     if (!notes.ok) return notes;
+    await flushPreferenceSaves();
     return this.settings.getState().flushPendingSaves();
   }
 
@@ -286,6 +288,7 @@ export class DesktopRuntime {
         await this.show();
         return notes;
       }
+      await flushPreferenceSaves();
       const settingsSaved = await this.settings.getState().flushPendingSaves();
       if (!settingsSaved.ok) {
         this.report(settingsSaved);

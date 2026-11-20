@@ -6,6 +6,7 @@ import { folderTone } from '@/lib/folder-tone';
 import { formatRelativeTime } from '@/lib/relative-time';
 import type { SearchResult } from './SearchEngine';
 import { isTypingInDiagramText } from '@/features/shortcuts/typing-target';
+import { appShortcuts } from '@/features/shortcuts/app-shortcuts';
 
 export function HighlightedSnippet({ snippet }: { snippet: SearchResult['snippet'] }) {
   const parts = snippet.ranges.map((range, index) => {
@@ -154,12 +155,7 @@ export function SearchPalette() {
         return;
       if (isTypingInDiagramText(event.target)) return;
       // Capturing first also keeps Excalidraw's own Ctrl+K (add link) from running on diagrams.
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        !event.altKey &&
-        !event.shiftKey &&
-        event.key.toLowerCase() === 'k'
-      ) {
+      if (appShortcuts.search.matches(event)) {
         event.preventDefault();
         event.stopImmediatePropagation();
         setOpen(true);

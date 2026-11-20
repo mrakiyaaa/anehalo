@@ -119,7 +119,7 @@
   cursor: pointer;
 }
 .editor-choice input {
-  accent-color: var(--accent);
+  accent-color: var(--accent-strong);
 }
 .editor-choice kbd {
   margin-left: auto;
@@ -129,7 +129,7 @@
   background: var(--sidebar);
 }
 .editor-choice:focus-within {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-strong);
   outline-offset: -2px;
 }
 .editor-color-swatch {
@@ -309,7 +309,7 @@
   min-width: 0;
 }
 .note-prose input[type='checkbox'] {
-  accent-color: var(--accent);
+  accent-color: var(--accent-strong);
   width: 15px;
   height: 15px;
   cursor: pointer;
@@ -360,7 +360,7 @@
   border-radius: 14px;
 }
 .editor-image.ProseMirror-selectednode {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-strong);
   outline-offset: 4px;
   border-radius: 14px;
 }

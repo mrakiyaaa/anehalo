@@ -3,18 +3,23 @@ interface TransitionOrigin {
   vertical: number;
 }
 
-async function fadeTheme(updateTheme: () => void, reducedMotion: boolean) {
+/** Applies a colour change at once, and lets every colour on the page ease into it. */
+export async function fadeColors(update: () => void, durationMilliseconds: number) {
   const root = document.documentElement;
   root.classList.add('theme-fade');
-  root.style.setProperty('--theme-fade-duration', reducedMotion ? '180ms' : '400ms');
+  root.style.setProperty('--theme-fade-duration', `${durationMilliseconds}ms`);
   root.getBoundingClientRect();
   try {
-    updateTheme();
-    await new Promise<void>((resolve) => window.setTimeout(resolve, reducedMotion ? 200 : 450));
+    update();
+    await new Promise<void>((resolve) => window.setTimeout(resolve, durationMilliseconds + 50));
   } finally {
     root.classList.remove('theme-fade');
     root.style.removeProperty('--theme-fade-duration');
   }
+}
+
+function fadeTheme(updateTheme: () => void, reducedMotion: boolean) {
+  return fadeColors(updateTheme, reducedMotion ? 180 : 400);
 }
 
 export async function transitionTheme(origin: TransitionOrigin, updateTheme: () => void) {

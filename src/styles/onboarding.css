@@ -117,11 +117,11 @@
     background-color 0.35s ease;
 }
 .onboarding-dot.done {
-  background: color-mix(in srgb, var(--accent) 45%, var(--line));
+  background: color-mix(in srgb, var(--accent-strong) 45%, var(--line));
 }
 .onboarding-dot.now {
   width: 26px;
-  background: var(--accent);
+  background: var(--accent-strong);
 }
 .onboarding-count {
   font-size: 12.5px;
@@ -194,8 +194,8 @@
   color: var(--subtle-ink);
 }
 .onboarding-field input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 20%, transparent);
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 4px var(--accent-tint);
 }
 .onboarding-hello {
   padding: 14px 18px 16px;
@@ -245,12 +245,12 @@
   pointer-events: none;
 }
 .onboarding-choice:focus-within {
-  outline: 2.5px solid var(--accent);
+  outline: 2.5px solid var(--accent-strong);
   outline-offset: 2px;
 }
 .onboarding-choice.is-on {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  border-color: var(--accent-strong);
+  background: var(--accent-tint);
 }
 .onboarding-mark {
   flex: none;
@@ -263,14 +263,14 @@
   border-radius: 50%;
 }
 .is-on .onboarding-mark {
-  border-color: var(--accent);
+  border-color: var(--accent-strong);
 }
 .is-on .onboarding-mark::after {
   content: '';
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-strong);
 }
 .onboarding-choice-body {
   min-width: 0;
@@ -493,8 +493,8 @@
   stroke-width: 2.2;
 }
 .onboarding-button.primary {
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--accent-soft);
+  color: var(--accent-on-soft);
 }
 .onboarding-button.primary:hover {
   transform: translateY(-1px);

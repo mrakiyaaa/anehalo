@@ -1,6 +1,7 @@
 import { SearchPalette } from '@/features/search/SearchPalette';
 import { SettingsScreen } from '@/features/settings/SettingsScreen';
 import { DesktopNotice } from '@/features/tray/DesktopNotice';
+import { PreferenceNotice } from '@/features/settings/PreferenceNotice';
 import { UpdateBanner } from '@/features/updates/UpdateBanner';
 import { MainArea } from '@/components/layout/MainArea';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -53,6 +54,7 @@ export function AppShell() {
       <SettingsScreen />
       <UpdateBanner />
       <DesktopNotice />
+      <PreferenceNotice />
     </div>
   );
 }

@@ -2,6 +2,8 @@ import type { DiagramSummary, Folder, Note, VaultTree } from '@/types/notes';
 import type { DiagramDraft } from '@/features/diagrams/DiagramAutoSaver';
 import type { DiagramScene } from '@/features/diagrams/diagram-codec';
 import type { DiagramCodec } from '@/features/diagrams/DiagramRepository';
+import type { ThumbnailFiles } from '@/features/thumbnails/thumbnail-files';
+import type { ThumbnailService } from '@/features/thumbnails/thumbnail-service';
 import type { NoteRepository, TrashEntry } from '@/features/storage/NoteRepository';
 import type { RepositoryError, RepositoryResult } from '@/features/storage/repository-result';
 import type { NoteDraft } from '@/features/editor/NoteDraft';
@@ -17,6 +19,8 @@ export interface WorkspaceOptions {
   readonly rememberNote?: (path: string | null) => Promise<void>;
   /** Replaces Excalidraw's serializer, so store tests do not load Excalidraw. */
   readonly diagramCodec?: () => Promise<DiagramCodec>;
+  /** Where diagram thumbnails are cached; without it Home shows placeholders. */
+  readonly thumbnailFiles?: ThumbnailFiles;
 }
 
 export interface WorkspaceState {
@@ -73,6 +77,8 @@ export interface WorkspaceState {
   deleteFolder: (path: string) => Promise<RepositoryResult<TrashEntry>>;
   renameNote: (path: string, name: string) => Promise<RepositoryResult<Note>>;
   deleteNote: (path: string) => Promise<RepositoryResult<TrashEntry>>;
+  /** Thumbnails for diagram cards; null when there is no cache. */
+  thumbnails: ThumbnailService | null;
   /** False when the vault's storage cannot hold diagrams (for example a test double). */
   diagramsAvailable: boolean;
   /** The open diagram, saved by its own auto-saver. */
