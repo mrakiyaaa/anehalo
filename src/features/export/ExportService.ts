@@ -5,15 +5,26 @@ import {
   success,
   type RepositoryResult,
 } from '@/features/storage/repository-result';
-import { prepareExportImages } from './export-images';
+import { prepareExportImages, skippedDiagramsWarning } from './export-images';
 import { exportFileName, exportFolder } from './export-file-names';
 import { pdfOptions, type PdfExporter } from './PdfExporter';
-import type { ExportAction, ExportOutcome, ExportPlatform, ExportSource } from './export-types';
+import type {
+  ExportAction,
+  ExportImage,
+  ExportOutcome,
+  ExportPlatform,
+  ExportSource,
+} from './export-types';
 
 export interface ExportSettings {
   lastFolder: () => string | null;
   rememberFolder: (path: string) => Promise<RepositoryResult<void>>;
 }
+const notDrawable = () =>
+  Promise.resolve(
+    failure({ code: 'unavailable', message: 'Diagrams cannot be drawn here.' } as const),
+  );
+
 export class ExportService {
   constructor(
     private readonly repository: NoteRepository,
@@ -21,6 +32,8 @@ export class ExportService {
     private readonly pdf: PdfExporter,
     private readonly currentDraft: (path: string) => ExportSource | null,
     private readonly settings: ExportSettings,
+    /** Draws an embedded diagram as a PNG; without it, embeds export as unavailable. */
+    private readonly drawDiagram?: (path: string) => Promise<RepositoryResult<ExportImage>>,
   ) {}
 
   async execute(
@@ -63,14 +76,21 @@ export class ExportService {
         destination = choice.value;
       }
       progress('Preparing images…', 0.05);
+      // Copy as Markdown keeps diagram embeds as written; every other export shows them as images.
       const images = await prepareExportImages(
         source,
         this.platform,
         action === 'save-markdown' ? destination : undefined,
+        action === 'copy-markdown' ? undefined : (this.drawDiagram ?? notDrawable),
       );
       if (!images.ok) return images;
+      const skipped = skippedDiagramsWarning(images.value.unavailableDiagrams);
       if (!destination) {
-        const markdown = cleanMarkdown(source, images.value.references);
+        const markdown = cleanMarkdown(
+          source,
+          images.value.references,
+          images.value.unavailableDiagrams,
+        );
         const rich =
           action === 'copy-rich-text' ? buildPrintHtml(source, images.value.references) : undefined;
         const text = rich
@@ -83,6 +103,7 @@ export class ExportService {
           ? success({
               status: 'copied',
               message: rich ? 'Copied as rich text' : 'Copied as Markdown',
+              ...(skipped ? { warning: skipped } : {}),
             })
           : copied;
       }
@@ -95,7 +116,10 @@ export class ExportService {
         );
         if (!rendered.ok) return rendered;
         bytes = rendered.value;
-      } else bytes = new TextEncoder().encode(cleanMarkdown(source, images.value.references));
+      } else
+        bytes = new TextEncoder().encode(
+          cleanMarkdown(source, images.value.references, images.value.unavailableDiagrams),
+        );
       progress('Saving export…', 0.98);
       const written = await this.platform.writeBundle({
         path: destination,
@@ -108,8 +132,17 @@ export class ExportService {
         status: 'saved',
         message: extension === 'pdf' ? 'Saved PDF' : 'Saved Markdown',
         path: destination,
-        ...(!remembered.ok
-          ? { warning: 'The file was saved, but the last export folder could not be remembered.' }
+        ...(!remembered.ok || skipped
+          ? {
+              warning: [
+                skipped,
+                remembered.ok
+                  ? null
+                  : 'The file was saved, but the last export folder could not be remembered.',
+              ]
+                .filter(Boolean)
+                .join(' '),
+            }
           : {}),
       });
     } catch (error) {

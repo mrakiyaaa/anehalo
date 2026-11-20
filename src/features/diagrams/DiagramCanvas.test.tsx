@@ -67,7 +67,13 @@ type ChangeHandler = (
 ) => void;
 
 function renderCanvas(onDocumentChange: (scene: DiagramScene) => void = () => undefined) {
-  render(<DiagramCanvas scene={sceneWith('start')} onDocumentChange={onDocumentChange} />);
+  render(
+    <DiagramCanvas
+      scene={sceneWith('start')}
+      onDocumentChange={onDocumentChange}
+      onElementLink={() => undefined}
+    />,
+  );
   const onChange = excalidraw.lastProps?.onChange;
   if (typeof onChange !== 'function') throw new Error('Excalidraw received no onChange.');
   return onChange as ChangeHandler;

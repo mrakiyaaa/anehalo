@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import type { Editor } from '@tiptap/core';
-import type { Transaction } from '@tiptap/pm/state';
-import type { NoteSummary } from '@/types/notes';
 import type { SlashQuery } from '@/features/editor/commands/slash-commands';
+import { vaultItems } from '@/features/storage/vault-items';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
-import { NotePicker } from './NotePicker';
+import { NotePicker, type PickerItem } from './NotePicker';
+import { afterTrackingRange, type InsertionRange } from './track-selection';
 
+/** `/page`: links a note or a diagram; typing a new title creates a note. */
 export function PageNotePicker({
   editor,
   range,
@@ -15,27 +16,21 @@ export function PageNotePicker({
   range?: SlashQuery;
   onDismiss: () => void;
 }) {
-  const notes = useWorkspaceStore((state) => state.tree.notes);
+  const tree = useWorkspaceStore((state) => state.tree);
   const folder = useWorkspaceStore((state) => state.openDraft?.note.folder ?? null);
   const createNote = useWorkspaceStore((state) => state.createLinkedNote);
   const [search, setSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const query = range ? range.query.replace(/^page\s*/i, '') : search;
-  function insert(
-    note: NoteSummary,
-    selection: { from: number; to: number } = range ?? editor.state.selection,
-  ) {
+  function insert(item: PickerItem, selection: InsertionRange = range ?? editor.state.selection) {
     if (editor.isDestroyed) return;
     editor
       .chain()
       .focus()
       .insertContentAt(
         { from: selection.from, to: selection.to },
-        {
-          type: 'noteLink',
-          attrs: { path: note.relativePath, label: note.title },
-        },
+        { type: 'noteLink', attrs: { path: item.relativePath, label: item.title } },
       )
       .run();
     onDismiss();
@@ -44,19 +39,14 @@ export function PageNotePicker({
     if (busy) return;
     setBusy(true);
     setError(null);
-    let selection = {
-      from: range?.from ?? editor.state.selection.from,
-      to: range?.to ?? editor.state.selection.to,
-    };
-    const mapSelection = ({ transaction }: { transaction: Transaction }) => {
-      selection = {
-        from: transaction.mapping.map(selection.from),
-        to: transaction.mapping.map(selection.to),
-      };
-    };
-    editor.on('transaction', mapSelection);
-    const result = await createNote(title, folder);
-    editor.off('transaction', mapSelection);
+    const { value: result, range: selection } = await afterTrackingRange(
+      editor,
+      {
+        from: range?.from ?? editor.state.selection.from,
+        to: range?.to ?? editor.state.selection.to,
+      },
+      () => createNote(title, folder),
+    );
     setBusy(false);
     if (!result.ok) {
       setError(result.error.message);
@@ -67,7 +57,7 @@ export function PageNotePicker({
   return (
     <>
       <NotePicker
-        notes={notes}
+        notes={vaultItems(tree)}
         query={query}
         onChoose={insert}
         onCreate={(title) => {

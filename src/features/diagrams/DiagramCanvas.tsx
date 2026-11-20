@@ -6,7 +6,7 @@ import { Moon, Sun } from 'lucide-react';
 import { useRef } from 'react';
 import { useAnimatedThemeToggle } from '@/features/theme/use-animated-theme-toggle';
 import { useThemeStore } from '@/store/theme-store';
-import { diagramOptions, preventLinkNavigation } from './diagram-options';
+import { diagramOptions, elementLinkHandler } from './diagram-options';
 import type { DiagramScene } from './diagram-codec';
 import { diagramFingerprint } from './diagram-fingerprint';
 
@@ -15,10 +15,12 @@ interface DiagramCanvasProps {
   readonly scene: DiagramScene;
   /** Called only when the document changed, never for zoom, scroll, selection or tool. */
   readonly onDocumentChange: (scene: DiagramScene) => void;
+  /** Called with an element's link when it is clicked; the canvas itself never follows it. */
+  readonly onElementLink: (link: string) => void;
 }
 
 /** The only module that imports Excalidraw, so it stays in a chunk loaded on demand. */
-export function DiagramCanvas({ scene, onDocumentChange }: DiagramCanvasProps) {
+export function DiagramCanvas({ scene, onDocumentChange, onElementLink }: DiagramCanvasProps) {
   const theme = useThemeStore((state) => state.theme);
   const savedFingerprint = useRef(diagramFingerprint(scene, hashElementsVersion));
   const { toggleFrom } = useAnimatedThemeToggle();
@@ -36,7 +38,7 @@ export function DiagramCanvas({ scene, onDocumentChange }: DiagramCanvasProps) {
           savedFingerprint.current = fingerprint;
           onDocumentChange(next);
         }}
-        onLinkOpen={preventLinkNavigation}
+        onLinkOpen={elementLinkHandler(onElementLink)}
         // A new or opened diagram is ready to draw on, with Excalidraw's selection tool active.
         autoFocus
         {...diagramOptions}

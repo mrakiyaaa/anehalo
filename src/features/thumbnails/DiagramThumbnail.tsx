@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import type { DiagramSummary } from '@/types/notes';
 import { useDiagramThumbnail, type ThumbnailView } from './use-diagram-thumbnail';
+import type { ThumbnailSize } from './thumbnail-renderer';
 
 /** True once the element has scrolled into view; thumbnails are only fetched for those. */
 function useSeen<Element extends HTMLElement>() {
@@ -31,11 +32,18 @@ const placeholderText: Readonly<Record<Exclude<ThumbnailView['status'], 'ready'>
   error: 'Preview unavailable',
 };
 
-export function DiagramThumbnail({ diagram }: { diagram: DiagramSummary }) {
+/** A diagram's image on a Home card or, at preview size, embedded in a note. */
+export function DiagramThumbnail({
+  diagram,
+  size = 'card',
+}: {
+  diagram: DiagramSummary;
+  size?: ThumbnailSize;
+}) {
   const { element, seen } = useSeen<HTMLDivElement>();
-  const view = useDiagramThumbnail(diagram, seen);
+  const view = useDiagramThumbnail(diagram, seen, size);
   return (
-    <div ref={element} className="diagram-thumbnail" data-state={view.status}>
+    <div ref={element} className="diagram-thumbnail" data-size={size} data-state={view.status}>
       {view.status === 'ready' ? (
         <img src={view.url} alt={`Preview of ${diagram.title}`} draggable={false} />
       ) : (

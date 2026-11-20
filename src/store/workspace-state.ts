@@ -95,6 +95,14 @@ export interface WorkspaceState {
   checkOpenDiagram: () => Promise<RepositoryResult<void>>;
   resolveDiagramConflict: (choice: 'mine' | 'theirs') => Promise<RepositoryResult<void>>;
   trashDiagram: (path: string) => Promise<RepositoryResult<TrashEntry>>;
+  /** Creates "Untitled diagram" in a folder without opening it (embedding from a note). */
+  createDiagramFile: (folder: string | null) => Promise<RepositoryResult<DiagramSummary>>;
+  isDiagramInTrash: (path: string) => Promise<RepositoryResult<boolean>>;
+  restoreDiagram: (path: string) => Promise<RepositoryResult<DiagramSummary>>;
+  /** A diagram as a PNG for exports; loads Excalidraw, so only while exporting. */
+  renderDiagramImage: (
+    path: string,
+  ) => Promise<RepositoryResult<import('@/features/export/export-types').ExportImage>>;
   renameDiagram: (path: string, title: string) => Promise<RepositoryResult<DiagramSummary>>;
   moveDiagram: (path: string, folder: string | null) => Promise<RepositoryResult<DiagramSummary>>;
 }

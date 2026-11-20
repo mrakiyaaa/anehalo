@@ -1,4 +1,7 @@
-import type { NoteSummary } from '@/types/notes';
+interface Titled {
+  readonly title: string;
+  readonly modifiedAt: number;
+}
 
 function matchScore(title: string, query: string): number | null {
   const text = title.toLocaleLowerCase();
@@ -16,11 +19,14 @@ function matchScore(title: string, query: string): number | null {
   }
   return 10 + gaps;
 }
-export function filterNotes(notes: readonly NoteSummary[], query: string): readonly NoteSummary[] {
+export function filterNotes<Item extends Titled>(
+  notes: readonly Item[],
+  query: string,
+): readonly Item[] {
   const normalized = query.trim().toLocaleLowerCase();
   return notes
     .map((note) => ({ note, score: normalized ? matchScore(note.title, normalized) : 0 }))
-    .filter((match): match is { note: NoteSummary; score: number } => match.score !== null)
+    .filter((match): match is { note: Item; score: number } => match.score !== null)
     .sort(
       (first, second) =>
         first.score - second.score ||

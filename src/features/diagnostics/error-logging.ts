@@ -18,6 +18,9 @@ type ErrorEvent =
   | 'thumbnail-cache-failed'
   | 'settings-unreadable'
   | 'settings-timeout'
+  | 'blocked-link'
+  | 'web-link-failed'
+  | 'diagram-export-failed'
   | 'update-check-failed'
   | 'update-install-failed';
 

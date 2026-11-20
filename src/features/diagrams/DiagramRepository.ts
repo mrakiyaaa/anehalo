@@ -10,7 +10,7 @@ import {
   type RepositoryError,
   type RepositoryResult,
 } from '@/features/storage/repository-result';
-import { validateRelativePath } from '@/features/storage/storage-paths';
+import { parentPath, validateRelativePath } from '@/features/storage/storage-paths';
 import { DIAGRAM_EXTENSION, diagramSummary, itemKind } from '@/features/storage/vault-items';
 import type { VaultStorage } from '@/features/storage/vault-storage';
 import type { DiagramSummary } from '@/types/notes';
@@ -78,6 +78,22 @@ export class DiagramRepository {
         emptyDiagramText(),
       );
       return this.summary(path);
+    });
+  }
+
+  /** The file's text as stored, without parsing it (and so without loading Excalidraw). */
+  readDiagramText(relativePath: string): Promise<RepositoryResult<string>> {
+    return this.storage.operations.run('Could not read the diagram.', async () =>
+      this.files.fileSystem.readText(this.validate(relativePath)),
+    );
+  }
+
+  /** Replaces the file's text atomically; used to update links inside it after a rename. */
+  writeDiagramText(relativePath: string, text: string): Promise<RepositoryResult<void>> {
+    return this.storage.operations.run('Could not update the diagram.', async () => {
+      const path = this.validate(relativePath);
+      await this.files.requireEntry(path, 'file');
+      await this.files.atomicWrite(path, text);
     });
   }
 
@@ -173,6 +189,53 @@ export class DiagramRepository {
         DIAGRAM_EXTENSION,
       );
       return this.summary(destination);
+    });
+  }
+
+  /** Trash folders, newest first: each is named by the time its item was moved there. */
+  private async trashFolders(): Promise<string[]> {
+    const trash = await this.files.fileSystem.metadata('.trash');
+    if (trash?.type !== 'directory') return [];
+    const entries = await this.files.fileSystem.readDirectory('.trash');
+    return entries
+      .filter((entry) => entry.type === 'directory')
+      .map((entry) => entry.name)
+      .sort()
+      .reverse();
+  }
+
+  private async newestTrashedCopy(path: string): Promise<string | null> {
+    for (const folder of await this.trashFolders()) {
+      const candidate = `.trash/${folder}/${path}`;
+      if ((await this.files.fileSystem.metadata(candidate))?.type === 'file') return candidate;
+    }
+    return null;
+  }
+
+  /**
+   * Whether a diagram that is no longer at its path was moved to trash, on its own or with its
+   * folder; trash keeps the original path under a timestamped folder.
+   */
+  isInTrash(relativePath: string): Promise<RepositoryResult<boolean>> {
+    return this.storage.operations.run('Could not look in the trash.', async () => {
+      return (await this.newestTrashedCopy(this.validate(relativePath))) !== null;
+    });
+  }
+
+  /** Moves the newest trashed copy back to its path, recreating its folders. */
+  restoreDiagram(relativePath: string): Promise<RepositoryResult<DiagramSummary>> {
+    return this.storage.operations.run('Could not restore the diagram.', async () => {
+      const path = this.validate(relativePath);
+      const trashed = await this.newestTrashedCopy(path);
+      if (!trashed) storageFailure('not-found', 'This diagram is no longer in the trash.');
+      if (await this.files.fileSystem.metadata(path))
+        storageFailure(
+          'already-exists',
+          'Another file now has this name. Rename it, then restore the diagram.',
+        );
+      await this.files.ensureDirectory(parentPath(path));
+      await this.files.fileSystem.rename(trashed, path);
+      return this.summary(path);
     });
   }
 

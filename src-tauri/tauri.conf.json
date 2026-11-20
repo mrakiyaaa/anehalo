@@ -13,6 +13,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "title": "Anehalo",
         "decorations": false,
         "visible": false,

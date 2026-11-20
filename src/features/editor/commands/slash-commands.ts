@@ -12,7 +12,7 @@ export function slashQuery(state: EditorState): SlashQuery | null {
   const text = $from.parent.textBetween(0, $from.parentOffset, '', '\ufffc');
   if (
     !text.startsWith('/') ||
-    text.length > (/^\/page(?:\s|$)/i.test(text) ? 170 : 80) ||
+    text.length > (/^\/(page|diagram)(?:\s|$)/i.test(text) ? 170 : 80) ||
     text.includes('\ufffc')
   )
     return null;

@@ -28,6 +28,7 @@ import {
   Palette,
   Type,
   FileSymlink,
+  Shapes,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -37,6 +38,8 @@ export interface EditorActions {
   color: () => void;
   size: () => void;
   page: () => void;
+  /** Absent where diagrams cannot be embedded. */
+  diagram?: () => void;
 }
 export interface EditorCommand {
   readonly id: string;
@@ -68,6 +71,15 @@ export const editorCommands: readonly EditorCommand[] = [
     group: 'insert',
     shortcut: 'Mod-Shift-k',
     run: (_editor, actions) => actions.page(),
+  },
+  {
+    id: 'diagram',
+    label: 'Diagram',
+    keywords: 'embed drawing sketch excalidraw',
+    icon: Shapes,
+    group: 'insert',
+    shortcut: 'Mod-Shift-g',
+    run: (_editor, actions) => actions.diagram?.(),
   },
   {
     id: 'paragraph',

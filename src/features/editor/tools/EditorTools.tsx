@@ -13,6 +13,7 @@ import { FormattingPicker } from './FormattingPicker';
 import { LinkForm } from './LinkForm';
 import { CommandList } from './CommandList';
 import { PageNotePicker } from '@/features/note-links/PageNotePicker';
+import { DiagramEmbedPicker } from '@/features/note-links/DiagramEmbedPicker';
 
 export function EditorTools({
   editor,
@@ -49,7 +50,7 @@ export function EditorTools({
     menu?: readonly EditorCommand[],
   ) {
     const identifier = `${location}:${command.id}`;
-    const isPicker = ['color', 'size', 'link', 'page'].includes(command.id);
+    const isPicker = ['color', 'size', 'link', 'page', 'diagram'].includes(command.id);
     if (!isPicker && !menu)
       return (
         <ToolButton
@@ -100,6 +101,8 @@ export function EditorTools({
               />
             ) : command.id === 'page' ? (
               <PageNotePicker editor={editor} onDismiss={close} />
+            ) : command.id === 'diagram' ? (
+              <DiagramEmbedPicker editor={editor} onDismiss={close} />
             ) : command.id === 'link' ? (
               <LinkForm editor={editor} onChoose={close} />
             ) : (

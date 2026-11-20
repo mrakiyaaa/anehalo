@@ -1,22 +1,40 @@
 import { useEffect, useId, useState } from 'react';
 import { FilePlus2, FileText } from 'lucide-react';
-import type { NoteSummary } from '@/types/notes';
+import type { DiagramSummary, NoteSummary } from '@/types/notes';
+import { Icon } from '@/components/ui/Icon';
 import { filterNotes } from './filter-notes';
 import { folderTone } from '@/lib/folder-tone';
 import { pathName } from '@/features/storage/storage-paths';
 import { formatRelativeTime } from '@/lib/relative-time';
 import { nextCommandIndex } from '@/features/editor/commands/slash-commands';
 
+/** Notes have no kind field; diagrams are marked, so the picker can show their icon. */
+export type PickerItem = NoteSummary | DiagramSummary;
+
+function isDiagram(item: PickerItem): item is DiagramSummary {
+  return 'kind' in item && item.kind === 'diagram';
+}
+
 interface NotePickerProps {
-  notes: readonly NoteSummary[];
+  notes: readonly PickerItem[];
   query: string;
-  onChoose: (note: NoteSummary) => void;
+  onChoose: (item: PickerItem) => void;
   onCreate: (title: string) => void;
   onDismiss: () => void;
   keyboardTarget?: HTMLElement;
   onQueryChange?: (query: string) => void;
   busy?: boolean;
+  /** The heading, for pickers that do something other than link a note. */
+  heading?: string;
+  /**
+   * A create row shown first whatever is typed ("New diagram"); without it, creating is offered
+   * only when nothing matches the typed title.
+   */
+  alwaysCreate?: string;
 }
+
+type Row = { readonly kind: 'item'; readonly item: PickerItem } | { readonly kind: 'create' };
+
 export function NotePicker({
   notes,
   query,
@@ -26,20 +44,27 @@ export function NotePicker({
   keyboardTarget,
   onQueryChange,
   busy = false,
+  heading = 'Link a note',
+  alwaysCreate,
 }: NotePickerProps) {
   const identifier = useId();
   const [currentTime] = useState(Date.now);
   const matches = filterNotes(notes, query);
-  const canCreate = matches.length === 0 && query.trim().length > 0;
-  const count = matches.length || (canCreate ? 1 : 0);
+  const canCreate = alwaysCreate !== undefined || (matches.length === 0 && query.trim().length > 0);
+  const rows: Row[] = [
+    ...(alwaysCreate !== undefined ? [{ kind: 'create' } as const] : []),
+    ...matches.map((item) => ({ kind: 'item', item }) as const),
+    ...(alwaysCreate === undefined && canCreate ? [{ kind: 'create' } as const] : []),
+  ];
+  const count = rows.length;
   const [selection, setSelection] = useState({ query, index: 0 });
   const selectedIndex =
     selection.query === query ? Math.min(selection.index, Math.max(0, count - 1)) : 0;
   const choose = (index: number) => {
     if (busy) return;
-    const note = matches[index];
-    if (note) onChoose(note);
-    else if (canCreate) onCreate(query.trim());
+    const row = rows[index];
+    if (row?.kind === 'item') onChoose(row.item);
+    else if (row?.kind === 'create') onCreate(query.trim());
   };
   const handleKey = (event: KeyboardEvent) => {
     if (event.isComposing || !['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key))
@@ -79,7 +104,7 @@ export function NotePicker({
       }}
     >
       <p className="editor-popover-label">
-        Link a note <span>↑ ↓ to navigate · Esc to close</span>
+        {heading} <span>↑ ↓ to navigate · Esc to close</span>
       </p>
       {onQueryChange && (
         <input
@@ -98,42 +123,48 @@ export function NotePicker({
         aria-busy={busy}
         className="note-picker-list"
       >
-        {matches.map((note, index) => (
-          <button
-            type="button"
-            role="option"
-            id={`${identifier}-${index}`}
-            key={note.relativePath}
-            aria-selected={index === selectedIndex}
-            disabled={busy}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => choose(index)}
-          >
-            <FileText aria-hidden="true" size={16} />
-            <span className="note-picker-copy">
-              <strong>{note.title}</strong>
-              <span>
-                <span className={`note-picker-folder tone-${folderTone(note.folder)}`}>
-                  {note.folder ? pathName(note.folder) : 'Vault root'}
+        {rows.map((row, index) =>
+          row.kind === 'item' ? (
+            <button
+              type="button"
+              role="option"
+              id={`${identifier}-${index}`}
+              key={row.item.relativePath}
+              aria-selected={index === selectedIndex}
+              disabled={busy}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose(index)}
+            >
+              {isDiagram(row.item) ? (
+                <Icon name="shapes" />
+              ) : (
+                <FileText aria-hidden="true" size={16} />
+              )}
+              <span className="note-picker-copy">
+                <strong>{row.item.title}</strong>
+                <span>
+                  <span className={`note-picker-folder tone-${folderTone(row.item.folder)}`}>
+                    {row.item.folder ? pathName(row.item.folder) : 'Vault root'}
+                  </span>
+                  <span>{formatRelativeTime(row.item.modifiedAt, currentTime)}</span>
                 </span>
-                <span>{formatRelativeTime(note.modifiedAt, currentTime)}</span>
               </span>
-            </span>
-          </button>
-        ))}
-        {canCreate && (
-          <button
-            type="button"
-            role="option"
-            id={`${identifier}-0`}
-            aria-selected="true"
-            disabled={busy}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => choose(0)}
-          >
-            <FilePlus2 size={16} aria-hidden="true" />
-            <span>Create “{query.trim()}”</span>
-          </button>
+            </button>
+          ) : (
+            <button
+              type="button"
+              role="option"
+              id={`${identifier}-${index}`}
+              key="create"
+              aria-selected={index === selectedIndex}
+              disabled={busy}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => choose(index)}
+            >
+              <FilePlus2 size={16} aria-hidden="true" />
+              <span>{alwaysCreate ?? `Create “${query.trim()}”`}</span>
+            </button>
+          ),
         )}
         {!count && (
           <p className="note-picker-empty">Type a title to create your first linked note.</p>

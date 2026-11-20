@@ -4,7 +4,7 @@ import type { DiagramScene } from '@/features/diagrams/diagram-codec';
 import type { DiagramRepository, DiagramVersion } from '@/features/diagrams/DiagramRepository';
 import { SerialTaskQueue } from '@/features/storage/autosave/SerialTaskQueue';
 import type { Thumbnail, ThumbnailCache } from './thumbnail-cache';
-import { renderThumbnail, type ThumbnailRenderer } from './thumbnail-renderer';
+import { renderThumbnail, type ThumbnailRenderer, type ThumbnailSize } from './thumbnail-renderer';
 
 /** How long a diagram must stay unchanged after a save before its thumbnail is redrawn. */
 export const THUMBNAIL_AFTER_SAVE_DELAY_MS = 2_000;
@@ -83,35 +83,42 @@ export class ThumbnailService {
     return version.ok ? version.value : null;
   }
 
-  /** The current thumbnail, generating it if needed; null when the file no longer exists. */
-  async thumbnail(path: string): Promise<Thumbnail | null> {
+  /**
+   * The current thumbnail at a size (Home cards, or previews embedded in notes), generating it if
+   * needed; null when the file no longer exists. A cached one is read without loading Excalidraw.
+   */
+  async thumbnail(path: string, size: ThumbnailSize = 'card'): Promise<Thumbnail | null> {
     const version = await this.version(path);
     if (!version) return null;
-    const cached = await this.cache.lookup(path, version);
+    const cached = await this.cache.lookup(path, version, size);
     if (cached) return cached;
     return this.generation.run(async () => {
       await this.waitForIdle();
       const current = await this.version(path);
       if (!current) return null;
       // Another request may have drawn it while this one waited.
-      return (await this.cache.lookup(path, current)) ?? this.generate(path, current);
+      return (await this.cache.lookup(path, current, size)) ?? this.generate(path, current, size);
     });
   }
 
-  private async generate(path: string, version: DiagramVersion): Promise<Thumbnail> {
+  private async generate(
+    path: string,
+    version: DiagramVersion,
+    size: ThumbnailSize,
+  ): Promise<Thumbnail> {
     const loaded = await this.diagrams.readDiagram(path);
     if (!loaded.ok) {
       // Only a corrupt file is remembered as an error; a read that failed may work next time.
       if (loaded.error.code !== 'invalid-diagram') return { state: 'error' };
       logFailure('thumbnail-failed', loaded.error.code);
-      return this.keep(path, version, { state: 'error' });
+      return this.keep(path, version, { state: 'error' }, size);
     }
-    return this.keep(path, version, await this.draw(loaded.value.scene));
+    return this.keep(path, version, await this.draw(loaded.value.scene, size), size);
   }
 
-  private async draw(scene: DiagramScene): Promise<Thumbnail> {
+  private async draw(scene: DiagramScene, size: ThumbnailSize): Promise<Thumbnail> {
     try {
-      return await this.render(scene);
+      return await this.render(scene, size);
     } catch (error) {
       logFailure('thumbnail-failed');
       console.warn('A diagram thumbnail could not be drawn.', error);
@@ -119,9 +126,14 @@ export class ThumbnailService {
     }
   }
 
-  private async keep(path: string, version: DiagramVersion, thumbnail: Thumbnail) {
+  private async keep(
+    path: string,
+    version: DiagramVersion,
+    thumbnail: Thumbnail,
+    size: ThumbnailSize,
+  ) {
     try {
-      await this.cache.store(path, version, thumbnail);
+      await this.cache.store(path, version, thumbnail, size);
     } catch (error) {
       // Without the cache the thumbnail still shows now; it is drawn again next time.
       logFailure('thumbnail-cache-failed');
@@ -131,8 +143,9 @@ export class ThumbnailService {
   }
 
   /**
-   * Redraws the open diagram from its in-memory scene once editing pauses, so the drawing that
-   * is already loaded is used and a save never waits for a thumbnail.
+   * Redraws the open diagram's card from its in-memory scene once editing pauses, so the drawing
+   * that is already loaded is used and a save never waits for a thumbnail. Listeners (Home cards,
+   * embedded previews) are told, and previews redraw on their next request.
    */
   sceneSaved(path: string, scene: DiagramScene) {
     const pending = this.savedScenes.get(path);
@@ -145,7 +158,7 @@ export class ThumbnailService {
           await this.waitForIdle();
           const version = await this.version(path);
           if (!version) return;
-          await this.keep(path, version, await this.draw(scene));
+          await this.keep(path, version, await this.draw(scene, 'card'), 'card');
           for (const listener of this.listeners) listener(path);
         });
       }, this.afterSaveDelayMs),

@@ -1,5 +1,5 @@
 import type { NoteRepository } from '@/features/storage/NoteRepository';
-import type { Note, NoteSummary } from '@/types/notes';
+import type { DiagramSummary, Note, NoteSummary } from '@/types/notes';
 import { isInsideFolder } from '@/features/storage/storage-paths';
 import {
   success,
@@ -9,6 +9,12 @@ import {
   type RepositoryResult,
 } from '@/features/storage/repository-result';
 import { scanNoteLinks } from './NoteLinkRewriter';
+import { diagramElementLinks } from '@/features/links/element-links';
+
+/** Reads a diagram's stored text, so its element links can be indexed without Excalidraw. */
+export interface DiagramTextSource {
+  readDiagramText(path: string): Promise<RepositoryResult<string>>;
+}
 
 export interface LinkIndexSnapshot {
   readonly outgoing: ReadonlyMap<string, ReadonlySet<string>>;
@@ -22,7 +28,14 @@ export class NoteLinkIndex {
   private scanIdentifier = 0;
   private readonly mutations = new Map<string, number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
-  constructor(private readonly changed: (snapshot: LinkIndexSnapshot) => void = () => {}) {}
+  /**
+   * Sources are notes and, given a diagram reader, diagrams (their element links); targets are
+   * the notes and diagrams they link to or embed.
+   */
+  constructor(
+    private readonly changed: (snapshot: LinkIndexSnapshot) => void = () => {},
+    private readonly diagrams?: DiagramTextSource,
+  ) {}
 
   snapshot(): LinkIndexSnapshot {
     const backlinks = new Map<string, string[]>();
@@ -47,6 +60,12 @@ export class NoteLinkIndex {
     }
     this.changed(this.snapshot());
   }
+  /** A diagram's element links, from its in-memory scene after a save. */
+  updateDiagram(path: string, targets: readonly string[]) {
+    this.mutations.set(path, ++this.revision);
+    this.outgoing.set(path, new Set(targets));
+    this.changed(this.snapshot());
+  }
   remove(path: string) {
     this.mutations.set(path, ++this.revision);
     for (const source of this.outgoing.keys())
@@ -56,6 +75,7 @@ export class NoteLinkIndex {
   async rebuild(
     repository: NoteRepository,
     notes?: readonly NoteSummary[],
+    diagrams?: readonly DiagramSummary[],
   ): Promise<RepositoryResult<void>> {
     const revision = this.revision;
     const identifier = ++this.scanIdentifier;
@@ -67,6 +87,11 @@ export class NoteLinkIndex {
       const hydrated = await (repository.hydrateTree?.() ?? Promise.resolve(tree));
       if (!hydrated.ok) return hydrated;
       notes = hydrated.value.notes;
+      diagrams ??= hydrated.value.diagrams;
+    }
+    if (this.diagrams && !diagrams) {
+      const tree = await repository.listTree();
+      diagrams = tree.ok ? tree.value.diagrams : [];
     }
     let scanned = 0;
     for (const note of notes) {
@@ -79,6 +104,13 @@ export class NoteLinkIndex {
           new Set(scanNoteLinks(read.value.content).map((link) => link.path)),
         );
       else errors.push({ path: note.relativePath, error: read.error });
+      if (++scanned % 20 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+    for (const diagram of this.diagrams ? (diagrams ?? []) : []) {
+      if (identifier !== this.scanIdentifier) return success(undefined);
+      const read = await this.diagrams?.readDiagramText(diagram.relativePath);
+      if (read?.ok) outgoing.set(diagram.relativePath, new Set(diagramElementLinks(read.value)));
+      else if (read) errors.push({ path: diagram.relativePath, error: read.error });
       if (++scanned % 20 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
     if (identifier !== this.scanIdentifier) return success(undefined);

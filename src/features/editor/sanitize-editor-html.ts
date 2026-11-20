@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify';
-import { decodeNotePath } from '@/features/note-links/note-link-paths';
+import { decodeItemPath } from '@/features/note-links/note-link-paths';
+import { itemKind } from '@/features/storage/vault-items';
 
 export function isSafeLink(value: string): boolean {
   const allowed =
@@ -50,6 +51,7 @@ export function sanitizeEditorHtml(html: string): string {
       'th',
       'td',
       'a',
+      'figure',
     ],
     ALLOWED_ATTR: [
       'href',
@@ -62,6 +64,9 @@ export function sanitizeEditorHtml(html: string): string {
       'colspan',
       'rowspan',
       'style',
+      'data-diagram-embed',
+      'data-path',
+      'data-title',
     ],
     ALLOW_DATA_ATTR: false,
   });
@@ -84,7 +89,14 @@ export function sanitizeEditorHtml(html: string): string {
   }
   for (const anchor of document.body.querySelectorAll('a')) {
     const reference = anchor.getAttribute('href') ?? '';
-    if (!isSafeLink(reference) && !decodeNotePath(reference).ok) anchor.removeAttribute('href');
+    if (!isSafeLink(reference) && !decodeItemPath(reference).ok) anchor.removeAttribute('href');
+  }
+  // A pasted diagram embed survives only with a valid vault diagram path; other figures go.
+  for (const figure of document.body.querySelectorAll('figure')) {
+    const path = decodeItemPath(figure.getAttribute('data-path') ?? '');
+    const isEmbed =
+      figure.hasAttribute('data-diagram-embed') && path.ok && itemKind(path.value) === 'diagram';
+    if (!isEmbed) figure.replaceWith(...figure.childNodes);
   }
   return document.body.innerHTML;
 }

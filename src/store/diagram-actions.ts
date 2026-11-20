@@ -10,6 +10,9 @@ import type { DiagramSummary, VaultTree } from '@/types/notes';
 import type { WorkspaceState } from '@/store/workspace-state';
 import { logFailure } from '@/features/diagnostics/error-logging';
 import type { ThumbnailService } from '@/features/thumbnails/thumbnail-service';
+import type { LinkRename } from '@/features/note-links/NoteLinkRewriter';
+import { renderExportImage } from '@/features/thumbnails/thumbnail-renderer';
+import { describeStorageError } from '@/features/storage/repository-result';
 
 type DiagramActions = Pick<
   WorkspaceState,
@@ -20,6 +23,10 @@ type DiagramActions = Pick<
   | 'checkOpenDiagram'
   | 'resolveDiagramConflict'
   | 'trashDiagram'
+  | 'createDiagramFile'
+  | 'isDiagramInTrash'
+  | 'restoreDiagram'
+  | 'renderDiagramImage'
   | 'renameDiagram'
   | 'moveDiagram'
 >;
@@ -38,6 +45,11 @@ interface DiagramActionContext {
   /** The back/forward history shared with notes. */
   /** Keeps cached thumbnails in step with renames, moves and trash; null without a cache. */
   readonly thumbnails: ThumbnailService | null;
+  /** Updates links and embeds pointing at a renamed or trashed diagram (see LinkedNoteRepository). */
+  readonly links: {
+    rewrite: (rename: LinkRename) => Promise<unknown>;
+    removed: (path: string) => void;
+  };
   readonly history: {
     visit: (path: string) => void;
     rename: (previousPath: string, nextPath: string) => void;
@@ -72,6 +84,7 @@ export function createDiagramActions({
   leaveNote,
   history,
   thumbnails,
+  links,
 }: DiagramActionContext): DiagramActions & DiagramNavigation {
   function withDiagrams<Value>(
     operation: (
@@ -110,9 +123,12 @@ export function createDiagramActions({
     return success(undefined);
   }
 
-  /** Saves the open diagram first when it is the one about to change on disk. */
-  async function saveIfOpen(autoSaver: DiagramAutoSaver, path: string) {
-    return path === autoSaver.draft?.summary.relativePath ? autoSaver.flush() : success(undefined);
+  /**
+   * Saves the open diagram before files change on disk: it may be the one being renamed, or it
+   * may link to it and so be rewritten.
+   */
+  function saveOpenDiagram(autoSaver: DiagramAutoSaver) {
+    return autoSaver.flush();
   }
 
   async function relocated(
@@ -124,6 +140,7 @@ export function createDiagramActions({
       autoSaver.relocate(path, result.value);
       history.rename(path, result.value.relativePath);
       await thumbnails?.moved(path, result.value.relativePath);
+      await links.rewrite({ previousPath: path, nextPath: result.value.relativePath });
     } else logFailure('diagram-rename-failed', result.error.code);
     await refreshTree();
     return result;
@@ -151,6 +168,50 @@ export function createDiagramActions({
           return open(diagrams, autoSaver, created.value.relativePath, true);
         }),
       ),
+    createDiagramFile: (folder) =>
+      withDiagrams((diagrams) =>
+        enqueue(async () => {
+          const created = await diagrams.createDiagram(folder);
+          if (!created.ok) {
+            logFailure('diagram-create-failed', created.error.code);
+            return created;
+          }
+          await refreshTree();
+          return created;
+        }),
+      ),
+    isDiagramInTrash: (path) => withDiagrams((diagrams) => diagrams.isInTrash(path)),
+    restoreDiagram: (path) =>
+      withDiagrams((diagrams) =>
+        enqueue(async () => {
+          const restored = await diagrams.restoreDiagram(path);
+          if (restored.ok) await refreshTree();
+          return restored;
+        }),
+      ),
+    renderDiagramImage: (path) =>
+      withDiagrams(async (diagrams) => {
+        const loaded = await diagrams.readDiagram(path);
+        if (!loaded.ok) return loaded;
+        try {
+          const image = await renderExportImage(loaded.value.scene);
+          if (image.state !== 'image')
+            return failure({
+              code: 'invalid-diagram',
+              message:
+                image.state === 'empty'
+                  ? 'This diagram is empty.'
+                  : 'This diagram could not be drawn.',
+            });
+          return success({
+            name: `${loaded.value.summary.title}.png`,
+            bytes: image.bytes,
+            mimeType: image.mimeType,
+          });
+        } catch (error) {
+          return failure(describeStorageError(error, 'This diagram could not be drawn.'));
+        }
+      }),
     openDiagramFile: (path) =>
       withDiagrams((diagrams, autoSaver) => enqueue(() => open(diagrams, autoSaver, path, true))),
     updateDiagram: (scene) => saver?.update(scene),
@@ -164,6 +225,8 @@ export function createDiagramActions({
           const trashed = await diagrams.trashDiagram(path);
           if (!trashed.ok) return trashed;
           await thumbnails?.removed(path);
+          // Embeds and links stay in notes and show "in trash"; only the diagram's own links go.
+          links.removed(path);
           if (autoSaver.draft?.summary.relativePath === path) {
             autoSaver.forget(path);
             if (getState().view === 'diagram') setState({ view: 'home' });
@@ -175,7 +238,7 @@ export function createDiagramActions({
     renameDiagram: (path, title) =>
       withDiagrams((diagrams, autoSaver) =>
         enqueue(async () => {
-          const saved = await saveIfOpen(autoSaver, path);
+          const saved = await saveOpenDiagram(autoSaver);
           if (!saved.ok) return saved;
           return relocated(autoSaver, path, await diagrams.renameDiagram(path, title));
         }),
@@ -183,7 +246,7 @@ export function createDiagramActions({
     moveDiagram: (path, folder) =>
       withDiagrams((diagrams, autoSaver) =>
         enqueue(async () => {
-          const saved = await saveIfOpen(autoSaver, path);
+          const saved = await saveOpenDiagram(autoSaver);
           if (!saved.ok) return saved;
           return relocated(autoSaver, path, await diagrams.moveDiagram(path, folder));
         }),
