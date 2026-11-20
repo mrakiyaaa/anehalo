@@ -9,6 +9,7 @@ import {
 import type { DiagramSummary, VaultTree } from '@/types/notes';
 import type { WorkspaceState } from '@/store/workspace-state';
 import { logFailure } from '@/features/diagnostics/error-logging';
+import type { ThumbnailService } from '@/features/thumbnails/thumbnail-service';
 
 type DiagramActions = Pick<
   WorkspaceState,
@@ -35,6 +36,8 @@ interface DiagramActionContext {
   /** Saves and closes the open note, as before any other item opens. */
   readonly leaveNote: () => Promise<RepositoryResult<void>>;
   /** The back/forward history shared with notes. */
+  /** Keeps cached thumbnails in step with renames, moves and trash; null without a cache. */
+  readonly thumbnails: ThumbnailService | null;
   readonly history: {
     visit: (path: string) => void;
     rename: (previousPath: string, nextPath: string) => void;
@@ -68,6 +71,7 @@ export function createDiagramActions({
   setState,
   leaveNote,
   history,
+  thumbnails,
 }: DiagramActionContext): DiagramActions & DiagramNavigation {
   function withDiagrams<Value>(
     operation: (
@@ -119,6 +123,7 @@ export function createDiagramActions({
     if (result.ok) {
       autoSaver.relocate(path, result.value);
       history.rename(path, result.value.relativePath);
+      await thumbnails?.moved(path, result.value.relativePath);
     } else logFailure('diagram-rename-failed', result.error.code);
     await refreshTree();
     return result;
@@ -158,6 +163,7 @@ export function createDiagramActions({
         enqueue(async () => {
           const trashed = await diagrams.trashDiagram(path);
           if (!trashed.ok) return trashed;
+          await thumbnails?.removed(path);
           if (autoSaver.draft?.summary.relativePath === path) {
             autoSaver.forget(path);
             if (getState().view === 'diagram') setState({ view: 'home' });

@@ -61,12 +61,20 @@ describe('vault-only native folder access', () => {
     expect((await chooseVaultLocation(new TauriFolderAccess())).ok).toBe(false);
     expect(invoke).toHaveBeenCalledOnce();
   });
-  it('retains only static settings scope and does not load legacy persisted parent grants', () => {
+  it('retains only static settings and thumbnail-cache scope and does not load legacy persisted parent grants', () => {
     const scope = configuration.permissions.find(
       (permission) => typeof permission === 'object' && permission.identifier === 'fs:scope',
     );
     if (typeof scope !== 'object') throw new Error('Filesystem scope is missing.');
-    expect(scope.allow.every(({ path }) => path.startsWith('$APPCONFIG'))).toBe(true);
+    // App-owned folders only: settings, and the thumbnail cache folder itself (not its parent).
+    expect(
+      scope.allow.every(
+        ({ path }) =>
+          path.startsWith('$APPCONFIG') ||
+          path === '$APPLOCALDATA/thumbnails' ||
+          path === '$APPLOCALDATA/thumbnails/*',
+      ),
+    ).toBe(true);
     const native = readFileSync('src-tauri/src/vault_access.rs', 'utf8');
     expect(native).toContain('.allow_directory(root, true)');
     expect(native).not.toContain('.allow_directory(&picked');

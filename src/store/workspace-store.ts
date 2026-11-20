@@ -27,6 +27,8 @@ import { FileSystemNoteRepository } from '@/features/storage/FileSystemNoteRepos
 import { DiagramRepository } from '@/features/diagrams/DiagramRepository';
 import { DiagramAutoSaver } from '@/features/diagrams/DiagramAutoSaver';
 import { createDiagramActions } from '@/store/diagram-actions';
+import { ThumbnailCache } from '@/features/thumbnails/thumbnail-cache';
+import { ThumbnailService } from '@/features/thumbnails/thumbnail-service';
 import { itemKind } from '@/features/storage/vault-items';
 
 export function createWorkspaceStore(
@@ -55,6 +57,13 @@ export function createWorkspaceStore(
       ? new DiagramRepository(sourceRepository.storage, options.diagramCodec)
       : null;
   const diagramSaver = diagramRepository ? new DiagramAutoSaver(diagramRepository) : null;
+  const thumbnails =
+    diagramRepository && options.thumbnailFiles
+      ? new ThumbnailService({
+          cache: new ThumbnailCache(options.thumbnailFiles, options.vaultPath ?? ''),
+          diagrams: diagramRepository,
+        })
+      : null;
   let initialization: Promise<void> | null = null;
   let active = true;
   let hasLoadedVault = false;
@@ -246,6 +255,7 @@ export function createWorkspaceStore(
       getState: get,
       setState: set,
       leaveNote: closeOpenItem,
+      thumbnails,
       history: {
         visit: (path) => navigation.getState().visit(path),
         rename: (previousPath, nextPath) =>
@@ -280,6 +290,7 @@ export function createWorkspaceStore(
       tree: { vaultPath: '', folders: [], notes: [], diagrams: [] },
       diagramsAvailable: diagramSaver !== null,
       diagram: null,
+      thumbnails,
       isOpeningDiagram: false,
       diagramOpenError: null,
       ...diagramActions,
@@ -412,6 +423,7 @@ export function createWorkspaceStore(
         active = false;
         autoSaver.pause();
         diagramSaver?.pause();
+        thumbnails?.cancelPending();
         linkIndex.cancel();
         searchIndex.cancel();
       },
@@ -443,6 +455,7 @@ export function createWorkspaceStore(
           (folder) => {
             autoSaver.relocateFolder(path, folder.relativePath);
             diagramSaver?.relocateFolder(path, folder.relativePath);
+            void thumbnails?.moved(path, folder.relativePath);
             if (lastOpenedPath && isInsideFolder(lastOpenedPath, path))
               void rememberNote(`${folder.relativePath}${lastOpenedPath.slice(path.length)}`);
             const selected = get().activeFolderPath;
@@ -456,6 +469,7 @@ export function createWorkspaceStore(
           () => {
             autoSaver.forgetDeletedPath(path);
             if (diagramSaver?.forgetInside(path) && get().view === 'diagram') set({ view: 'home' });
+            void thumbnails?.removed(path);
             if (lastOpenedPath && isInsideFolder(lastOpenedPath, path)) void rememberNote(null);
           },
         ),
@@ -492,7 +506,17 @@ export function createWorkspaceStore(
     if (isCurrent && previousPath !== draft.note.relativePath)
       void rememberNote(draft.note.relativePath);
   });
-  diagramSaver?.subscribe((diagram) => store.setState({ diagram }));
+  // A write changes the file's time; that is when the open diagram's thumbnail is redrawn.
+  let lastWritten: { identifier: number; modifiedAt: number } | null = null;
+  diagramSaver?.subscribe((diagram) => {
+    store.setState({ diagram });
+    if (!diagram || !thumbnails) return;
+    const { identifier, summary } = diagram;
+    const written =
+      lastWritten?.identifier === identifier && lastWritten.modifiedAt !== summary.modifiedAt;
+    lastWritten = { identifier, modifiedAt: summary.modifiedAt };
+    if (written && !diagram.dirty) thumbnails.sceneSaved(summary.relativePath, diagram.scene);
+  });
   return store;
 }
 

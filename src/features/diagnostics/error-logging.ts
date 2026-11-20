@@ -14,6 +14,10 @@ type ErrorEvent =
   | 'reveal-failed'
   | 'unknown-accent'
   | 'preference-save-failed'
+  | 'thumbnail-failed'
+  | 'thumbnail-cache-failed'
+  | 'settings-unreadable'
+  | 'settings-timeout'
   | 'update-check-failed'
   | 'update-install-failed';
 

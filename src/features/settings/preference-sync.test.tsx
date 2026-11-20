@@ -5,6 +5,7 @@ import { InMemorySettingsRepository } from '@/features/settings/InMemorySettings
 import { createSettingsStore, type SettingsStore } from '@/features/settings/settings-store';
 import { useAccentStore } from '@/store/accent-store';
 import { useSidebarStore } from '@/store/sidebar-store';
+import { useHomeFilterStore } from '@/store/home-filter-store';
 import { unwrapResult } from '@/test/repository-helpers';
 import {
   PREFERENCE_SAVE_DELAY_MS,
@@ -34,6 +35,7 @@ async function setup(saved: Record<string, unknown> = {}) {
 beforeEach(() => {
   useAccentStore.getState().setAccent('sky');
   useSidebarStore.getState().restore(false);
+  useHomeFilterStore.getState().setFilter('all');
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -64,6 +66,14 @@ describe('preference sync', () => {
       accent: 'rose',
       sidebarCollapsed: true,
     });
+  });
+
+  it('restores and saves the Home filter', async () => {
+    const { repository } = await setup({ homeFilter: 'diagrams' });
+    expect(useHomeFilterStore.getState().filter).toBe('diagrams');
+    act(() => useHomeFilterStore.getState().setFilter('notes'));
+    await act(() => flushPreferenceSaves());
+    expect(unwrapResult(await repository.load()).homeFilter).toBe('notes');
   });
 
   it('saves a pending choice at once when the app flushes before closing', async () => {

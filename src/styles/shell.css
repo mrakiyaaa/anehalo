@@ -671,3 +671,80 @@ button {
     animation: none;
   }
 }
+
+.home-filter-chips {
+  display: inline-flex;
+  gap: 4px;
+  margin-right: auto;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.home-filter-chip {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+.home-filter-chip:hover {
+  background: var(--accent-tint);
+}
+.home-filter-chip[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-on-soft);
+}
+
+.diagram-card {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.diagram-card h3 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.diagram-card-icon {
+  flex: none;
+  color: var(--accent-strong);
+  font-size: 16px;
+}
+.diagram-thumbnail {
+  display: grid;
+  place-items: center;
+  height: 132px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--bg);
+  pointer-events: none;
+}
+.diagram-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* One light image per diagram: dark mode inverts it the way Excalidraw draws its dark theme. */
+[data-theme='dark'] .diagram-thumbnail img {
+  filter: invert(93%) hue-rotate(180deg);
+}
+.diagram-thumbnail-placeholder {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  background: var(--accent-tint);
+  color: var(--accent-strong);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.diagram-thumbnail-placeholder .icon {
+  font-size: 26px;
+}
+.diagram-thumbnail[data-state='error'] .diagram-thumbnail-placeholder {
+  background: var(--sidebar);
+  color: var(--muted-ink);
+}

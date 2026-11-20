@@ -5,9 +5,10 @@ import type { AppSettings } from '@/features/settings/AppSettings';
 import type { SettingsStore } from '@/features/settings/settings-store';
 import { useAccentStore } from '@/store/accent-store';
 import { useSidebarStore } from '@/store/sidebar-store';
+import { useHomeFilterStore } from '@/store/home-filter-store';
 import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
 
-type Preferences = Pick<AppSettings, 'accent' | 'sidebarCollapsed'>;
+type Preferences = Pick<AppSettings, 'accent' | 'sidebarCollapsed' | 'homeFilter'>;
 
 /** Clicking through colours writes settings.json once, after the clicking stops. */
 export const PREFERENCE_SAVE_DELAY_MS = 400;
@@ -67,15 +68,22 @@ export function usePreferenceSync(settings: SettingsStore) {
       if (!saved) return;
       if (
         synchronized?.accent === saved.accent &&
-        synchronized.sidebarCollapsed === saved.sidebarCollapsed
+        synchronized.sidebarCollapsed === saved.sidebarCollapsed &&
+        synchronized.homeFilter === saved.homeFilter
       )
         return;
-      synchronized = { accent: saved.accent, sidebarCollapsed: saved.sidebarCollapsed };
+      synchronized = {
+        accent: saved.accent,
+        sidebarCollapsed: saved.sidebarCollapsed,
+        homeFilter: saved.homeFilter,
+      };
       applyingSaved = true;
       if (useAccentStore.getState().accent !== saved.accent)
         useAccentStore.getState().setAccent(saved.accent);
       if (useSidebarStore.getState().collapsedPreference !== saved.sidebarCollapsed)
         useSidebarStore.getState().restore(saved.sidebarCollapsed);
+      if (useHomeFilterStore.getState().filter !== saved.homeFilter)
+        useHomeFilterStore.getState().setFilter(saved.homeFilter);
       applyingSaved = false;
       markStartupOnce(startupMarks.settingsApplied);
     });
@@ -86,10 +94,15 @@ export function usePreferenceSync(settings: SettingsStore) {
       if (!applyingSaved && state.collapsedPreference !== previous.collapsedPreference)
         schedule({ sidebarCollapsed: state.collapsedPreference });
     });
+    const unsubscribeHomeFilter = useHomeFilterStore.subscribe((state, previous) => {
+      if (!applyingSaved && state.filter !== previous.filter)
+        schedule({ homeFilter: state.filter });
+    });
     return () => {
       unsubscribeSettings();
       unsubscribeAccent();
       unsubscribeSidebar();
+      unsubscribeHomeFilter();
       // A choice made just before unmounting is still saved.
       void flushPending();
       flushPending = () => Promise.resolve();

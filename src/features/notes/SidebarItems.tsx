@@ -6,6 +6,41 @@ import { vaultItems, type VaultItem } from '@/features/storage/vault-items';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { Logo } from '@/components/ui/Logo';
 import { VirtualItems } from './VirtualItems';
+import { useItemActions } from './use-item-actions';
+
+interface SidebarItemProps {
+  readonly item: VaultItem;
+  readonly current: boolean;
+  readonly unsaved: boolean;
+}
+
+function SidebarItem({ item, current, unsaved }: SidebarItemProps) {
+  const actions = useItemActions(item);
+  return (
+    <ItemMenu
+      kind={item.kind}
+      name={item.title}
+      path={item.relativePath}
+      folder={item.folder}
+      onOpen={actions.open}
+      onRename={actions.rename}
+      {...(actions.move ? { onMove: actions.move } : {})}
+      onDelete={actions.remove}
+    >
+      <Button
+        variant="ghost"
+        className="sidebar-note"
+        aria-current={current ? 'page' : undefined}
+        title={item.relativePath}
+        onClick={actions.open}
+      >
+        <Icon name={item.kind === 'diagram' ? 'shapes' : 'pen'} />
+        <span>{item.title}</span>
+        {unsaved && <span className="unsaved-dot" aria-label="Unsaved changes" />}
+      </Button>
+    </ItemMenu>
+  );
+}
 
 /** Notes and diagrams of the selected folder, newest first. */
 export function SidebarItems() {
@@ -16,13 +51,7 @@ export function SidebarItems() {
   const currentDiagram = useWorkspaceStore((state) => state.diagram);
   const view = useWorkspaceStore((state) => state.view);
   const openNote = useWorkspaceStore((state) => state.openNote);
-  const openDiagram = useWorkspaceStore((state) => state.openDiagramFile);
   const pendingDrafts = useWorkspaceStore((state) => state.pendingDrafts);
-  const renameNote = useWorkspaceStore((state) => state.renameNote);
-  const deleteNote = useWorkspaceStore((state) => state.deleteNote);
-  const renameDiagram = useWorkspaceStore((state) => state.renameDiagram);
-  const moveDiagram = useWorkspaceStore((state) => state.moveDiagram);
-  const trashDiagram = useWorkspaceStore((state) => state.trashDiagram);
   const items = filterItems(vaultItems(tree), { activeFolderPath, searchText });
   const retainedDrafts = pendingDrafts.filter(
     (draft) => !items.some((item) => item.relativePath === draft.note.relativePath),
@@ -35,42 +64,13 @@ export function SidebarItems() {
   }
 
   function renderItem(item: VaultItem) {
-    const open = () => {
-      void (item.kind === 'diagram' ? openDiagram : openNote)(item.relativePath);
-    };
-    const isDiagram = item.kind === 'diagram';
     return (
-      <ItemMenu
+      <SidebarItem
         key={item.relativePath}
-        kind={item.kind}
-        name={item.title}
-        path={item.relativePath}
-        folder={item.folder}
-        onOpen={open}
-        onRename={(name) =>
-          isDiagram ? renameDiagram(item.relativePath, name) : renameNote(item.relativePath, name)
-        }
-        {...(isDiagram
-          ? { onMove: (folder: string | null) => moveDiagram(item.relativePath, folder) }
-          : {})}
-        onDelete={() =>
-          isDiagram ? trashDiagram(item.relativePath) : deleteNote(item.relativePath)
-        }
-      >
-        <Button
-          variant="ghost"
-          className="sidebar-note"
-          aria-current={isCurrent(item) ? 'page' : undefined}
-          title={item.relativePath}
-          onClick={open}
-        >
-          {isDiagram ? <Icon name="shapes" /> : <Icon name="pen" />}
-          <span>{item.title}</span>
-          {pendingDrafts.some((draft) => draft.note.relativePath === item.relativePath) && (
-            <span className="unsaved-dot" aria-label="Unsaved changes" />
-          )}
-        </Button>
-      </ItemMenu>
+        item={item}
+        current={isCurrent(item)}
+        unsaved={pendingDrafts.some((draft) => draft.note.relativePath === item.relativePath)}
+      />
     );
   }
 

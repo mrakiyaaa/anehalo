@@ -17,6 +17,8 @@ export interface AppServices {
   createNoteRepository: (vaultPath: string) => NoteRepository;
   createAttachmentRepository: (vaultPath: string) => AttachmentRepository;
   createExportPlatform: (vaultPath: string) => ExportPlatform;
+  /** The diagram thumbnail cache; without it Home shows placeholders. */
+  createThumbnailFiles?: () => import('@/features/thumbnails/thumbnail-files').ThumbnailFiles;
 }
 
 export const AppServicesContext = createContext<AppServices | null>(null);

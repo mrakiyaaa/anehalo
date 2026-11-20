@@ -19,6 +19,11 @@ import { DiagramWriteError } from './diagram-errors';
 
 export type DiagramCodec = typeof import('./diagram-codec');
 
+export interface DiagramVersion {
+  readonly modifiedAt: number;
+  readonly size: number;
+}
+
 export const DIAGRAM_SAVE_MEASURE = 'anehalo:diagram-save';
 
 export interface LoadedDiagram {
@@ -89,6 +94,16 @@ export class DiagramRepository {
   }
 
   /** Just the file's modified time, so outside changes can be noticed without reading it. */
+  /** What a thumbnail was made from; null when the file no longer exists. */
+  diagramVersion(relativePath: string): Promise<RepositoryResult<DiagramVersion | null>> {
+    return this.storage.operations.run('Could not check the diagram.', async () => {
+      const metadata = await this.files.fileSystem.metadata(this.validate(relativePath));
+      return metadata?.type === 'file'
+        ? { modifiedAt: metadata.modifiedAt, size: metadata.size }
+        : null;
+    });
+  }
+
   diagramModifiedAt(relativePath: string): Promise<RepositoryResult<number | null>> {
     return this.storage.operations.run('Could not check the diagram.', async () => {
       const metadata = await this.files.fileSystem.metadata(this.validate(relativePath));

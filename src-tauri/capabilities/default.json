@@ -35,12 +35,15 @@
     "fs:allow-write-text-file",
     "fs:allow-rename",
     "fs:allow-remove",
+    "fs:allow-exists",
     {
       "identifier": "fs:scope",
       "allow": [
         { "path": "$APPCONFIG" },
         { "path": "$APPCONFIG/settings.json" },
-        { "path": "$APPCONFIG/.anehalo-*.tmp" }
+        { "path": "$APPCONFIG/.anehalo-*.tmp" },
+        { "path": "$APPLOCALDATA/thumbnails" },
+        { "path": "$APPLOCALDATA/thumbnails/*" }
       ]
     },
     "dialog:allow-open",
