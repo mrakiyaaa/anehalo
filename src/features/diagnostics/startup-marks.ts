@@ -1,5 +1,7 @@
 export const startupMarks = {
   scriptStarted: 'anehalo:script-started',
+  /** settings.json was read and its accent and sidebar state applied. */
+  settingsApplied: 'anehalo:settings-applied',
   windowShown: 'anehalo:window-shown',
   vaultReadStarted: 'anehalo:vault-read-start',
   vaultReadFinished: 'anehalo:vault-read-end',

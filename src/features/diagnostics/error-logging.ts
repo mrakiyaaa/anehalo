@@ -12,6 +12,8 @@ type ErrorEvent =
   | 'diagram-create-failed'
   | 'diagram-rename-failed'
   | 'reveal-failed'
+  | 'unknown-accent'
+  | 'preference-save-failed'
   | 'update-check-failed'
   | 'update-install-failed';
 

@@ -3,12 +3,14 @@ import type { SettingsRepository } from '@/features/settings/SettingsRepository'
 import { SettingsContext } from '@/features/settings/settings-context';
 import { createSettingsStore } from '@/features/settings/settings-store';
 import { useThemeStore } from '@/store/theme-store';
+import { usePreferenceSync } from '@/features/settings/preference-sync';
 
 export function SettingsProvider({
   children,
   repository,
 }: PropsWithChildren<{ repository: SettingsRepository }>) {
   const [store] = useState(() => createSettingsStore(repository));
+  usePreferenceSync(store);
   useEffect(() => {
     void store.getState().load();
   }, [store]);

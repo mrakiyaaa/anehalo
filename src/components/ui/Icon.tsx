@@ -51,6 +51,21 @@ const iconPaths = {
   ),
   check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
   pen: <path d="m4 20 1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19z" />,
+  palette: (
+    <>
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1a1.6 1.6 0 0 1 1.7-1.7h2c3 0 5.5-2.5 5.5-5.5C22 6 17.5 2 12 2z" />
+      <circle cx="13.5" cy="6.5" r="1" />
+      <circle cx="17.5" cy="10.5" r="1" />
+      <circle cx="8.5" cy="7.5" r="1" />
+      <circle cx="6.5" cy="12.5" r="1" />
+    </>
+  ),
+  'panel-left': (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18" />
+    </>
+  ),
   /** Lucide's "shapes", the mark for diagrams. */
   shapes: (
     <>

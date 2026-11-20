@@ -4,6 +4,7 @@ import { useStore } from 'zustand';
 import { useDesktopRuntime } from '@/features/tray/desktop-context';
 import { useSettingsStore } from './use-settings-store';
 import { GeneralSettings } from './GeneralSettings';
+import { AppearanceSettings } from './AppearanceSettings';
 import { ShortcutSettings } from './ShortcutSettings';
 import { NotesFolderSettings } from './NotesFolderSettings';
 import type { AppSettings } from './AppSettings';
@@ -29,6 +30,7 @@ function SettingsContent() {
         </p>
       )}
       <GeneralSettings settings={settings} change={change} />
+      <AppearanceSettings />
       <ShortcutSettings settings={settings} change={change} />
       <NotesFolderSettings path={settings.vaultPath} />
       <UpdateSettings settings={settings} change={change} />

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { useWindowControls } from '@/components/layout/use-window-controls';
 import { ThemeSwitch } from '@/features/theme/ThemeSwitch';
+import { AccentPopover } from '@/features/theme/AccentPopover';
 import { Logo } from '@/components/ui/Logo';
 
 export function TitleBar() {
@@ -17,6 +18,7 @@ export function TitleBar() {
         <span data-tauri-drag-region>{APP_NAME}</span>
       </div>
       <div className="titlebar-controls">
+        <AccentPopover />
         <ThemeSwitch />
         <Button
           variant="ghost"

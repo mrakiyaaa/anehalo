@@ -16,18 +16,25 @@
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/*
+ * Accent colours come from src/features/theme/accent-palette.ts, which writes each token for
+ * both modes onto :root (for example --accent-soft-light); the theme picks one set here.
+ */
 :root,
 :root[data-theme='light'] {
   color-scheme: light;
+  --accent-soft: var(--accent-soft-light);
+  --accent-on-soft: var(--accent-on-soft-light);
+  --accent-strong: var(--accent-strong-light);
+  --accent-tint: var(--accent-tint-light);
+  --toggle-track: var(--accent-soft);
   --bg: #f8faff;
   --sidebar: #edf0fb;
   --surface: #ffffff;
   --line: #e1e6f5;
   --ink: #1b2038;
-  --accent: #2f6bf0;
   --muted-ink: #565d7c;
   --subtle-ink: #5d6485;
-  --accent-ink: #ffffff;
   --danger: #ba3346;
   --sky-bg: #ddebff;
   --sky-fg: #2457b8;
@@ -41,7 +48,6 @@
   --butter-fg: #8a6a00;
   --rose-bg: #ffdfe8;
   --rose-fg: #b83763;
-  --toggle-track: #dae5ff;
   --sun: #f0a020;
   --moon: #9db8ff;
   --success-bg: #d5f5e6;
@@ -54,15 +60,17 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --accent-soft: var(--accent-soft-dark);
+  --accent-on-soft: var(--accent-on-soft-dark);
+  --accent-strong: var(--accent-strong-dark);
+  --accent-tint: var(--accent-tint-dark);
   --bg: #0c0c0d;
   --sidebar: #1a1a1c;
   --surface: #202023;
   --line: #2e2e33;
   --ink: #f2f2f4;
-  --accent: #7ba3ff;
   --muted-ink: #a8a8b0;
   --subtle-ink: #8c8c95;
-  --accent-ink: #0a1230;
   --danger: #ff8b9b;
   --sky-bg: #1c2a44;
   --sky-fg: #9cc2ff;
@@ -95,24 +103,23 @@
   --card-foreground: var(--ink);
   --popover: var(--surface);
   --popover-foreground: var(--ink);
-  --primary: var(--accent);
-  --primary-foreground: var(--accent-ink);
+  --primary: var(--accent-soft);
+  --primary-foreground: var(--accent-on-soft);
   --secondary: var(--sidebar);
   --secondary-foreground: var(--ink);
   --muted: var(--sidebar);
   --muted-foreground: var(--muted-ink);
-  --accent-foreground: var(--accent-ink);
   --destructive: var(--danger);
   --border: var(--line);
   --input: var(--line);
-  --ring: var(--accent);
+  --ring: var(--accent-strong);
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--accent);
-  --sidebar-primary-foreground: var(--accent-ink);
+  --sidebar-primary: var(--accent-soft);
+  --sidebar-primary-foreground: var(--accent-on-soft);
   --sidebar-accent: var(--surface);
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--line);
-  --sidebar-ring: var(--accent);
+  --sidebar-ring: var(--accent-strong);
 }
 
 @theme inline {
@@ -131,8 +138,8 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent-tint);
+  --color-accent-foreground: var(--ink);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);

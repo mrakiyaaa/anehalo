@@ -9,6 +9,7 @@ import {
   textSizes,
 } from '@/features/editor/formatting-options';
 import { lightToken } from './light-palette';
+import { accentPalette, currentAccent } from '@/features/theme/accent-palette';
 
 export function buildPrintHtml(
   source: ExportDocument,
@@ -38,7 +39,7 @@ export function buildPrintHtml(
     code: `font-family:Consolas,'Noto Sans Sinhala Variable','Noto Sans Tamil Variable',monospace;font-size:.88em;background:${lightToken('--sidebar')};padding:2px 5px;border-radius:4px;`,
     pre: `white-space:pre-wrap;tab-size:2;background:${lightToken('--sidebar')};border:1px solid ${lightToken('--line')};padding:14px;border-radius:10px;margin:16px 0;`,
     'pre code': 'background:transparent;padding:0;border:0;',
-    a: `color:${lightToken('--accent')};text-decoration:underline;text-underline-offset:2px;`,
+    a: `color:${accentPalette[currentAccent()].modes.light.strong};text-decoration:underline;text-underline-offset:2px;`,
     mark: `background:${lightToken('--butter-bg')};color:inherit;padding:1px 2px;border-radius:3px;`,
     table: `width:100%;border-collapse:collapse;table-layout:fixed;margin:16px 0;`,
     'th,td': `border:1px solid ${lightToken('--line')};padding:8px;vertical-align:top;word-break:break-word;`,
