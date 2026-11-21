@@ -26,10 +26,18 @@ export const diagramOptions = {
   },
 } satisfies Partial<ExcalidrawProps>;
 
-/** Element links must never navigate the app's window away from Anehalo. */
-export const preventLinkNavigation: NonNullable<ExcalidrawProps['onLinkOpen']> = (
-  _element,
-  event,
-) => {
-  event.preventDefault();
-};
+/**
+ * Element links must never navigate the app's window: Excalidraw's own handling is always
+ * cancelled, and the link is handed to Anehalo, which opens vault items itself and web pages
+ * only in the default browser.
+ */
+export function elementLinkHandler(
+  open: (link: string) => void,
+): NonNullable<ExcalidrawProps['onLinkOpen']> {
+  return (element, event) => {
+    event.preventDefault();
+    if (element.link) open(element.link);
+  };
+}
+
+export const preventLinkNavigation = elementLinkHandler(() => undefined);

@@ -91,12 +91,15 @@ export const ImageAttachment = BaseImage.extend<ImageAttachmentOptions>({
       };
     };
   },
-  renderMarkdown: (node) => {
-    const escapeText = (value: unknown) =>
-      (typeof value === 'string' ? value : '').replace(/[[\]\\]/g, '\\$&').replace(/[\r\n]/g, ' ');
-    const source: unknown = node.attrs?.src;
-    return isSafeImageReference(source)
-      ? `![${escapeText(node.attrs?.alt)}](${source})`
-      : escapeText(node.attrs?.alt ?? 'Image unavailable');
-  },
+  renderMarkdown: (node) => renderImageMarkdown(node),
 });
+
+/** Image Markdown; shared with DiagramEmbed, which receives image nodes for the same token. */
+export function renderImageMarkdown(node: { attrs?: Record<string, unknown> | undefined }): string {
+  const escapeText = (value: unknown) =>
+    (typeof value === 'string' ? value : '').replace(/[[\]\\]/g, '\\$&').replace(/[\r\n]/g, ' ');
+  const source: unknown = node.attrs?.src;
+  return isSafeImageReference(source)
+    ? `![${escapeText(node.attrs?.alt)}](${source})`
+    : escapeText(node.attrs?.alt ?? 'Image unavailable');
+}

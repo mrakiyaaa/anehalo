@@ -101,6 +101,7 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
       color: () => setOpenPopover('toolbar:color'),
       size: () => setOpenPopover('toolbar:size'),
       page: () => setOpenPopover('toolbar:page'),
+      diagram: () => setOpenPopover('toolbar:diagram'),
       image: () => {
         if (editor) void chooseImage(editor);
       },
@@ -109,7 +110,7 @@ export function MarkdownEditor({ draft }: { draft: NoteDraft }) {
   );
   useEffect(() => {
     if (!editor) return;
-    const handleAction = ({ action }: { action: keyof EditorActions }) => actions[action]();
+    const handleAction = ({ action }: { action: keyof EditorActions }) => actions[action]?.();
     editor.on('formattingAction', handleAction);
     return () => {
       editor.off('formattingAction', handleAction);

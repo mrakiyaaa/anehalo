@@ -61,6 +61,23 @@ export function buildPrintHtml(
     if (isTextSize(size))
       span.style.fontSize = lightToken(textSizes.find((option) => option.name === size)!.token);
   }
+  // Embedded diagrams arrive drawn as images, keyed by their path like any image's source, so
+  // the image pass below resolves them; one that could not be drawn becomes a line of text.
+  for (const figure of root.querySelectorAll<HTMLElement>('figure[data-diagram-embed]')) {
+    const reference = figure.getAttribute('data-path') ?? '';
+    const title = figure.getAttribute('data-title') ?? '';
+    if (images.has(reference)) {
+      const image = document.createElement('img');
+      image.setAttribute('src', reference);
+      image.alt = title;
+      image.style.cssText = styles.img ?? '';
+      figure.replaceWith(image);
+    } else {
+      const placeholder = document.createElement('p');
+      placeholder.textContent = `Diagram unavailable: ${title}`;
+      figure.replaceWith(placeholder);
+    }
+  }
   for (const image of root.querySelectorAll<HTMLImageElement>('img')) {
     const reference = image.getAttribute('src') ?? '';
     const resolved = images.get(reference);

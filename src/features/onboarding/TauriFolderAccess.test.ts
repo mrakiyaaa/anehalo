@@ -69,10 +69,11 @@ describe('vault-only native folder access', () => {
     // App-owned folders only: settings, and the thumbnail cache folder itself (not its parent).
     expect(
       scope.allow.every(
-        ({ path }) =>
-          path.startsWith('$APPCONFIG') ||
-          path === '$APPLOCALDATA/thumbnails' ||
-          path === '$APPLOCALDATA/thumbnails/*',
+        (entry) =>
+          'path' in entry &&
+          (entry.path.startsWith('$APPCONFIG') ||
+            entry.path === '$APPLOCALDATA/thumbnails' ||
+            entry.path === '$APPLOCALDATA/thumbnails/*'),
       ),
     ).toBe(true);
     const native = readFileSync('src-tauri/src/vault_access.rs', 'utf8');

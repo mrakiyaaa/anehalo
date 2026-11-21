@@ -51,6 +51,10 @@
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-write-html",
     "opener:allow-reveal-item-in-dir",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [{ "url": "http://*" }, { "url": "https://*" }]
+    },
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "core:event:allow-listen",

@@ -11,6 +11,7 @@ import { Highlight } from './extensions/Highlight';
 import { ImageAttachment } from './extensions/ImageAttachment';
 import { EditorShortcuts } from './extensions/EditorShortcuts';
 import { NoteLink } from './extensions/NoteLink';
+import { DiagramEmbed } from './extensions/DiagramEmbed';
 import type { RepositoryResult } from '@/features/storage/repository-result';
 
 export function editorExtensions(
@@ -38,6 +39,7 @@ export function editorExtensions(
     EditorShortcuts,
     FindExtension,
     NoteLink,
+    DiagramEmbed,
     Markdown,
   ];
 }

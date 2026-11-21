@@ -10,6 +10,7 @@ import {
 import type { EditorActions, EditorCommand } from '@/features/editor/commands/editor-commands';
 import { CommandList } from './CommandList';
 import { PageNotePicker } from '@/features/note-links/PageNotePicker';
+import { DiagramEmbedPicker } from '@/features/note-links/DiagramEmbedPicker';
 
 export function SlashMenu({ editor, actions }: { editor: Editor; actions: EditorActions }) {
   const [query, setQuery] = useState<SlashQuery | null>(null);
@@ -54,7 +55,7 @@ export function SlashMenu({ editor, actions }: { editor: Editor; actions: Editor
     const handleKey = (event: KeyboardEvent) => {
       if (!editor.isEditable) return;
       const current = slashQuery(editor.state);
-      if (current && /^page(?:\s|$)/i.test(current.query)) return;
+      if (current && /^(page|diagram)(?:\s|$)/i.test(current.query)) return;
       if (
         !current ||
         event.isComposing ||
@@ -107,6 +108,15 @@ export function SlashMenu({ editor, actions }: { editor: Editor; actions: Editor
     <div className="editor-popover slash-menu" style={position}>
       {/^page(?:\s|$)/i.test(query.query) ? (
         <PageNotePicker
+          editor={editor}
+          range={query}
+          onDismiss={() => {
+            dismissed.current = `${query.from}:${query.query}`;
+            setQuery(null);
+          }}
+        />
+      ) : /^diagram(?:\s|$)/i.test(query.query) ? (
+        <DiagramEmbedPicker
           editor={editor}
           range={query}
           onDismiss={() => {

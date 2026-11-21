@@ -8,6 +8,8 @@ import { StorageStatus } from '@/features/storage/StorageStatus';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { DiagramNotice } from './DiagramNotice';
 import { DiagramTitleField } from './DiagramTitleField';
+import { BacklinksPanel } from '@/features/note-links/BacklinksPanel';
+import { useElementLinkOpener } from './use-element-link-opener';
 
 // Memoized: Excalidraw re-rendering thousands of shapes on every save-status change would
 // block the window, and the canvas only reads its scene once anyway.
@@ -21,6 +23,7 @@ export function DiagramScreen() {
   const isOpening = useWorkspaceStore((state) => state.isOpeningDiagram);
   const openError = useWorkspaceStore((state) => state.diagramOpenError);
   const updateDiagram = useWorkspaceStore((state) => state.updateDiagram);
+  const openElementLink = useElementLinkOpener();
   const goHome = useWorkspaceStore((state) => state.goHome);
   const busy = useEditingLocked();
 
@@ -61,6 +64,7 @@ export function DiagramScreen() {
           <DiagramTitleField key={diagram.identifier} diagram={diagram.summary} disabled={busy} />
         </ItemHeader>
         <DiagramNotice diagram={diagram} />
+        <BacklinksPanel path={diagram.summary.relativePath} defaultOpen={false} />
       </div>
       <Suspense
         fallback={
@@ -73,6 +77,7 @@ export function DiagramScreen() {
           key={`${diagram.summary.relativePath}:${diagram.documentVersion}`}
           scene={diagram.loadedScene}
           onDocumentChange={updateDiagram}
+          onElementLink={openElementLink}
         />
       </Suspense>
     </main>

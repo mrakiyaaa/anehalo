@@ -30,13 +30,22 @@ import { createDiagramActions } from '@/store/diagram-actions';
 import { ThumbnailCache } from '@/features/thumbnails/thumbnail-cache';
 import { ThumbnailService } from '@/features/thumbnails/thumbnail-service';
 import { itemKind } from '@/features/storage/vault-items';
+import { sceneElementLinks } from '@/features/links/element-links';
+import { renamedLink } from '@/features/note-links/NoteLinkRewriter';
 
 export function createWorkspaceStore(
   sourceRepository: NoteRepository,
   options: WorkspaceOptions = {},
 ) {
   const navigation = createNavigationHistory();
-  const linkIndex = new NoteLinkIndex((links) => store.setState({ links }));
+  const diagramRepository =
+    sourceRepository instanceof FileSystemNoteRepository
+      ? new DiagramRepository(sourceRepository.storage, options.diagramCodec)
+      : null;
+  const linkIndex = new NoteLinkIndex(
+    (links) => store.setState({ links }),
+    diagramRepository ?? undefined,
+  );
   const searchIndex = new SearchIndex(
     () => store.setState((state) => ({ searchRevision: state.searchRevision + 1 })),
     (error) => store.setState({ error }),
@@ -48,14 +57,15 @@ export function createWorkspaceStore(
     (rename, notes) => {
       autoSaver.acceptLinkRename(rename, notes);
       navigation.getState().rename(rename);
+      // Links inside the open diagram may have been rewritten on disk; reload it if it is clean.
+      // A diagram moved by this rename is relocated by the caller instead.
+      const openDiagram = diagramSaver?.draft?.summary.relativePath;
+      if (openDiagram && !renamedLink(openDiagram, '', rename)) void diagramSaver?.checkExternal();
     },
     (error) => store.setState({ error }),
+    diagramRepository ?? undefined,
   );
   const autoSaver = new NoteAutoSaver(repository);
-  const diagramRepository =
-    sourceRepository instanceof FileSystemNoteRepository
-      ? new DiagramRepository(sourceRepository.storage, options.diagramCodec)
-      : null;
   const diagramSaver = diagramRepository ? new DiagramAutoSaver(diagramRepository) : null;
   const thumbnails =
     diagramRepository && options.thumbnailFiles
@@ -256,6 +266,10 @@ export function createWorkspaceStore(
       setState: set,
       leaveNote: closeOpenItem,
       thumbnails,
+      links: {
+        rewrite: (rename) => repository.rewriteLinks(rename),
+        removed: (path) => linkIndex.remove(path),
+      },
       history: {
         visit: (path) => navigation.getState().visit(path),
         rename: (previousPath, nextPath) =>
@@ -325,7 +339,7 @@ export function createWorkspaceStore(
           const indexing = tree.ok
             ? (sourceRepository.hydrateTree?.() ?? Promise.resolve(tree)).then((hydrated) =>
                 hydrated.ok && active
-                  ? linkIndex.rebuild(sourceRepository, get().tree.notes)
+                  ? linkIndex.rebuild(sourceRepository, get().tree.notes, get().tree.diagrams)
                   : hydrated.ok
                     ? success(undefined)
                     : hydrated,
@@ -510,12 +524,14 @@ export function createWorkspaceStore(
   let lastWritten: { identifier: number; modifiedAt: number } | null = null;
   diagramSaver?.subscribe((diagram) => {
     store.setState({ diagram });
-    if (!diagram || !thumbnails) return;
+    if (!diagram) return;
     const { identifier, summary } = diagram;
     const written =
       lastWritten?.identifier === identifier && lastWritten.modifiedAt !== summary.modifiedAt;
     lastWritten = { identifier, modifiedAt: summary.modifiedAt };
-    if (written && !diagram.dirty) thumbnails.sceneSaved(summary.relativePath, diagram.scene);
+    if (!written || diagram.dirty) return;
+    linkIndex.updateDiagram(summary.relativePath, sceneElementLinks(diagram.scene.elements));
+    thumbnails?.sceneSaved(summary.relativePath, diagram.scene);
   });
   return store;
 }

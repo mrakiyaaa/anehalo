@@ -2,12 +2,14 @@ import { Node } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { NoteLinkView } from '@/features/note-links/NoteLinkView';
 import {
-  decodeNotePath,
+  decodeItemPath,
   encodeNotePath,
   escapeLinkText,
-  isNoteReference,
+  isItemReference,
+  validateItemPath,
 } from '@/features/note-links/note-link-paths';
 
+/** A link chip to a note or a diagram; the node keeps its original name so documents stay valid. */
 export const NoteLink = Node.create({
   name: 'noteLink',
   priority: 1100,
@@ -21,7 +23,7 @@ export const NoteLink = Node.create({
       tag: 'a[href]',
       priority: 100,
       getAttrs: (element) => {
-        const path = decodeNotePath(element.getAttribute('href') ?? '');
+        const path = decodeItemPath(element.getAttribute('href') ?? '');
         return path.ok ? { path: path.value, label: element.textContent ?? '' } : false;
       },
     },
@@ -30,7 +32,7 @@ export const NoteLink = Node.create({
     const path: unknown = node.attrs.path;
     const label = String(node.attrs.label ?? '');
     if (typeof path !== 'string') return ['span', {}, label];
-    const validated = decodeNotePath(encodeURIComponent(path).replaceAll('%2F', '/'));
+    const validated = validateItemPath(path);
     return validated.ok
       ? ['a', { href: encodeNotePath(validated.value), 'data-note-link': '' }, label]
       : ['span', {}, label];
@@ -39,12 +41,12 @@ export const NoteLink = Node.create({
   markdownTokenName: 'link',
   parseMarkdown: (token, helpers) => {
     const reference = String(token.href ?? '');
-    if (!isNoteReference(reference))
+    if (!isItemReference(reference))
       return helpers.applyMark('link', helpers.parseInline(token.tokens ?? []), {
         href: reference,
         title: typeof token.title === 'string' ? token.title : null,
       });
-    const path = decodeNotePath(reference);
+    const path = decodeItemPath(reference);
     const content = helpers.parseInline(token.tokens ?? []);
     const label = content.map((node) => node.text ?? '').join('') || String(token.text ?? '');
     return path.ok
@@ -54,7 +56,7 @@ export const NoteLink = Node.create({
   renderMarkdown: (node) => {
     const path = String(node.attrs?.path ?? '');
     const label = escapeLinkText(String(node.attrs?.label ?? ''));
-    const validated = decodeNotePath(encodeURIComponent(path).replaceAll('%2F', '/'));
+    const validated = validateItemPath(path);
     return validated.ok ? `[${label}](${encodeNotePath(validated.value)})` : label;
   },
   addNodeView: () => ReactNodeViewRenderer(NoteLinkView),

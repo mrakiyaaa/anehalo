@@ -50,6 +50,7 @@ export function ExportProvider({
           lastFolder: () => settings.getState().settings?.lastExportFolder ?? null,
           rememberFolder: (folder) => settings.getState().updateLastExportFolder(folder),
         },
+        (path) => workspace.getState().renderDiagramImage(path),
       ),
     [repository, services, settings, workspace, readers],
   );

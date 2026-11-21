@@ -3,6 +3,7 @@ mod desktop_tray;
 mod export_commands;
 mod export_transaction;
 mod launch_arguments;
+mod navigation_guard;
 mod runtime_paths;
 mod startup_timeline;
 mod vault_access;
@@ -118,6 +119,7 @@ pub fn run() {
             app.state::<startup_timeline::StartupTimeline>()
                 .record_setup_started();
             runtime_paths::prepare(app)?;
+            navigation_guard::create_main_window(app)?;
             std::panic::set_hook(Box::new(|_| log::error!("event=native-panic")));
             let tray = desktop_tray::setup(app);
             app.state::<startup_timeline::StartupTimeline>()

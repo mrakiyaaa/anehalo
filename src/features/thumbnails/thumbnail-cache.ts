@@ -2,6 +2,7 @@ import { SerialTaskQueue } from '@/features/storage/autosave/SerialTaskQueue';
 import { isInsideFolder } from '@/features/storage/storage-paths';
 import type { DiagramVersion } from '@/features/diagrams/DiagramRepository';
 import type { ThumbnailFiles } from './thumbnail-files';
+import type { ThumbnailSize } from './thumbnail-renderer';
 
 /** What a diagram's thumbnail is: an image, or a placeholder that needs no image. */
 export type Thumbnail =
@@ -12,6 +13,8 @@ export type Thumbnail =
 interface IndexEntry {
   readonly vault: string;
   readonly path: string;
+  /** Missing in entries written before previews existed, which are all cards. */
+  readonly size?: ThumbnailSize;
   readonly version: DiagramVersion;
   readonly state: Thumbnail['state'];
   readonly mimeType: string | null;
@@ -28,11 +31,17 @@ export const THUMBNAIL_CACHE_LIMIT_BYTES = 200 * 1024 * 1024;
 const indexFile = 'index.json';
 
 /** A file name for one diagram of one vault; the vault path is normalised as Windows treats it. */
-export async function thumbnailKey(vault: string, relativePath: string): Promise<string> {
+export async function thumbnailKey(
+  vault: string,
+  relativePath: string,
+  size: ThumbnailSize = 'card',
+): Promise<string> {
   const normalizedVault = vault.replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase();
+  // Cards keep the key they had before previews existed, so existing caches stay valid.
+  const variant = size === 'card' ? '' : `\n${size}`;
   const digest = await crypto.subtle.digest(
     'SHA-256',
-    new TextEncoder().encode(`${normalizedVault}\n${relativePath.toLowerCase()}`),
+    new TextEncoder().encode(`${normalizedVault}\n${relativePath.toLowerCase()}${variant}`),
   );
   return Array.from(new Uint8Array(digest).slice(0, 16), (byte) =>
     byte.toString(16).padStart(2, '0'),
@@ -88,10 +97,14 @@ export class ThumbnailCache {
   }
 
   /** The thumbnail made from exactly this version, or null when there is none or it is stale. */
-  lookup(path: string, version: DiagramVersion): Promise<Thumbnail | null> {
+  lookup(
+    path: string,
+    version: DiagramVersion,
+    size: ThumbnailSize = 'card',
+  ): Promise<Thumbnail | null> {
     return this.tasks.run(async () => {
       const index = await this.loadIndex();
-      const key = await thumbnailKey(this.vault, path);
+      const key = await thumbnailKey(this.vault, path, size);
       const entry = index.entries[key];
       if (!entry || !sameVersion(entry.version, version)) return null;
       entry.lastUsed = this.now();
@@ -102,15 +115,21 @@ export class ThumbnailCache {
     });
   }
 
-  store(path: string, version: DiagramVersion, thumbnail: Thumbnail): Promise<void> {
+  store(
+    path: string,
+    version: DiagramVersion,
+    thumbnail: Thumbnail,
+    size: ThumbnailSize = 'card',
+  ): Promise<void> {
     return this.tasks.run(async () => {
       const index = await this.loadIndex();
-      const key = await thumbnailKey(this.vault, path);
+      const key = await thumbnailKey(this.vault, path, size);
       if (thumbnail.state === 'image') await this.files.write(this.imageName(key), thumbnail.bytes);
       else await this.files.remove(this.imageName(key));
       index.entries[key] = {
         vault: this.vault,
         path,
+        size,
         version,
         state: thumbnail.state,
         mimeType: thumbnail.state === 'image' ? thumbnail.mimeType : null,
@@ -148,7 +167,7 @@ export class ThumbnailCache {
       const index = await this.loadIndex();
       for (const [key, entry] of this.entriesInside(index, previousPath)) {
         const path = `${nextPath}${entry.path.slice(previousPath.length)}`;
-        const nextKey = await thumbnailKey(this.vault, path);
+        const nextKey = await thumbnailKey(this.vault, path, entry.size);
         if (entry.state === 'image') {
           const bytes = await this.files.read(this.imageName(key));
           if (bytes) await this.files.write(this.imageName(nextKey), bytes);

@@ -226,3 +226,98 @@
     transition: none;
   }
 }
+
+/* On the diagram screen the panel is a folded strip, so the canvas keeps its height. */
+.diagram-chrome .backlinks-panel {
+  padding-top: 4px;
+  border-top: 0;
+}
+.diagram-chrome .backlinks-panel summary {
+  font-size: 14px;
+}
+.diagram-chrome .backlinks-panel ul {
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.note-link-chip[data-kind='diagram'] .icon {
+  font-size: 13px;
+}
+
+/* A diagram embedded in a note: a read-only preview that opens the diagram. */
+.diagram-embed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+.diagram-embed-open {
+  border-radius: 16px;
+  cursor: pointer;
+}
+.diagram-embed-open:focus-visible {
+  outline: 2.5px solid var(--accent-strong);
+  outline-offset: 3px;
+}
+.diagram-embed-open[aria-disabled='true'] {
+  cursor: default;
+}
+.diagram-embed .diagram-thumbnail[data-size='preview'] {
+  height: auto;
+  min-height: 160px;
+  max-height: 520px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.diagram-embed .diagram-thumbnail[data-size='preview'] img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 496px;
+}
+.diagram-embed .diagram-thumbnail[data-size='preview'] .diagram-thumbnail-placeholder {
+  min-height: 160px;
+  border-radius: 12px;
+}
+.diagram-embed-unavailable {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  background: var(--sidebar);
+  color: var(--muted-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.diagram-embed-unavailable button {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-on-soft);
+  font-weight: 600;
+}
+.diagram-embed-unavailable [role='alert'] {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
+}
+.diagram-embed figcaption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-ink);
+  font-size: 13px;
+}
+.diagram-embed figcaption .icon {
+  color: var(--accent-strong);
+}
+.ProseMirror-selectednode.diagram-embed .diagram-embed-open,
+.ProseMirror-selectednode.diagram-embed .diagram-embed-unavailable {
+  box-shadow: 0 0 0 2px var(--accent-strong);
+}
