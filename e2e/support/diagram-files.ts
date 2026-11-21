@@ -88,6 +88,46 @@ function excalidrawFile(elements: readonly object[], files: Record<string, objec
   });
 }
 
+/** A text element with the fields Excalidraw writes for one, optionally bound in a container. */
+function textElement(id: string, text: string, index: number, containerId: string | null = null) {
+  return {
+    ...rectangle(index),
+    id,
+    type: 'text',
+    width: 200,
+    height: 25,
+    text,
+    originalText: text,
+    fontSize: 20,
+    fontFamily: 5,
+    textAlign: containerId ? 'center' : 'left',
+    verticalAlign: containerId ? 'middle' : 'top',
+    containerId,
+    autoResize: true,
+    lineHeight: 1.25,
+  };
+}
+
+/**
+ * A diagram with text: each entry is a free text element, or with `inBox` a rectangle labelled
+ * with the text, the way Excalidraw stores text typed into a shape.
+ */
+export function textDiagram(
+  texts: readonly { id: string; text: string; inBox?: string }[],
+  extraShapes = 0,
+): string {
+  const elements = texts.flatMap(({ id, text, inBox }, index) =>
+    inBox
+      ? [
+          { ...rectangle(index * 3), id: inBox, boundElements: [{ type: 'text', id }] },
+          textElement(id, text, index * 3 + 1, inBox),
+        ]
+      : [textElement(id, text, index * 3 + 2)],
+  );
+  const shapes = Array.from({ length: extraShapes }, (_, index) => rectangle(1_000 + index));
+  return excalidrawFile([...elements, ...shapes]);
+}
+
 export function smallDiagram(elementCount = 3): string {
   return excalidrawFile(Array.from({ length: elementCount }, (_, index) => rectangle(index)));
 }

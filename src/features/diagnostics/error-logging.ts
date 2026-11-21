@@ -21,6 +21,7 @@ type ErrorEvent =
   | 'blocked-link'
   | 'web-link-failed'
   | 'diagram-export-failed'
+  | 'diagram-search-skipped'
   | 'update-check-failed'
   | 'update-install-failed';
 

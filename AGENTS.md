@@ -12,14 +12,14 @@ real app through WebView2, and `cargo test`.
 
 v0.2.0 is in progress on `claude/anehalo-v0-2-milestone-b` (Milestone B).
 
-| Phase | Scope                                                  | State                  |
-| ----- | ------------------------------------------------------ | ---------------------- |
-| 0–4   | Stabilize, offline Excalidraw, storage, screen, Home   | Done, merged           |
-| 5     | Notes ↔ diagrams: links, embeds, backlinks, safe links | Done on the branch     |
-| 6     | Search inside diagrams                                 | Next                   |
-| 7     | Import / export                                        | To do (Milestone B PR) |
-| 8     | Libraries / templates                                  | To do                  |
-| 9     | Polish + release                                       | To do (release PR)     |
+| Phase | Scope                                                  | State                 |
+| ----- | ------------------------------------------------------ | --------------------- |
+| 0–4   | Stabilize, offline Excalidraw, storage, screen, Home   | Done, merged          |
+| 5     | Notes ↔ diagrams: links, embeds, backlinks, safe links | Done on the branch    |
+| 6     | Search inside diagrams                                 | Done on the branch    |
+| 7     | Import / export                                        | Next (Milestone B PR) |
+| 8     | Libraries / templates                                  | To do                 |
+| 9     | Polish + release                                       | To do (release PR)    |
 
 Phase 5 notes:
 
@@ -29,6 +29,24 @@ Phase 5 notes:
 - `tauri-plugin-opener` runs with `open_js_links_on_click(false)`. Its injected click handler
   would otherwise send `_blank` links to the browser, around `on_new_window` and `openWebLink`.
 - New E2E spec: `e2e/note-diagram-links.spec.ts`.
+
+Phase 6 notes:
+
+- `DiagramContentScan` is the only reader of diagram files for indexing. It reads each file once
+  per modified time and feeds both `NoteLinkIndex` and `SearchIndex`. In-app saves pass the
+  in-memory scene through `DiagramContentScan.saved`. Do not add another diagram read loop.
+- Diagram text comes from `extractDiagramSearchText` / `searchTextFromElements`
+  (`src/features/search/diagram-search-text.ts`): plain JSON, no Excalidraw, run in the search
+  worker. Text elements (`originalText`, else `text`; bound text points at its container) and
+  named frames are indexed. Links and deleted elements are not.
+- Note search results are pinned by `src/features/search/__snapshots__/note-search-baseline.json`.
+  Prettier skips snapshot files so they stay byte-exact.
+- Ctrl+F on a diagram is Excalidraw's built-in canvas search (text elements only). The note find
+  bar only mounts in the note editor.
+- Follow-up: with 500 diagrams the background index takes about 10 s, because each read is about
+  19 ms through the serial `VaultOperationQueue`. It never blocks the window. Faster reads would
+  speed up both search and links.
+- New E2E spec: `e2e/diagram-search.spec.ts`.
 
 ## Workflow
 

@@ -6,10 +6,10 @@ export class SearchPalette {
     await this.page.keyboard.press('Control+k');
   }
   async query(text: string) {
-    await this.page.getByRole('combobox', { name: 'Search all notes' }).fill(text);
+    await this.page.getByRole('combobox', { name: 'Search notes and diagrams' }).fill(text);
   }
   async expectResult(title: string) {
-    await expect(this.page.getByRole('listbox', { name: 'Notes' })).toHaveAttribute(
+    await expect(this.page.getByRole('listbox', { name: 'Search results' })).toHaveAttribute(
       'aria-busy',
       'false',
     );
@@ -17,7 +17,9 @@ export class SearchPalette {
   }
   async measureQuery(text: string): Promise<number> {
     await this.page.evaluate(() => {
-      const input = document.querySelector<HTMLInputElement>('[aria-label="Search all notes"]');
+      const input = document.querySelector<HTMLInputElement>(
+        '[aria-label="Search notes and diagrams"]',
+      );
       const results = document.getElementById('search-results');
       if (!input || !results) throw new Error('Search is not open.');
       input.addEventListener(
@@ -37,7 +39,7 @@ export class SearchPalette {
       delete results.dataset.latency;
     });
     await this.query(text);
-    const results = this.page.getByRole('listbox', { name: 'Notes' });
+    const results = this.page.getByRole('listbox', { name: 'Search results' });
     await expect(results).toHaveAttribute('data-latency', /\d/);
     return Number(await results.getAttribute('data-latency'));
   }
@@ -46,6 +48,6 @@ export class SearchPalette {
   }
   async close() {
     await this.page.keyboard.press('Escape');
-    await expect(this.page.getByRole('dialog', { name: 'Search notes' })).toBeHidden();
+    await expect(this.page.getByRole('dialog', { name: 'Search notes and diagrams' })).toBeHidden();
   }
 }

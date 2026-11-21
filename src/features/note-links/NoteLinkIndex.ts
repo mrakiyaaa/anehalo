@@ -1,5 +1,7 @@
 import type { NoteRepository } from '@/features/storage/NoteRepository';
 import type { DiagramSummary, Note, NoteSummary } from '@/types/notes';
+import type { DiagramContentListener, StoredElement } from '@/features/diagrams/DiagramContentScan';
+import { itemKind } from '@/features/storage/vault-items';
 import { isInsideFolder } from '@/features/storage/storage-paths';
 import {
   success,
@@ -9,12 +11,7 @@ import {
   type RepositoryResult,
 } from '@/features/storage/repository-result';
 import { scanNoteLinks } from './NoteLinkRewriter';
-import { diagramElementLinks } from '@/features/links/element-links';
-
-/** Reads a diagram's stored text, so its element links can be indexed without Excalidraw. */
-export interface DiagramTextSource {
-  readDiagramText(path: string): Promise<RepositoryResult<string>>;
-}
+import { diagramElementLinks, sceneElementLinks } from '@/features/links/element-links';
 
 export interface LinkIndexSnapshot {
   readonly outgoing: ReadonlyMap<string, ReadonlySet<string>>;
@@ -22,20 +19,17 @@ export interface LinkIndexSnapshot {
 }
 export const emptyLinkIndex: LinkIndexSnapshot = { outgoing: new Map(), backlinks: new Map() };
 
-export class NoteLinkIndex {
+export class NoteLinkIndex implements DiagramContentListener {
   private outgoing = new Map<string, ReadonlySet<string>>();
   private revision = 0;
   private scanIdentifier = 0;
   private readonly mutations = new Map<string, number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   /**
-   * Sources are notes and, given a diagram reader, diagrams (their element links); targets are
-   * the notes and diagrams they link to or embed.
+   * Sources are notes, read by rebuild, and diagrams (their element links), which the shared
+   * diagram scan hands in; targets are the notes and diagrams they link to or embed.
    */
-  constructor(
-    private readonly changed: (snapshot: LinkIndexSnapshot) => void = () => {},
-    private readonly diagrams?: DiagramTextSource,
-  ) {}
+  constructor(private readonly changed: (snapshot: LinkIndexSnapshot) => void = () => {}) {}
 
   snapshot(): LinkIndexSnapshot {
     const backlinks = new Map<string, string[]>();
@@ -66,20 +60,31 @@ export class NoteLinkIndex {
     this.outgoing.set(path, new Set(targets));
     this.changed(this.snapshot());
   }
+  diagramRead(diagram: DiagramSummary, text: string) {
+    this.updateDiagram(diagram.relativePath, diagramElementLinks(text));
+  }
+  diagramSaved(diagram: DiagramSummary, elements: readonly StoredElement[]) {
+    this.updateDiagram(diagram.relativePath, sceneElementLinks(elements));
+  }
+  diagramRemoved(path: string) {
+    this.remove(path);
+  }
   remove(path: string) {
     this.mutations.set(path, ++this.revision);
     for (const source of this.outgoing.keys())
       if (isInsideFolder(source, path)) this.outgoing.delete(source);
     this.changed(this.snapshot());
   }
+  /** Re-reads every note; diagram sources are kept, since the diagram scan owns them. */
   async rebuild(
     repository: NoteRepository,
     notes?: readonly NoteSummary[],
-    diagrams?: readonly DiagramSummary[],
   ): Promise<RepositoryResult<void>> {
     const revision = this.revision;
     const identifier = ++this.scanIdentifier;
-    const outgoing = new Map<string, ReadonlySet<string>>();
+    const outgoing = new Map<string, ReadonlySet<string>>(
+      [...this.outgoing].filter(([source]) => itemKind(source) === 'diagram'),
+    );
     const errors: { path: string; error: RepositoryError }[] = [];
     if (!notes) {
       const tree = await repository.listTree();
@@ -87,11 +92,6 @@ export class NoteLinkIndex {
       const hydrated = await (repository.hydrateTree?.() ?? Promise.resolve(tree));
       if (!hydrated.ok) return hydrated;
       notes = hydrated.value.notes;
-      diagrams ??= hydrated.value.diagrams;
-    }
-    if (this.diagrams && !diagrams) {
-      const tree = await repository.listTree();
-      diagrams = tree.ok ? tree.value.diagrams : [];
     }
     let scanned = 0;
     for (const note of notes) {
@@ -104,13 +104,6 @@ export class NoteLinkIndex {
           new Set(scanNoteLinks(read.value.content).map((link) => link.path)),
         );
       else errors.push({ path: note.relativePath, error: read.error });
-      if (++scanned % 20 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    }
-    for (const diagram of this.diagrams ? (diagrams ?? []) : []) {
-      if (identifier !== this.scanIdentifier) return success(undefined);
-      const read = await this.diagrams?.readDiagramText(diagram.relativePath);
-      if (read?.ok) outgoing.set(diagram.relativePath, new Set(diagramElementLinks(read.value)));
-      else if (read) errors.push({ path: diagram.relativePath, error: read.error });
       if (++scanned % 20 === 0) await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
     if (identifier !== this.scanIdentifier) return success(undefined);

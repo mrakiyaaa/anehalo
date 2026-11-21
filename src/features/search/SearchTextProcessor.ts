@@ -3,6 +3,7 @@ import {
   processSearchText,
   type SearchProcessingRequest,
   type SearchProcessingResponse,
+  type DiagramSource,
 } from './search-processing';
 
 export class SearchTextProcessor {
@@ -15,6 +16,9 @@ export class SearchTextProcessor {
 
   analyze(title: string, markdown: string) {
     return this.run({ identifier: ++this.identifier, kind: 'analyze', title, markdown });
+  }
+  analyzeDiagram(title: string, source: DiagramSource) {
+    return this.run({ identifier: ++this.identifier, kind: 'diagram', title, source });
   }
   preview(markdown: string) {
     return this.run({ identifier: ++this.identifier, kind: 'preview', markdown });

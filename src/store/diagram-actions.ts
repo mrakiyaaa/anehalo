@@ -50,6 +50,11 @@ interface DiagramActionContext {
     rewrite: (rename: LinkRename) => Promise<unknown>;
     removed: (path: string) => void;
   };
+  /** Keeps the shared diagram scan and search in step without reading the file again. */
+  readonly content: {
+    relocated: (previousPath: string, diagram: DiagramSummary) => void;
+    trashed: (path: string) => void;
+  };
   readonly history: {
     visit: (path: string) => void;
     rename: (previousPath: string, nextPath: string) => void;
@@ -85,6 +90,7 @@ export function createDiagramActions({
   history,
   thumbnails,
   links,
+  content,
 }: DiagramActionContext): DiagramActions & DiagramNavigation {
   function withDiagrams<Value>(
     operation: (
@@ -138,6 +144,7 @@ export function createDiagramActions({
   ) {
     if (result.ok) {
       autoSaver.relocate(path, result.value);
+      content.relocated(path, result.value);
       history.rename(path, result.value.relativePath);
       await thumbnails?.moved(path, result.value.relativePath);
       await links.rewrite({ previousPath: path, nextPath: result.value.relativePath });
@@ -227,6 +234,7 @@ export function createDiagramActions({
           await thumbnails?.removed(path);
           // Embeds and links stay in notes and show "in trash"; only the diagram's own links go.
           links.removed(path);
+          content.trashed(path);
           if (autoSaver.draft?.summary.relativePath === path) {
             autoSaver.forget(path);
             if (getState().view === 'diagram') setState({ view: 'home' });

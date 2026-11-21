@@ -6,3 +6,4 @@ src-tauri/gen/
 package-lock.json
 src-tauri/Cargo.lock
 docs/design/
+**/__snapshots__/
