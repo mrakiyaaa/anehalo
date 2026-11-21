@@ -12,10 +12,10 @@ import { InMemoryAttachmentRepository } from '@/features/attachments/InMemoryAtt
 import { InMemoryExportPlatform } from './InMemoryExportPlatform';
 import { unwrapResult } from '@/test/repository-helpers';
 
-async function setup() {
+async function setup(content = '**Original**') {
   const platform = new InMemoryExportPlatform();
   const repository = new InMemoryNoteRepository([
-    { relativePath: 'Export note.md', type: 'file', content: '**Original**' },
+    { relativePath: 'Export note.md', type: 'file', content },
   ]);
   const settingsRepository = new InMemorySettingsRepository(
     JSON.stringify({ ...defaultSettings('Memory/Anehalo'), onboardingCompleted: true }),
@@ -98,5 +98,18 @@ describe('export entry points and notifications', () => {
       'Could not save the file. Check that the folder is writable.',
     );
     expect(platform.bundles).toEqual([]);
+  });
+  it('warns about diagrams it could not draw, but still saves the export', async () => {
+    const note = 'Intro\n\n![Release flow](Release%20flow.excalidraw)';
+    const { platform, repository, user } = await setup(note);
+    platform.destination = 'C:/Exports/Export note.md';
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Open Export note' }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Save as Markdown (.md)' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Exported without a diagram that could not be drawn: Release flow.',
+    );
+    const exported = new TextDecoder().decode(platform.bundles[0]?.bytes);
+    expect(exported).toContain('Diagram unavailable: Release flow');
+    expect(unwrapResult(await repository.readNote('Export note.md')).content).toBe(note);
   });
 });

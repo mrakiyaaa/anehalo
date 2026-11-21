@@ -66,4 +66,14 @@ describe('diagram links and embeds in Markdown', () => {
     expect(nodesOf(editor, 'diagramEmbed')).toEqual([]);
     expect(nodesOf(editor, 'noteLink')).toEqual([]);
   });
+
+  // Regression: an embed that outranked the paragraph became the editor's default block, so
+  // replacing a note's text (select all, then type) left an empty embed and saved "".
+  it('keeps the paragraph as the default block, so replaced text is saved', () => {
+    const editor = editorFor('Old text\n\n![Flow](Flow.excalidraw)');
+    expect(editor.schema.topNodeType.contentMatch.defaultType?.name).toBe('paragraph');
+    editor.chain().selectAll().deleteSelection().insertContent('New text').run();
+    expect(nodesOf(editor, 'diagramEmbed')).toEqual([]);
+    expect(editor.getMarkdown().trim()).toBe('New text');
+  });
 });

@@ -27,6 +27,12 @@ describe('thumbnail cache key', () => {
     expect(await thumbnailKey(vault, 'Plans/Other.excalidraw')).not.toBe(key);
     expect(await thumbnailKey('D:\\Elsewhere', 'Plans/Flow.excalidraw')).not.toBe(key);
   });
+
+  it('keeps card keys from before previews existed and gives previews their own', async () => {
+    const card = await thumbnailKey(vault, 'Plans/Flow.excalidraw');
+    expect(await thumbnailKey(vault, 'Plans/Flow.excalidraw', 'card')).toBe(card);
+    expect(await thumbnailKey(vault, 'Plans/Flow.excalidraw', 'preview')).not.toBe(card);
+  });
 });
 
 describe('thumbnail cache', () => {
@@ -42,9 +48,11 @@ describe('thumbnail cache', () => {
   it('remembers empty and broken diagrams without keeping an image', async () => {
     const { cache, files } = setup();
     await cache.store('Empty.excalidraw', version, { state: 'empty' });
-    await cache.store('Broken.excalidraw', version, { state: 'error' });
+    await cache.store('Broken.excalidraw', version, { state: 'corrupt' });
+    await cache.store('Undrawable.excalidraw', version, { state: 'error' });
     expect(await cache.lookup('Empty.excalidraw', version)).toEqual({ state: 'empty' });
-    expect(await cache.lookup('Broken.excalidraw', version)).toEqual({ state: 'error' });
+    expect(await cache.lookup('Broken.excalidraw', version)).toEqual({ state: 'corrupt' });
+    expect(await cache.lookup('Undrawable.excalidraw', version)).toEqual({ state: 'error' });
     expect([...files.files.keys()]).toEqual(['index.json']);
   });
 

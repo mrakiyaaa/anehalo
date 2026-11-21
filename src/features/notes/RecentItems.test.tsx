@@ -56,7 +56,7 @@ const card = (title: string) =>
   screen.getByRole('button', { name: `Open ${title}` }).closest('article') ?? document.body;
 
 describe('Home items', () => {
-  it('shows diagram cards from loading to their image, empty and error placeholders', async () => {
+  it('shows diagram cards from loading to their image, empty and corrupt placeholders', async () => {
     const { release } = await setup();
     expect(await within(card('Flow')).findByText('Drawing preview…')).toBeVisible();
 
@@ -65,7 +65,7 @@ describe('Home items', () => {
       await within(card('Flow')).findByRole('img', { name: 'Preview of Flow' }),
     ).toHaveAttribute('src', 'blob:thumbnail');
     expect(await within(card('Empty')).findByText('Empty diagram')).toBeVisible();
-    expect(await within(card('Broken')).findByText('Preview unavailable')).toBeVisible();
+    expect(await within(card('Broken')).findByText('Diagram file is damaged')).toBeVisible();
     expect(within(card('Idea')).getByText('An idea worth keeping')).toBeVisible();
   });
 
