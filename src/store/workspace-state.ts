@@ -84,6 +84,11 @@ export interface WorkspaceState {
   /** The open diagram, saved by its own auto-saver. */
   diagram: DiagramDraft | null;
   isOpeningDiagram: boolean;
+  /** A search match to show once that diagram's canvas is ready; cleared once shown. */
+  elementFocus: { readonly path: string; readonly elementId: string } | null;
+  /** Opens a search result: a diagram content match also brings its element into view. */
+  openSearchResult: (path: string, elementId: string | null) => Promise<RepositoryResult<void>>;
+  clearElementFocus: () => void;
   /** Why the last diagram could not be opened; the file was left untouched. */
   diagramOpenError: RepositoryError | null;
   /** Creates "Untitled diagram" in the given folder (the selected one by default) and opens it. */

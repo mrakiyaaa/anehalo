@@ -42,9 +42,9 @@ describe('search index', () => {
         : original;
     });
     unwrapResult(await index.refresh(source, notes));
-    expect((await index.search('garden'))[0]?.note.title).toBe('Garden');
+    expect((await index.search('garden'))[0]?.item.title).toBe('Garden');
     expect(await index.search('')).toHaveLength(8);
-    expect((await index.search('')).map((result) => result.note.modifiedAt)).toEqual(
+    expect((await index.search('')).map((result) => result.item.modifiedAt)).toEqual(
       [...notes]
         .sort((left, right) => right.modifiedAt - left.modifiedAt)
         .slice(0, 8)
@@ -58,7 +58,7 @@ describe('search index', () => {
       const { source, index } = await indexedVault();
       unwrapResult(await source.createNote({ title: 'Languages', content: 'සිංහල தமிழ் café' }));
       unwrapResult(await index.refresh(source, unwrapResult(await source.listTree()).notes));
-      expect((await index.search(query)).map((result) => result.note.title)).toContain('Languages');
+      expect((await index.search(query)).map((result) => result.item.title)).toContain('Languages');
     },
   );
 
@@ -81,10 +81,10 @@ describe('search index', () => {
     expect(await index.search('firstword')).toHaveLength(0);
     unwrapResult(await repository.renameNote(created.relativePath, 'Renamed'));
     await waitFor(async () =>
-      expect((await index.search('secondword'))[0]?.note.title).toBe('Renamed'),
+      expect((await index.search('secondword'))[0]?.item.title).toBe('Renamed'),
     );
     unwrapResult(await repository.renameFolder('Work', 'Life'));
-    expect((await index.search('secondword'))[0]?.note.folder).toBe('Life');
+    expect((await index.search('secondword'))[0]?.item.folder).toBe('Life');
     unwrapResult(await repository.deleteNote('Life/Renamed.md'));
     expect(await index.search('secondword')).toHaveLength(0);
     unwrapResult(await source.createNote({ title: 'Outside', content: 'externalword' }));

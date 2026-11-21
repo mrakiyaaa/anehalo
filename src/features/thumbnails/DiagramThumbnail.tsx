@@ -29,6 +29,7 @@ function useSeen<Element extends HTMLElement>() {
 const placeholderText: Readonly<Record<Exclude<ThumbnailView['status'], 'ready'>, string>> = {
   loading: 'Drawing preview…',
   empty: 'Empty diagram',
+  corrupt: 'Diagram file is damaged',
   error: 'Preview unavailable',
 };
 

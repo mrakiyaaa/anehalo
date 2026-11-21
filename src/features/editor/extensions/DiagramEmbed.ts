@@ -26,7 +26,9 @@ function escapeTitle(title: string) {
  */
 export const DiagramEmbed = Node.create({
   name: 'diagramEmbed',
-  priority: 1100,
+  // Above Image so `image` Markdown tokens reach this parser first, but below the paragraph:
+  // the highest-ranked block becomes the editor's default block for replaced text.
+  priority: 150,
   group: 'block',
   atom: true,
   selectable: true,

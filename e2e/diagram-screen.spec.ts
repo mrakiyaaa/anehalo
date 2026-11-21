@@ -86,7 +86,7 @@ test('app shortcuts work on a diagram but stay quiet while typing diagram text',
 }) => {
   const { diagram } = await startWorkspace(application);
   await diagram.create();
-  const search = application.page.getByRole('combobox', { name: 'Search all notes' });
+  const search = application.page.getByRole('combobox', { name: 'Search notes and diagrams' });
 
   await diagram.startText('Ctrl');
   for (const shortcut of ['Control+k', 'Control+Alt+n', 'Control+Alt+d', 'Alt+ArrowLeft'])

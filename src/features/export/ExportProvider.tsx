@@ -88,6 +88,7 @@ export function ExportProvider({
     }),
     [progress, service, readers],
   );
+  const revealPath = notice?.path;
   return (
     <ExportContext.Provider value={value}>
       {children}
@@ -102,10 +103,10 @@ export function ExportProvider({
           message={notice.message}
           {...(notice.error ? { error: true } : {})}
           onDismiss={() => setNotice(null)}
-          {...(notice.path
+          {...(revealPath
             ? {
                 onReveal: () => {
-                  void service.reveal(notice.path!).then((result) => {
+                  void service.reveal(revealPath).then((result) => {
                     if (!result.ok) setNotice({ message: result.error.message, error: true });
                   });
                 },

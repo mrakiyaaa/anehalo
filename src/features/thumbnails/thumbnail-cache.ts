@@ -8,6 +8,7 @@ import type { ThumbnailSize } from './thumbnail-renderer';
 export type Thumbnail =
   | { readonly state: 'image'; readonly bytes: Uint8Array; readonly mimeType: string }
   | { readonly state: 'empty' }
+  | { readonly state: 'corrupt' }
   | { readonly state: 'error' };
 
 interface IndexEntry {

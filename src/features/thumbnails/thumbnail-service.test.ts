@@ -5,12 +5,13 @@ import type { DiagramScene } from '@/features/diagrams/diagram-codec';
 import { MemoryThumbnailFiles } from './thumbnail-files';
 import { ThumbnailCache, type Thumbnail } from './thumbnail-cache';
 import { ThumbnailService } from './thumbnail-service';
+import type { ThumbnailRenderer } from './thumbnail-renderer';
 
 const logFailure = vi.hoisted(() => vi.fn());
 vi.mock('@/features/diagnostics/error-logging', () => ({ logFailure }));
 
 /** Draws a "thumbnail" naming the elements, so tests can tell which version was drawn. */
-const fakeRender = vi.fn((scene: DiagramScene): Promise<Thumbnail> => {
+const fakeRender = vi.fn<ThumbnailRenderer>((scene: DiagramScene): Promise<Thumbnail> => {
   const ids = scene.elements.filter((element) => !element.isDeleted).map(({ id }) => id);
   return Promise.resolve(
     ids.length === 0
@@ -52,6 +53,16 @@ describe('thumbnail service', () => {
     expect(fakeRender).toHaveBeenCalledTimes(1);
   });
 
+  it('draws and caches a note preview apart from the Home card', async () => {
+    const { service } = setup([
+      { relativePath: 'Flow.excalidraw', type: 'file', content: diagramFile('start') },
+    ]);
+    expect(drawn(await service.thumbnail('Flow.excalidraw'))).toBe('start');
+    expect(drawn(await service.thumbnail('Flow.excalidraw', 'preview'))).toBe('start');
+    expect(drawn(await service.thumbnail('Flow.excalidraw', 'preview'))).toBe('start');
+    expect(fakeRender.mock.calls.map(([, size]) => size)).toEqual(['card', 'preview']);
+  });
+
   it('draws again after the file changed outside Anehalo', async () => {
     const { service, files } = setup([
       { relativePath: 'Flow.excalidraw', type: 'file', content: diagramFile('start') },
@@ -68,12 +79,12 @@ describe('thumbnail service', () => {
     expect(await service.thumbnail('Empty.excalidraw')).toEqual({ state: 'empty' });
   });
 
-  it('gives a corrupt diagram an error placeholder, logged once and never redrawn', async () => {
+  it('gives a corrupt diagram a corrupt placeholder, logged once and never redrawn', async () => {
     const { service } = setup([
       { relativePath: 'Broken.excalidraw', type: 'file', content: '{"type":"excal' },
     ]);
-    expect(await service.thumbnail('Broken.excalidraw')).toEqual({ state: 'error' });
-    expect(await service.thumbnail('Broken.excalidraw')).toEqual({ state: 'error' });
+    expect(await service.thumbnail('Broken.excalidraw')).toEqual({ state: 'corrupt' });
+    expect(await service.thumbnail('Broken.excalidraw')).toEqual({ state: 'corrupt' });
     expect(logFailure.mock.calls.filter(([event]) => event === 'thumbnail-failed')).toHaveLength(1);
     expect(fakeRender).not.toHaveBeenCalled();
   });

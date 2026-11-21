@@ -1,4 +1,5 @@
-import { lazy, memo, Suspense } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useRef } from 'react';
+import type { DiagramCanvasHandle } from './DiagramCanvas';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
 import { ItemHeader } from '@/components/layout/ItemHeader';
@@ -26,6 +27,31 @@ export function DiagramScreen() {
   const openElementLink = useElementLinkOpener();
   const goHome = useWorkspaceStore((state) => state.goHome);
   const busy = useEditingLocked();
+  const elementFocus = useWorkspaceStore((state) => state.elementFocus);
+  const clearElementFocus = useWorkspaceStore((state) => state.clearElementFocus);
+  const canvas = useRef<DiagramCanvasHandle>(null);
+  const canvasKey = diagram ? `${diagram.summary.relativePath}:${diagram.documentVersion}` : null;
+  // Which canvas has its drawing loaded; a new key means a new, not yet ready canvas.
+  const readyCanvas = useRef<string | null>(null);
+
+  const showElementFocus = useCallback(() => {
+    if (!elementFocus || !canvasKey || readyCanvas.current !== canvasKey) return;
+    if (elementFocus.path !== diagram?.summary.relativePath) return;
+    canvas.current?.focusElement(elementFocus.elementId);
+    // Shown or no longer in the drawing: either way the request is done.
+    clearElementFocus();
+  }, [elementFocus, canvasKey, diagram?.summary.relativePath, clearElementFocus]);
+  // The latest request and canvas, for the stable ready callback below.
+  const latest = useRef({ showElementFocus, canvasKey });
+  useEffect(() => {
+    latest.current = { showElementFocus, canvasKey };
+    showElementFocus();
+  }, [showElementFocus, canvasKey]);
+  // Stable, so the memoized canvas is not re-rendered when a focus request arrives.
+  const handleSceneReady = useCallback(() => {
+    readyCanvas.current = latest.current.canvasKey;
+    latest.current.showElementFocus();
+  }, []);
 
   if (isOpening || !diagram)
     return (
@@ -74,7 +100,9 @@ export function DiagramScreen() {
         }
       >
         <DiagramCanvas
-          key={`${diagram.summary.relativePath}:${diagram.documentVersion}`}
+          ref={canvas}
+          key={canvasKey ?? undefined}
+          onSceneReady={handleSceneReady}
           scene={diagram.loadedScene}
           onDocumentChange={updateDiagram}
           onElementLink={openElementLink}

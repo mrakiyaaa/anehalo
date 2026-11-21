@@ -50,7 +50,7 @@ describe('Phase 7 keyboard and settings flows', () => {
   it('opens search with Ctrl+K and sidebar focus, selects the first result, navigates, and opens the editor', async () => {
     const { user } = await setup();
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    const input = await screen.findByRole('combobox', { name: 'Search all notes' });
+    const input = await screen.findByRole('combobox', { name: 'Search notes and diagrams' });
     await user.type(input, 'தமிழ்');
     const option = await screen.findByRole('option', { selected: true, name: /Language notebook/ });
     expect(option).toHaveTextContent('Language notebook');
@@ -60,14 +60,16 @@ describe('Phase 7 keyboard and settings flows', () => {
     await waitFor(() => expect(editor).toHaveFocus());
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    const search = await screen.findByRole('combobox', { name: 'Search all notes' });
+    const search = await screen.findByRole('combobox', { name: 'Search notes and diagrams' });
     await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(2));
     const first = search.getAttribute('aria-activedescendant');
     await user.keyboard('{ArrowDown}');
     expect(search.getAttribute('aria-activedescendant')).not.toBe(first);
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('searchbox', { name: 'Search notes' }));
-    expect(await screen.findByRole('combobox', { name: 'Search all notes' })).toHaveFocus();
+    expect(
+      await screen.findByRole('combobox', { name: 'Search notes and diagrams' }),
+    ).toHaveFocus();
   });
 
   it('finds in the editor with counts, next, previous, wraparound, and Escape', async () => {

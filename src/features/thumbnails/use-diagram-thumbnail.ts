@@ -7,6 +7,7 @@ export type ThumbnailView =
   | { readonly status: 'loading' }
   | { readonly status: 'ready'; readonly url: string }
   | { readonly status: 'empty' }
+  | { readonly status: 'corrupt' }
   | { readonly status: 'error' };
 
 /**
