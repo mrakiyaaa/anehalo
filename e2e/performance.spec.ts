@@ -79,6 +79,13 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
   const medianStartupMilliseconds = median(startupSamples);
   const appSamples = [firstLaunch, ...launches].map(appMilliseconds);
   const medianAppMilliseconds = median(appSamples);
+  // Each launch waits for its index build to finish, so every warm launch has a sample.
+  const indexSamples = launches.map(
+    ({ marks }) =>
+      (marks[startupMarks.searchIndexFinished] ?? Number.NaN) -
+      (marks[startupMarks.searchIndexStarted] ?? Number.NaN),
+  );
+  const medianBackgroundIndexMilliseconds = median(indexSamples);
 
   // The last launch's index build, which reads and indexes every note and diagram.
   await expect
@@ -127,6 +134,7 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
     searchMilliseconds: searchSamples,
     diagramSearchMilliseconds: diagramSearchSamples,
     longestIndexTaskMilliseconds,
+    medianBackgroundIndexMilliseconds,
     javascriptHeapMegabytes: heap.usedSize / 1024 / 1024,
     nativeProcesses: await application.memory(),
   };
@@ -147,4 +155,8 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
   expect(Math.max(...searchSamples)).toBeLessThan(100);
   expect(Math.max(...diagramSearchSamples)).toBeLessThan(100);
   expect(longestIndexTaskMilliseconds, 'longest task while indexing').toBeLessThan(100);
+  expect(
+    medianBackgroundIndexMilliseconds,
+    `background index build, median of ${indexSamples.join(', ')} ms`,
+  ).toBeLessThan(budget.backgroundIndexMilliseconds);
 });

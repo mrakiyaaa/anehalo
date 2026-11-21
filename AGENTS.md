@@ -43,9 +43,11 @@ Phase 6 notes:
   Prettier skips snapshot files so they stay byte-exact.
 - Ctrl+F on a diagram is Excalidraw's built-in canvas search (text elements only). The note find
   bar only mounts in the note editor.
-- Follow-up: with 500 diagrams the background index takes about 10 s, because each read is about
-  19 ms through the serial `VaultOperationQueue`. It never blocks the window. Faster reads would
-  speed up both search and links.
+- Vault text reads use one native command, `read_vault_files`, which checks paths in Rust (no
+  links, plain names, authorized root) and reads a batch per IPC call. Each IPC call costs
+  3–5 ms in WebView2, so per-component checks from the web UI made one read cost about 19 ms.
+  The background index for 500 diagrams went from about 9.7 s to about 1.5 s. The settings
+  folder is not a vault, so it still reads through the file-system plugin.
 - New E2E spec: `e2e/diagram-search.spec.ts`.
 
 ## Workflow

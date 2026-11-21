@@ -7,6 +7,11 @@ export interface StartupBudget {
   readonly warmMedianMilliseconds: number;
   /** The median time Anehalo's own code takes, from page load to usable Home, over all launches. */
   readonly appMedianMilliseconds: number;
+  /**
+   * The background search and link index build after first paint, reading every note and
+   * diagram. It never blocks the window, but diagram search and backlinks wait for it.
+   */
+  readonly backgroundIndexMilliseconds: number;
 }
 
 // About 80% of a start is WebView2 launching its browser process, which Anehalo does not control
@@ -19,7 +24,19 @@ export interface StartupBudget {
 export const startupBudgets: Readonly<Record<E2eBuild, StartupBudget>> = {
   // The product target. The optimized build uses release compiler settings, so it stands in for
   // what users install. Do not raise this to make a check pass; fix the regression.
-  optimized: { warmLaunches: 5, warmMedianMilliseconds: 2_000, appMedianMilliseconds: 600 },
+  // The index build was about 9.7 s when each diagram read cost several IPC round trips; it is
+  // about 1.5 s with batched reads (debug and optimized alike, as IPC dominates).
+  optimized: {
+    warmLaunches: 5,
+    warmMedianMilliseconds: 2_000,
+    appMedianMilliseconds: 600,
+    backgroundIndexMilliseconds: 4_000,
+  },
   // Debug builds are unoptimized; their total budget keeps the margin set from CI data.
-  debug: { warmLaunches: 5, warmMedianMilliseconds: 2_500, appMedianMilliseconds: 600 },
+  debug: {
+    warmLaunches: 5,
+    warmMedianMilliseconds: 2_500,
+    appMedianMilliseconds: 600,
+    backgroundIndexMilliseconds: 4_000,
+  },
 };

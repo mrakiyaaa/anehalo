@@ -45,6 +45,31 @@ describe('DiagramRepository', () => {
     expect(await files.readText('Broken.excalidraw')).toBe('{"type":"excal');
   });
 
+  it('reads several diagrams in one queued operation, each with its own result', async () => {
+    const { diagrams } = vault([
+      { relativePath: 'A.excalidraw', type: 'file', content: 'a' },
+      { relativePath: 'B.excalidraw', type: 'file', content: 'b' },
+    ]);
+
+    expect(
+      await diagrams.readDiagramTexts(['A.excalidraw', 'Gone.excalidraw', 'B.excalidraw']),
+    ).toEqual([
+      { ok: true, value: 'a' },
+      {
+        ok: false,
+        error: expect.objectContaining({
+          code: 'not-found',
+          message: expect.stringMatching(/^Could not read the diagram\. /) as unknown,
+        }) as unknown,
+      },
+      { ok: true, value: 'b' },
+    ]);
+    // A path that is not a diagram fails on its own, so a scan can move past it.
+    expect(await diagrams.readDiagramTexts(['Note.md', 'A.excalidraw'])).toEqual([
+      { ok: false, error: expect.objectContaining({ code: 'invalid-path' }) as unknown },
+    ]);
+  });
+
   it('renames with numbering, moves between folders, and trashes into .trash', async () => {
     const { diagrams, files } = vault([
       { relativePath: 'Plans', type: 'directory' },

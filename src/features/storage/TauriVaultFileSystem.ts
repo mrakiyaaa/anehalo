@@ -12,7 +12,14 @@ import {
   writeFile,
   type FileInfo,
 } from '@tauri-apps/plugin-fs';
-import { describeStorageError, storageFailure } from '@/features/storage/repository-result';
+import {
+  describeStorageError,
+  failure,
+  StorageFailure,
+  storageFailure,
+  success,
+  type RepositoryResult,
+} from '@/features/storage/repository-result';
 import {
   assertInsideVault,
   joinRelativePath,
@@ -48,6 +55,33 @@ export function textChunks(content: string, chunkLength = WRITE_CHUNK_CHARACTERS
   return chunks;
 }
 
+/**
+ * Content one `read_vault_files` call reads before it stops: decoding the reply runs on the
+ * window's thread, so a batch stays small enough to never be a long task.
+ */
+export const READ_BATCH_BYTES = 2 * 1024 * 1024;
+
+const utf8 = new TextDecoder();
+
+/** Splits a `read_vault_files` reply: per file, `[status: u8][length: u32 LE][payload]`. */
+export function decodeVaultReads(reply: ArrayBuffer): RepositoryResult<string>[] {
+  const view = new DataView(reply);
+  const results: RepositoryResult<string>[] = [];
+  let offset = 0;
+  while (offset < reply.byteLength) {
+    const status = view.getUint8(offset);
+    const length = view.getUint32(offset + 1, true);
+    const payload = new Uint8Array(reply, offset + 5, length);
+    offset += 5 + length;
+    results.push(
+      status === 0
+        ? success(utf8.decode(payload))
+        : failure(describeStorageError(JSON.parse(utf8.decode(payload)) as unknown, '')),
+    );
+  }
+  return results;
+}
+
 function metadataFromFileInfo(fileInformation: FileInfo): VaultMetadata {
   return {
     type:
@@ -73,12 +107,20 @@ async function inspectPath(path: string): Promise<VaultMetadata | null> {
   }
 }
 
+/**
+ * How text is read. A vault uses one native `read_vault_files` call per batch; the settings
+ * folder lies outside any vault (in AppData, which a vault may never be), so it reads through
+ * the file-system plugin, checking each path component from here.
+ */
+export type TextReads = 'vault-command' | 'file-system-plugin';
+
 export class TauriVaultFileSystem implements VaultFileSystem {
   private vaultPath = '';
 
   constructor(
     private readonly resolveVaultPath: () => Promise<string>,
     private readonly createMissingRoot = true,
+    private readonly textReads: TextReads = 'vault-command',
   ) {}
 
   async initialize(): Promise<string> {
@@ -168,7 +210,34 @@ export class TauriVaultFileSystem implements VaultFileSystem {
   }
 
   async readText(relativePath: string): Promise<string> {
-    return readTextFile(await this.absolutePath(relativePath));
+    if (this.textReads === 'file-system-plugin')
+      return readTextFile(await this.absolutePath(relativePath));
+    const [read] = await this.readTexts([relativePath]);
+    if (!read) storageFailure('io-error', 'The file could not be read.');
+    if (!read.ok) throw new StorageFailure(read.error);
+    return read.value;
+  }
+
+  /** Rust checks each path as `absolutePath` does, next to the read, in one IPC round trip. */
+  async readTexts(relativePaths: readonly string[]): Promise<readonly RepositoryResult<string>[]> {
+    if (this.textReads === 'file-system-plugin')
+      return Promise.all(
+        relativePaths.map(async (relativePath) => {
+          try {
+            return success(await this.readText(relativePath));
+          } catch (error) {
+            return failure(describeStorageError(error, ''));
+          }
+        }),
+      );
+    for (const relativePath of relativePaths) validateRelativePath(relativePath, false, true);
+    if (!this.vaultPath) storageFailure('unavailable', 'The vault is not initialized.');
+    const reply = await invoke<ArrayBuffer>('read_vault_files', {
+      vaultPath: this.vaultPath,
+      relativePaths,
+      maximumBytes: READ_BATCH_BYTES,
+    });
+    return decodeVaultReads(reply);
   }
 
   async readBytes(relativePath: string): Promise<Uint8Array> {

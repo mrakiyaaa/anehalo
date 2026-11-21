@@ -1,5 +1,5 @@
 use crate::{
-    vault_access::{authorize_vault, is_link},
+    vault_access::{authorize_vault, is_link, open_without_following_links},
     vault_error::{VaultError, VaultResult},
 };
 use serde::{Deserialize, Serialize};
@@ -176,15 +176,7 @@ fn read_note(
         return Err(VaultError::scan_limit());
     }
     check_deadline(deadline)?;
-    let mut options = fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::OpenOptionsExt;
-        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x00200000;
-        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
-    }
-    let mut file = options.open(&note.path)?;
+    let mut file = open_without_following_links(&note.path)?;
     if is_link(&file.metadata()?) {
         return Err(VaultError::new(
             "invalid-path",

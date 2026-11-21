@@ -71,3 +71,16 @@ So pass or fail depended on the CI machine, not on Anehalo. The checks now measu
 | Debug     |                   2,500 ms |                 600 ms | The debug total keeps the margin set from CI data. App time is about 200–400 ms on CI, so 600 ms catches real regressions in Anehalo's code without failing on noise. |
 
 The first start after installing is printed in the reporter's output and in the CI job summary, so a slowdown there remains visible.
+
+### Background index build
+
+The index build after first paint reads every note and diagram for search and links. It never blocks the window (its longest main-thread task is 0 ms), but diagram search and backlinks wait for it. Both builds check a median below 4,000 ms over the five normal starts.
+
+Each diagram read used to cost about 19 ms. Profiling showed that every Tauri IPC call costs 3–5 ms in WebView2, whatever it does (even `path|join`), and one `readText` made 7 calls in a row: a path resolve, a join and an `lstat` per path component, then the read. The serial queue was not the cost: 50 reads in parallel still took about 2.5 ms each.
+
+Text reads now go through one native command, `read_vault_files` (`src-tauri/src/vault_access.rs`), which applies the same checks in Rust next to the read: an authorized vault root, plain path names only, real directories on the way, and a regular file opened without following a final link. `DiagramContentScan` asks for 20 diagrams per call, and Rust stops a batch after 2 MB of content. Reads still run through the vault's operation queue.
+
+| Search index build, median of 5 (2,000 notes, 500 diagrams) |   Before |    After |
+| ----------------------------------------------------------- | -------: | -------: |
+| Local debug                                                 | 9,717 ms | 1,396 ms |
+| Local optimized                                             | 9,775 ms | 1,438 ms |

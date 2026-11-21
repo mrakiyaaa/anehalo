@@ -15,6 +15,7 @@ import { diagramElementLinks, rewriteElementLinks } from '@/features/links/eleme
 
 /** Reads and writes diagram files' text, so links inside them follow renames. */
 export interface DiagramLinkStore extends DiagramTextSource {
+  readDiagramText(path: string): Promise<RepositoryResult<string>>;
   writeDiagramText(path: string, text: string): Promise<RepositoryResult<void>>;
 }
 import { rewriteNoteLinks, type LinkRename } from './NoteLinkRewriter';

@@ -106,7 +106,8 @@ pub fn run() {
             vault_snapshot::read_vault_snapshot,
             vault_access::pick_vault_location,
             vault_access::prepare_vault,
-            vault_access::read_vault_directory
+            vault_access::read_vault_directory,
+            vault_access::read_vault_files
         ]);
 
     #[cfg(desktop)]

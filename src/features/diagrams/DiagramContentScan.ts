@@ -7,9 +7,10 @@ import {
 } from '@/features/storage/repository-result';
 import type { DiagramSummary } from '@/types/notes';
 
-/** Reads a diagram's stored text without parsing it, and so without loading Excalidraw. */
+/** Reads diagrams' stored text without parsing it, and so without loading Excalidraw. */
 export interface DiagramTextSource {
-  readDiagramText(path: string): Promise<RepositoryResult<string>>;
+  /** One result per path for a leading part of the list, always at least one. */
+  readDiagramTexts(paths: readonly string[]): Promise<readonly RepositoryResult<string>[]>;
 }
 
 /** An element as stored in a diagram file: only the fields indexes read are typed. */
@@ -38,6 +39,12 @@ export interface DiagramContentListener {
 const yieldToInput = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
 /**
+ * Diagrams asked for per read. Each read is one IPC round trip, which costs a few milliseconds
+ * whatever its size, so diagrams are read in batches; the reader also caps a batch's bytes.
+ */
+export const DIAGRAM_READ_BATCH = 20;
+
+/**
  * The one place that reads diagram files for indexing. Each file is read once per version (its
  * modified time), and what was read is handed to every listener, so indexes never read on their
  * own.
@@ -59,21 +66,40 @@ export class DiagramContentScan {
     const identifier = ++this.scanIdentifier;
     const listed = new Set(diagrams.map((diagram) => diagram.relativePath));
     const errors: RepositoryError[] = [];
-    let read = 0;
-    for (const diagram of diagrams) {
-      const path = diagram.relativePath;
-      if (this.versions.get(path) === diagram.modifiedAt) continue;
-      const revision = this.mutations.get(path);
-      const text = await this.reader.readDiagramText(path);
-      this.reads += 1;
+    const unread = (diagram: DiagramSummary) =>
+      this.versions.get(diagram.relativePath) !== diagram.modifiedAt;
+    let next = 0;
+    let carried: DiagramSummary[] = [];
+    for (;;) {
+      // Checked again just before reading: a save during the previous batch is already known.
+      const batch = carried.filter(unread);
+      while (batch.length < DIAGRAM_READ_BATCH && next < diagrams.length) {
+        const diagram = diagrams[next++];
+        if (diagram && unread(diagram)) batch.push(diagram);
+      }
+      if (!batch.length) break;
+      const revisions = batch.map((diagram) => this.mutations.get(diagram.relativePath));
+      const texts = await this.reader.readDiagramTexts(
+        batch.map((diagram) => diagram.relativePath),
+      );
       if (identifier !== this.scanIdentifier) return success(undefined);
-      // A save or rename while the file was read is newer than what was read.
-      if (this.mutations.get(path) !== revision) continue;
-      if (text.ok) {
-        this.versions.set(path, diagram.modifiedAt);
-        for (const listener of this.listeners) listener.diagramRead(diagram, text.value);
-      } else errors.push(text.error);
-      if (++read % 20 === 0) await yieldToInput();
+      if (!texts.length) {
+        errors.push({ code: 'io-error', message: 'The diagram reader returned nothing.' });
+        break;
+      }
+      texts.forEach((text, index) => {
+        const diagram = batch[index];
+        if (!diagram) return;
+        this.reads += 1;
+        // A save or rename while the file was read is newer than what was read.
+        if (this.mutations.get(diagram.relativePath) !== revisions[index]) return;
+        if (text.ok) {
+          this.versions.set(diagram.relativePath, diagram.modifiedAt);
+          for (const listener of this.listeners) listener.diagramRead(diagram, text.value);
+        } else errors.push(text.error);
+      });
+      carried = batch.slice(texts.length);
+      await yieldToInput();
     }
     if (identifier !== this.scanIdentifier) return success(undefined);
     for (const path of [...this.versions.keys()])
