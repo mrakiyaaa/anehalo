@@ -35,11 +35,21 @@ async function openPalette() {
 
 const results = () => screen.getByRole('listbox', { name: 'Search results' });
 
+/** Results for what was typed, not the previous query's (the palette is busy until then). */
+async function settledResults() {
+  await waitFor(() => expect(results()).toHaveAttribute('aria-busy', 'false'));
+  return results();
+}
+
 describe('diagrams in Ctrl+K', () => {
   it('shows a diagram row with its icon, folder and highlighted snippet', async () => {
     const { user, input } = await openPalette();
+    // As on a slow machine: "Recently edited" already lists the diagram, without highlights.
+    await within(results()).findByRole('option', { name: /Diagram:\s*Checkout/ });
     await user.type(input, 'gateway');
-    const row = await within(results()).findByRole('option', { name: /Diagram:\s*Checkout/ });
+    const row = await within(await settledResults()).findByRole('option', {
+      name: /Diagram:\s*Checkout/,
+    });
     expect(row.querySelector('[data-icon="shapes"]')).not.toBeNull();
     expect(within(row).getByText('Plans')).toBeVisible();
     expect(within(row).getByText('gateway', { selector: 'mark' })).toBeVisible();
@@ -49,7 +59,7 @@ describe('diagrams in Ctrl+K', () => {
   it('filters results with the All / Notes / Diagrams chips', async () => {
     const { user, input } = await openPalette();
     await user.type(input, 'gateway');
-    await within(results()).findByRole('option', { name: /Checkout/ });
+    await within(await settledResults()).findByRole('option', { name: /Checkout/ });
     const chips = screen.getByRole('group', { name: 'Show' });
 
     await user.click(within(chips).getByRole('button', { name: 'Diagrams' }));
@@ -70,7 +80,9 @@ describe('diagrams in Ctrl+K', () => {
   it('opens a content match on the diagram and asks for its element to be shown', async () => {
     const { store, user, input } = await openPalette();
     await user.type(input, 'gateway');
-    await user.click(await within(results()).findByRole('option', { name: /Checkout/ }));
+    await user.click(
+      await within(await settledResults()).findByRole('option', { name: /Checkout/ }),
+    );
     await waitFor(() => expect(store.getState().view).toBe('diagram'));
     expect(store.getState().elementFocus).toEqual({
       path: 'Plans/Checkout.excalidraw',
@@ -82,7 +94,9 @@ describe('diagrams in Ctrl+K', () => {
   it('opens a title match without asking for an element', async () => {
     const { store, user, input } = await openPalette();
     await user.type(input, 'checkout');
-    await user.click(await within(results()).findByRole('option', { name: /Checkout/ }));
+    await user.click(
+      await within(await settledResults()).findByRole('option', { name: /Checkout/ }),
+    );
     await waitFor(() => expect(store.getState().view).toBe('diagram'));
     expect(store.getState().elementFocus).toBeNull();
   });
