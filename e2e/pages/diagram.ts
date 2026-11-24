@@ -81,6 +81,21 @@ export class Diagram {
     await this.startText(text);
     await this.page.keyboard.press('Escape');
   }
+  /** The header's Export button, which opens the only export popover diagrams have. */
+  get exportButton() {
+    return this.screen.getByRole('button', { name: 'Export', exact: true });
+  }
+  get exportPopover() {
+    return this.page.locator('.diagram-export-popover');
+  }
+  async openExport() {
+    await this.exportButton.click();
+    await expect(this.exportPopover.getByText('Export diagram', { exact: true })).toBeVisible();
+    return this.exportPopover;
+  }
+  exportAction(name: string) {
+    return this.exportPopover.getByRole('button', { name, exact: true });
+  }
   async openMainMenu() {
     await this.page.getByTestId('main-menu-trigger').click();
     return this.page.locator('.excalidraw .dropdown-menu');

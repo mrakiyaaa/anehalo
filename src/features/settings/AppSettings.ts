@@ -3,6 +3,11 @@ import { defaultAccent, isAccentId, type AccentId } from '@/features/theme/accen
 import { logFailure } from '@/features/diagnostics/error-logging';
 import { isHomeFilter, type HomeFilter } from '@/store/home-filter-store';
 import {
+  defaultDiagramExportOptions,
+  parseDiagramExportOptions,
+  type DiagramExportOptions,
+} from '@/features/diagram-export/diagram-export-options';
+import {
   defaultNewDiagramShortcut,
   defaultOpenShortcut,
   defaultQuickNoteShortcut,
@@ -22,6 +27,7 @@ export interface AppSettings {
   readonly lastOpenedNotePath: string | null;
   readonly reopenLastNote: boolean;
   readonly lastExportFolder: string | null;
+  readonly diagramExport: DiagramExportOptions;
   readonly quickNoteShortcut: string;
   readonly openShortcut: string;
   readonly newDiagramShortcut: string;
@@ -59,6 +65,7 @@ export function defaultSettings(vaultPath: string): AppSettings {
     lastOpenedNotePath: null,
     reopenLastNote: true,
     lastExportFolder: null,
+    diagramExport: defaultDiagramExportOptions,
     quickNoteShortcut: defaultQuickNoteShortcut,
     openShortcut: defaultOpenShortcut,
     newDiagramShortcut: defaultNewDiagramShortcut,
@@ -165,6 +172,7 @@ export function parseSettings(content: string, defaults: AppSettings): AppSettin
       'autoCheckForUpdates' in value && typeof value.autoCheckForUpdates === 'boolean'
         ? value.autoCheckForUpdates
         : true,
+    diagramExport: parseDiagramExportOptions('diagramExport' in value ? value.diagramExport : null),
     lastExportFolder:
       'lastExportFolder' in value &&
       typeof value.lastExportFolder === 'string' &&

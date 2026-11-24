@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback, useEffect, useRef } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DiagramCanvasHandle } from './DiagramCanvas';
 import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/Icon';
@@ -11,6 +11,10 @@ import { DiagramNotice } from './DiagramNotice';
 import { DiagramTitleField } from './DiagramTitleField';
 import { BacklinksPanel } from '@/features/note-links/BacklinksPanel';
 import { useElementLinkOpener } from './use-element-link-opener';
+import { DiagramExportButton } from '@/features/diagram-export/DiagramExportButton';
+import { defaultDiagramExportOptions } from '@/features/diagram-export/diagram-export-options';
+import { useNoteExport } from '@/features/export/export-context';
+import { useExportKeys } from '@/features/export/use-export-keys';
 
 // Memoized: Excalidraw re-rendering thousands of shapes on every save-status change would
 // block the window, and the canvas only reads its scene once anyway.
@@ -33,6 +37,33 @@ export function DiagramScreen() {
   const canvasKey = diagram ? `${diagram.summary.relativePath}:${diagram.documentVersion}` : null;
   // Which canvas has its drawing loaded; a new key means a new, not yet ready canvas.
   const readyCanvas = useRef<string | null>(null);
+  const { runDiagram, progress: exportProgress } = useNoteExport();
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportSelection, setExportSelection] = useState<readonly string[]>([]);
+  // The selection is read when the popover opens, which is when "Selection only" is offered.
+  const changeExportOpen = useCallback((open: boolean) => {
+    if (open) setExportSelection(canvas.current?.selectedElementIds() ?? []);
+    setExportOpen(open);
+  }, []);
+  const requestExport = useCallback(() => changeExportOpen(true), [changeExportOpen]);
+  const exportKeys = useMemo(
+    () => ({
+      e: () => {
+        if (!busy && !exportProgress) requestExport();
+      },
+      // Excalidraw's own Ctrl+Shift+S would download a file; this saves a copy the Anehalo way.
+      s: () => {
+        if (!busy && !exportProgress)
+          void runDiagram({
+            action: 'save-copy',
+            options: defaultDiagramExportOptions,
+            selection: null,
+          });
+      },
+    }),
+    [busy, exportProgress, requestExport, runDiagram],
+  );
+  useExportKeys(exportKeys);
 
   const showElementFocus = useCallback(() => {
     if (!elementFocus || !canvasKey || readyCanvas.current !== canvasKey) return;
@@ -85,7 +116,18 @@ export function DiagramScreen() {
       <div className="diagram-chrome">
         <StorageStatus />
         <SettingsNotice />
-        <ItemHeader status={diagram.status} folder={diagram.summary.folder}>
+        <ItemHeader
+          status={diagram.status}
+          folder={diagram.summary.folder}
+          actions={
+            <DiagramExportButton
+              path={diagram.summary.relativePath}
+              open={exportOpen}
+              onOpenChange={changeExportOpen}
+              selection={exportSelection}
+            />
+          }
+        >
           {/* Keyed by diagram so a half-edited title can never carry over to another one. */}
           <DiagramTitleField key={diagram.identifier} diagram={diagram.summary} disabled={busy} />
         </ItemHeader>
@@ -106,6 +148,7 @@ export function DiagramScreen() {
           scene={diagram.loadedScene}
           onDocumentChange={updateDiagram}
           onElementLink={openElementLink}
+          onExportRequested={requestExport}
         />
       </Suspense>
     </main>

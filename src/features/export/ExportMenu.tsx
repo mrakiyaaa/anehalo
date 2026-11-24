@@ -1,7 +1,8 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as ContextMenu from '@radix-ui/react-context-menu';
-import { Download, LoaderCircle } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { ExportButton } from './ExportButton';
+import { useExportKeys } from './use-export-keys';
 import { useNoteExport } from './export-context';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 
@@ -39,38 +40,27 @@ export function ExportMenu({ path }: { path: string }) {
   const { run, progress } = useNoteExport();
   const disabled = useWorkspaceStore((state) => state.isClosing || state.isMutating);
   const [open, setOpen] = useState(false);
-  useEffect(() => {
-    const key = (event: KeyboardEvent) => {
-      if (
-        !(event.ctrlKey || event.metaKey) ||
-        !event.shiftKey ||
-        event.altKey ||
-        !['c', 'e'].includes(event.key.toLowerCase())
-      )
-        return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (disabled || progress) return;
-      if (event.key.toLowerCase() === 'e') setOpen(true);
-      else void run(path, 'copy-markdown');
-    };
-    window.addEventListener('keydown', key, true);
-    return () => window.removeEventListener('keydown', key, true);
-  }, [path, run, progress, disabled]);
+  const keys = useMemo(
+    () => ({
+      e: () => {
+        if (!disabled && !progress) setOpen(true);
+      },
+      c: () => {
+        if (!disabled && !progress) void run(path, 'copy-markdown');
+      },
+    }),
+    [path, run, progress, disabled],
+  );
+  useExportKeys(keys);
   const exporting = progress?.path === path;
   return (
     <DropdownMenu.Root open={open} onOpenChange={setOpen}>
-      <DropdownMenu.Trigger
-        className="editor-export-button"
-        disabled={disabled || progress !== null}
-        aria-label={exporting ? 'Exporting note' : 'Export'}
-      >
-        {exporting ? (
-          <LoaderCircle className="export-spinner" size={15} aria-hidden="true" />
-        ) : (
-          <Download size={15} aria-hidden="true" />
-        )}
-        <span>{exporting ? `${Math.round(progress.fraction * 100)}%` : 'Export'}</span>
+      <DropdownMenu.Trigger asChild>
+        <ExportButton
+          subject="note"
+          progress={exporting ? (progress.fraction ?? 0) : null}
+          disabled={disabled || progress !== null}
+        />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content className="item-menu-content export-menu" sideOffset={8} align="end">

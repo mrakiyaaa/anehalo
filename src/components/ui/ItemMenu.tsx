@@ -19,6 +19,7 @@ interface MenuActions {
   readonly disabled: boolean;
   readonly onOpen: (() => void) | undefined;
   readonly onNewDiagram: (() => void) | undefined;
+  readonly onImportDiagram: (() => void) | undefined;
   readonly onRename: () => void;
   readonly onMove: (() => void) | undefined;
   readonly onReveal: (() => void) | undefined;
@@ -32,6 +33,7 @@ function MenuItems({
   disabled,
   onOpen,
   onNewDiagram,
+  onImportDiagram,
   onRename,
   onMove,
   onReveal,
@@ -50,6 +52,12 @@ function MenuItems({
         <Item className="item-menu-option" disabled={disabled} onSelect={onNewDiagram}>
           <Icon name="shapes" />
           New diagram here
+        </Item>
+      )}
+      {onImportDiagram && (
+        <Item className="item-menu-option" disabled={disabled} onSelect={onImportDiagram}>
+          <Icon name="import" />
+          Import diagram here
         </Item>
       )}
       <Item className="item-menu-option" disabled={disabled} onSelect={onRename}>
@@ -90,6 +98,7 @@ type ItemMenuProps = PropsWithChildren<{
   folder?: string | null;
   onOpen?: () => void;
   onNewDiagram?: () => void;
+  onImportDiagram?: () => void;
   onRename: (name: string) => Promise<RepositoryResult<unknown>>;
   onMove?: (folder: string | null) => Promise<RepositoryResult<unknown>>;
   onDelete: () => Promise<RepositoryResult<unknown>>;
@@ -103,6 +112,7 @@ export function ItemMenu({
   folder = null,
   onOpen,
   onNewDiagram,
+  onImportDiagram,
   onRename,
   onMove,
   onDelete,
@@ -117,6 +127,7 @@ export function ItemMenu({
     disabled: isMutating,
     onOpen,
     onNewDiagram,
+    onImportDiagram,
     onRename: () => setDialog('rename'),
     onMove: onMove ? () => setDialog('move') : undefined,
     onReveal: reveal && path ? () => reveal(path) : undefined,

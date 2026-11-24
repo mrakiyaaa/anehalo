@@ -14,6 +14,7 @@ import { EditorScreen } from '@/features/editor/EditorScreen';
 import { DiagramScreen } from '@/features/diagrams/DiagramScreen';
 import { useLayoutEffect } from 'react';
 import { markStartupOnce, startupMarks } from '@/features/diagnostics/startup-marks';
+import { DiagramImportProvider } from '@/features/diagram-import/DiagramImportProvider';
 
 export function AppShell() {
   const startQuickNote = useWorkspaceStore((state) => state.startQuickNote);
@@ -38,23 +39,31 @@ export function AppShell() {
   useInAppShortcut(newDiagramShortcut, createDiagram);
 
   return (
-    <div className="app-shell">
-      <TitleBar />
-      <Sidebar
-        onQuickNote={() => {
-          void createQuickNote();
-        }}
-        onNewDiagram={() => {
-          void createDiagram();
-        }}
-      />
-      {view === 'editor' ? <EditorScreen /> : view === 'diagram' ? <DiagramScreen /> : <MainArea />}
-      <StatusBar />
-      <SearchPalette />
-      <SettingsScreen />
-      <UpdateBanner />
-      <DesktopNotice />
-      <PreferenceNotice />
-    </div>
+    <DiagramImportProvider>
+      <div className="app-shell">
+        <TitleBar />
+        <Sidebar
+          onQuickNote={() => {
+            void createQuickNote();
+          }}
+          onNewDiagram={() => {
+            void createDiagram();
+          }}
+        />
+        {view === 'editor' ? (
+          <EditorScreen />
+        ) : view === 'diagram' ? (
+          <DiagramScreen />
+        ) : (
+          <MainArea />
+        )}
+        <StatusBar />
+        <SearchPalette />
+        <SettingsScreen />
+        <UpdateBanner />
+        <DesktopNotice />
+        <PreferenceNotice />
+      </div>
+    </DiagramImportProvider>
   );
 }

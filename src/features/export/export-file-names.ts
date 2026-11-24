@@ -1,14 +1,19 @@
 import { sanitizeName } from '@/features/storage/note-names';
 import { StorageFailure } from '@/features/storage/repository-result';
+import type { ExportExtension } from './export-types';
 
-export function exportFileName(title: string, extension: 'md' | 'pdf'): string {
-  const name = title.replace(/\.(md|pdf)$/i, '');
+export function exportFileName(
+  title: string,
+  extension: ExportExtension,
+  fallback = 'Untitled note',
+): string {
+  const name = title.replace(/\.(md|pdf|png|svg|excalidraw)$/i, '');
   try {
-    return `${sanitizeName(name, 'Untitled note')}.${extension}`;
+    return `${sanitizeName(name, fallback)}.${extension}`;
   } catch (error) {
     if (!(error instanceof StorageFailure) || error.storageError.code !== 'invalid-name')
       throw error;
-    return `${sanitizeName(`_${name}`, 'Untitled note')}.${extension}`;
+    return `${sanitizeName(`_${name}`, fallback)}.${extension}`;
   }
 }
 export function fileName(path: string): string {

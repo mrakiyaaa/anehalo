@@ -5,6 +5,7 @@ import { FolderButton } from '@/features/folders/FolderButton';
 import { countItems } from '@/features/storage/vault-counts';
 import { folderTone } from '@/lib/folder-tone';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { useDiagramImport } from '@/features/diagram-import/import-context';
 
 interface RailButtonProps {
   readonly icon: IconName;
@@ -43,6 +44,7 @@ export function SidebarRail({ onQuickNote, onNewDiagram }: SidebarRailProps) {
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const diagramsAvailable = useWorkspaceStore((state) => state.diagramsAvailable);
   const unavailable = isMutating || !tree.vaultPath;
+  const importer = useDiagramImport();
   return (
     <nav className="sidebar-rail" aria-label="Sidebar shortcuts">
       <RailButton icon="search" label="Search notes" onClick={() => setSearchOpen(true)} />
@@ -53,6 +55,14 @@ export function SidebarRail({ onQuickNote, onNewDiagram }: SidebarRailProps) {
           label="New diagram"
           disabled={unavailable}
           onClick={onNewDiagram}
+        />
+      )}
+      {importer && (
+        <RailButton
+          icon="import"
+          label="Import diagram…"
+          disabled={unavailable}
+          onClick={() => importer.chooseFiles(activeFolderPath)}
         />
       )}
       <div className="rail-folders" role="group" aria-label="Folders">

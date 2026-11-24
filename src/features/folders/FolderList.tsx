@@ -7,6 +7,7 @@ import { FolderButton } from '@/features/folders/FolderButton';
 import { countItems } from '@/features/storage/vault-counts';
 import { folderTone } from '@/lib/folder-tone';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { useDiagramImport } from '@/features/diagram-import/import-context';
 
 export function FolderList() {
   const [isCreating, setIsCreating] = useState(false);
@@ -19,6 +20,7 @@ export function FolderList() {
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const newDiagram = useWorkspaceStore((state) => state.newDiagram);
   const diagramsAvailable = useWorkspaceStore((state) => state.diagramsAvailable);
+  const importer = useDiagramImport();
   return (
     <nav className="folder-list" aria-label="Folders">
       <FolderButton
@@ -40,6 +42,9 @@ export function FolderList() {
                   void newDiagram(folder.relativePath);
                 },
               }
+            : {})}
+          {...(importer
+            ? { onImportDiagram: () => importer.chooseFiles(folder.relativePath) }
             : {})}
           onRename={(name) => renameFolder(folder.relativePath, name)}
           onDelete={() => deleteFolder(folder.relativePath)}

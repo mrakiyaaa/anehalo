@@ -33,10 +33,39 @@ function offlineExcalidrawFonts(): Plugin {
   };
 }
 
+const fontSubsetStubs: Readonly<Record<string, string>> = {
+  './subset-shared.chunk.js': fileURLToPath(
+    new URL('./src/features/diagrams/font-subset-shared-stub.ts', import.meta.url),
+  ),
+  './subset-worker.chunk.js': fileURLToPath(
+    new URL('./src/features/diagrams/font-subset-worker-stub.ts', import.meta.url),
+  ),
+};
+
+/**
+ * SVG export embeds fonts, and Excalidraw first subsets them with WebAssembly code that creates
+ * functions from strings, which the app's CSP refuses (and must keep refusing). That logged
+ * errors on every export before Excalidraw fell back to whole fonts. The two chunks that do the
+ * subsetting are replaced by ones that pass fonts through unchanged: the same result, without
+ * the errors, and without shipping the WebAssembly.
+ */
+function plainExcalidrawFonts(): Plugin {
+  return {
+    name: 'anehalo-plain-excalidraw-fonts',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      const stub = fontSubsetStubs[source];
+      return stub && importer && excalidrawPackage.test(importer) ? stub : null;
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [offlineExcalidrawFonts(), react(), tailwindcss()],
+  plugins: [offlineExcalidrawFonts(), plainExcalidrawFonts(), react(), tailwindcss()],
   // Development pre-bundles dependencies without the plugins above.
-  optimizeDeps: { rolldownOptions: { plugins: [offlineExcalidrawFonts()] } },
+  optimizeDeps: {
+    rolldownOptions: { plugins: [offlineExcalidrawFonts(), plainExcalidrawFonts()] },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

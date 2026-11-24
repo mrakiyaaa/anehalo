@@ -1,20 +1,29 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { downloadDir, join } from '@tauri-apps/api/path';
 import { save } from '@tauri-apps/plugin-dialog';
-import { writeHtml, writeText } from '@tauri-apps/plugin-clipboard-manager';
+import { writeHtml, writeImage, writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { TauriVaultFileSystem } from '@/features/storage/TauriVaultFileSystem';
 import { describeStorageError, failure, success } from '@/features/storage/repository-result';
 import { resolveAttachmentReference } from '@/features/attachments/attachment-paths';
 import { imageExtension } from '@/features/attachments/image-validation';
-import type { ExportBundle, ExportPlatform } from './export-types';
-import { writeBrowserClipboard } from './browser-clipboard';
+import type { ExportBundle, ExportExtension, ExportPlatform } from './export-types';
+import { writeBrowserClipboard, writeBrowserImage } from './browser-clipboard';
 import { openVaultAccess } from '@/features/storage/open-vault-access';
+
+const destinationDialogs: Readonly<Record<ExportExtension, { title: string; filter: string }>> = {
+  md: { title: 'Save as Markdown', filter: 'Markdown note' },
+  pdf: { title: 'Save as PDF', filter: 'PDF document' },
+  png: { title: 'Save as PNG image', filter: 'PNG image' },
+  svg: { title: 'Save as SVG image', filter: 'SVG image' },
+  excalidraw: { title: 'Save a copy of the diagram', filter: 'Excalidraw diagram' },
+};
 
 export class TauriExportPlatform implements ExportPlatform {
   constructor(private readonly vaultPath: string) {}
-  async chooseDestination(fileName: string, extension: 'md' | 'pdf', lastFolder: string | null) {
+  async chooseDestination(fileName: string, extension: ExportExtension, lastFolder: string | null) {
     try {
+      const dialog = destinationDialogs[extension];
       if (!isTauri())
         return failure({
           code: 'unavailable',
@@ -22,14 +31,9 @@ export class TauriExportPlatform implements ExportPlatform {
         });
       return success(
         await save({
-          title: extension === 'pdf' ? 'Save as PDF' : 'Save as Markdown',
+          title: dialog.title,
           defaultPath: await join(lastFolder ?? (await downloadDir()), fileName),
-          filters: [
-            {
-              name: extension === 'pdf' ? 'PDF document' : 'Markdown note',
-              extensions: [extension],
-            },
-          ],
+          filters: [{ name: dialog.filter, extensions: [extension] }],
         }),
       );
     } catch (error) {
@@ -91,6 +95,24 @@ export class TauriExportPlatform implements ExportPlatform {
       return failure({
         code: 'unavailable',
         message: 'Could not copy the note. The clipboard is busy or unavailable. Try again.',
+        detail: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  /**
+   * The Tauri clipboard plugin, not the WebView's image clipboard: that one needs the window to
+   * be focused with a fresh click and asks for permission, so it fails when a copy follows a
+   * slow render. The plugin writes through the system clipboard directly.
+   */
+  async writeClipboardImage(png: Uint8Array) {
+    try {
+      if (isTauri()) await writeImage(png);
+      else await writeBrowserImage(png);
+      return success(undefined);
+    } catch (error) {
+      return failure({
+        code: 'unavailable',
+        message: 'Could not copy the image. The clipboard is busy or unavailable. Try again.',
         detail: error instanceof Error ? error.message : String(error),
       });
     }

@@ -1,9 +1,11 @@
 import './excalidraw-environment';
-import { restore, serializeAsJSON } from '@excalidraw/excalidraw';
+import { loadFromBlob, restore, serializeAsJSON } from '@excalidraw/excalidraw';
 import type { ImportedDataState } from '@excalidraw/excalidraw/data/types';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import type { AppState, BinaryFileData, BinaryFiles } from '@excalidraw/excalidraw/types';
 import { defaultScanScheduling } from '@/features/storage/ScanBudget';
+import { invalidImageError, noSceneError } from '@/features/diagram-import/diagram-import-errors';
+import { hasPngSignature, type ImportFileKind } from '@/features/diagram-import/import-file-kind';
 import { DiagramParseError } from './diagram-errors';
 
 export interface DiagramScene {
@@ -116,4 +118,47 @@ export async function serializeDiagram(
 
 export function emptyDiagramText(): string {
   return serializeAsJSON([], {}, {}, 'local');
+}
+
+const imageMimeTypes = { png: 'image/png', svg: 'image/svg+xml' } as const;
+
+function isMissingSceneError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'IMAGE_NOT_CONTAINS_SCENE_DATA'
+  );
+}
+
+/**
+ * Checks a file to import with Excalidraw's own loaders and returns the text to store as a
+ * .excalidraw file. A .excalidraw file is stored as it is; an image exported with "Embed scene"
+ * holds a drawing that is restored and written out as a new file. Unreadable files throw before
+ * anything is written.
+ */
+export async function readImportedDiagram(
+  kind: ImportFileKind,
+  bytes: Uint8Array,
+): Promise<string> {
+  if (kind === 'excalidraw') {
+    const text = new TextDecoder().decode(bytes);
+    parseDiagram(text);
+    return text;
+  }
+  if (kind === 'png' && !hasPngSignature(bytes))
+    throw invalidImageError(kind, 'The file is not a PNG image.');
+  const blob = new Blob([bytes as BlobPart], { type: imageMimeTypes[kind] });
+  try {
+    const restored = await loadFromBlob(blob, null, null);
+    return await serializeDiagram({
+      elements: restored.elements,
+      appState: restored.appState,
+      files: restored.files,
+    });
+  } catch (error) {
+    // Every way an image can fail to hold a drawing reads the same to the person importing it.
+    if (isMissingSceneError(error)) throw noSceneError();
+    throw invalidImageError(kind, describe(error));
+  }
 }

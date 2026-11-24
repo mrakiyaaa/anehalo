@@ -14,10 +14,15 @@ import { parentPath, validateRelativePath } from '@/features/storage/storage-pat
 import { DIAGRAM_EXTENSION, diagramSummary, itemKind } from '@/features/storage/vault-items';
 import type { VaultStorage } from '@/features/storage/vault-storage';
 import type { DiagramSummary } from '@/types/notes';
+import type { ImportFileKind } from '@/features/diagram-import/import-file-kind';
 import type { DiagramScene } from './diagram-codec';
 import { DiagramWriteError } from './diagram-errors';
 
-export type DiagramCodec = typeof import('./diagram-codec');
+/** What the repository needs to read and write drawings; tests may replace it. */
+export type DiagramCodec = Pick<
+  typeof import('./diagram-codec'),
+  'emptyDiagramText' | 'serializeDiagram' | 'parseDiagram'
+>;
 
 export interface DiagramVersion {
   readonly modifiedAt: number;
@@ -76,6 +81,29 @@ export class DiagramRepository {
         diagramTitle(name),
         DIAGRAM_EXTENSION,
         emptyDiagramText(),
+      );
+      return this.summary(path);
+    });
+  }
+
+  /** Checks a file with Excalidraw and returns the .excalidraw text to store (see the codec). */
+  async decodeImport(kind: ImportFileKind, bytes: Uint8Array): Promise<string> {
+    // Always Excalidraw's own loaders, so a replaced codec cannot change what an import accepts.
+    return (await import('./diagram-codec')).readImportedDiagram(kind, bytes);
+  }
+
+  /** Adds already validated diagram text to a folder, named by the title and numbered if taken. */
+  importDiagram(
+    folder: string | null,
+    title: string,
+    text: string,
+  ): Promise<RepositoryResult<DiagramSummary>> {
+    return this.storage.operations.run('Could not import the diagram.', async () => {
+      const path = await this.files.createUniqueFile(
+        validateRelativePath(folder ?? '', true),
+        diagramTitle(title),
+        DIAGRAM_EXTENSION,
+        text,
       );
       return this.summary(path);
     });

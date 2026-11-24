@@ -133,6 +133,58 @@ describe('DiagramCanvas', () => {
     expect(changes.map((scene) => scene.elements)).toEqual([moved]);
   });
 
+  describe('exporting', () => {
+    function connectedCanvas(onExportRequested = vi.fn()) {
+      const handle = createRef<DiagramCanvasHandle>();
+      render(
+        <DiagramCanvas
+          ref={handle}
+          scene={sceneWith('box')}
+          onDocumentChange={() => undefined}
+          onElementLink={() => undefined}
+          onExportRequested={onExportRequested}
+        />,
+      );
+      const api = {
+        getAppState: vi.fn(() => ({ selectedElementIds: { a: true, b: false, c: true } })),
+        updateScene: vi.fn(),
+      };
+      const connect = excalidraw.lastProps?.excalidrawAPI;
+      if (typeof connect !== 'function') throw new Error('Excalidraw received no excalidrawAPI.');
+      act(() => (connect as (api: unknown) => void)(api));
+      return {
+        handle,
+        api,
+        onExportRequested,
+        onChange: excalidraw.lastProps?.onChange as ChangeHandler,
+      };
+    }
+
+    it('reports the selected element ids, and only those', () => {
+      const { handle } = connectedCanvas();
+      expect(handle.current?.selectedElementIds()).toEqual(['a', 'c']);
+    });
+
+    it('closes Excalidraw’s own export dialogs and opens Anehalo’s Export instead', () => {
+      for (const name of ['imageExport', 'jsonExport']) {
+        const { api, onExportRequested, onChange } = connectedCanvas();
+        const scene = sceneWith('box');
+        onChange(scene.elements, { openDialog: { name } } as never, {});
+        expect(api.updateScene).toHaveBeenCalledWith({ appState: { openDialog: null } });
+        expect(onExportRequested).toHaveBeenCalledOnce();
+      }
+    });
+
+    it('leaves Excalidraw’s other dialogs alone', () => {
+      const { api, onExportRequested, onChange } = connectedCanvas();
+      const scene = sceneWith('box');
+      onChange(scene.elements, { openDialog: { name: 'help' } } as never, {});
+      onChange(scene.elements, { openDialog: null }, {});
+      expect(api.updateScene).not.toHaveBeenCalled();
+      expect(onExportRequested).not.toHaveBeenCalled();
+    });
+  });
+
   describe('focusing a search match', () => {
     function fakeApi(selected: Record<string, true> = {}) {
       const state = { selectedElementIds: selected };

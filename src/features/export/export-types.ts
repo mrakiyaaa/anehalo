@@ -27,7 +27,8 @@ export interface ExportBundle {
 export interface ExportProgress {
   readonly path: string;
   readonly message: string;
-  readonly fraction: number;
+  /** Null while the work has no measurable progress. */
+  readonly fraction: number | null;
 }
 export interface ExportOutcome {
   readonly status: 'cancelled' | 'copied' | 'saved';
@@ -35,14 +36,17 @@ export interface ExportOutcome {
   readonly path?: string;
   readonly warning?: string;
 }
+/** Notes save as Markdown or PDF; diagrams as an image or a .excalidraw copy. */
+export type ExportExtension = 'md' | 'pdf' | 'png' | 'svg' | 'excalidraw';
 export interface ExportPlatform {
   chooseDestination(
     fileName: string,
-    extension: 'md' | 'pdf',
+    extension: ExportExtension,
     lastFolder: string | null,
   ): Promise<RepositoryResult<string | null>>;
   writeBundle(bundle: ExportBundle): Promise<RepositoryResult<void>>;
   writeClipboard(text: string, html?: string): Promise<RepositoryResult<void>>;
+  writeClipboardImage(png: Uint8Array): Promise<RepositoryResult<void>>;
   loadImage(notePath: string, reference: string): Promise<RepositoryResult<ExportImage>>;
   revealFile(path: string): Promise<RepositoryResult<void>>;
 }

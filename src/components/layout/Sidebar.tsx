@@ -14,6 +14,7 @@ import { appShortcuts } from '@/features/shortcuts/app-shortcuts';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { shouldCollapse, useSidebarStore } from '@/store/sidebar-store';
 import { SidebarItems } from '@/features/notes/SidebarItems';
+import { useDiagramImport } from '@/features/diagram-import/import-context';
 
 export const SIDEBAR_WIDTH = 272;
 export const RAIL_WIDTH = 64;
@@ -51,6 +52,8 @@ export function Sidebar({ onQuickNote, onNewDiagram }: SidebarProps) {
   const isMutating = useWorkspaceStore((state) => state.isMutating);
   const vaultReady = useWorkspaceStore((state) => Boolean(state.tree.vaultPath));
   const diagramsAvailable = useWorkspaceStore((state) => state.diagramsAvailable);
+  const activeFolder = useWorkspaceStore((state) => state.activeFolderPath);
+  const importer = useDiagramImport();
   return (
     <motion.aside
       aria-label="Sidebar"
@@ -93,6 +96,19 @@ export function Sidebar({ onQuickNote, onNewDiagram }: SidebarProps) {
               </span>
               <span className="shortcut-keys" aria-hidden="true">
                 {diagramShortcut?.replaceAll('+', ' ')}
+              </span>
+            </Button>
+          )}
+          {importer && (
+            <Button
+              variant="outline"
+              className="quick-note-button new-diagram-button"
+              onClick={() => importer.chooseFiles(activeFolder)}
+              disabled={isMutating || !vaultReady}
+            >
+              <span className="quick-note-label">
+                <Icon name="import" />
+                Import diagram…
               </span>
             </Button>
           )}

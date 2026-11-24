@@ -1,7 +1,7 @@
-param([Parameter(Mandatory=$true)][int]$ApplicationProcessId, [Parameter(Mandatory=$true)][string]$Destination)
+param([Parameter(Mandatory=$true)][int]$ApplicationProcessId, [Parameter(Mandatory=$true)][string]$Destination, [string]$Title = 'Save as Markdown')
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'find-native-dialog.ps1')
-$dialog = Find-AnehaloDialog -ApplicationProcessId $ApplicationProcessId -Title 'Save as Markdown'
+$dialog = Find-AnehaloDialog -ApplicationProcessId $ApplicationProcessId -Title $Title
 $edits = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants,
   [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit))
 $fileName = $null

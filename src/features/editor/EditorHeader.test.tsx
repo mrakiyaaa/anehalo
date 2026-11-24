@@ -34,7 +34,12 @@ async function setup(seed: readonly MemoryEntry[], open: string) {
   render(
     <WorkspaceContext.Provider value={store}>
       <ExportContext.Provider
-        value={{ progress: null, run: vi.fn(), registerEditor: vi.fn(() => () => undefined) }}
+        value={{
+          progress: null,
+          run: vi.fn(),
+          runDiagram: vi.fn(),
+          registerEditor: vi.fn(() => () => undefined),
+        }}
       >
         <Header />
       </ExportContext.Provider>

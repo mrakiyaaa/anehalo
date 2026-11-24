@@ -12,14 +12,16 @@ real app through WebView2, and `cargo test`.
 
 v0.2.0 is in progress on `claude/anehalo-v0-2-milestone-b` (Milestone B).
 
-| Phase | Scope                                                  | State                 |
-| ----- | ------------------------------------------------------ | --------------------- |
-| 0–4   | Stabilize, offline Excalidraw, storage, screen, Home   | Done, merged          |
-| 5     | Notes ↔ diagrams: links, embeds, backlinks, safe links | Done on the branch    |
-| 6     | Search inside diagrams                                 | Done on the branch    |
-| 7     | Import / export                                        | Next (Milestone B PR) |
-| 8     | Libraries / templates                                  | To do                 |
-| 9     | Polish + release                                       | To do (release PR)    |
+| Phase | Scope                                                  | State              |
+| ----- | ------------------------------------------------------ | ------------------ |
+| 0–4   | Stabilize, offline Excalidraw, storage, screen, Home   | Done, merged       |
+| 5     | Notes ↔ diagrams: links, embeds, backlinks, safe links | Done on the branch |
+| 6     | Search inside diagrams                                 | Done on the branch |
+| 7     | Import / export                                        | Done on the branch |
+| 8     | Libraries / templates                                  | Next (Milestone C) |
+| 9     | Polish + release                                       | To do (release PR) |
+
+Milestone B (Phases 5–7) is complete on the branch and goes to `master` as one PR.
 
 Phase 5 notes:
 
@@ -49,6 +51,32 @@ Phase 6 notes:
   The background index for 500 diagrams went from about 9.7 s to about 1.5 s. The settings
   folder is not a vault, so it still reads through the file-system plugin.
 - New E2E spec: `e2e/diagram-search.spec.ts`.
+
+Phase 7 notes:
+
+- Import: `DiagramImportService` (`src/features/diagram-import`) turns files into vault diagrams; the
+  store action `importDiagramFiles` wraps it (one queued write per file, one tree refresh, one
+  open for a single file). `readImportedDiagram` in `diagram-codec.ts` validates with Excalidraw's
+  `parseDiagram` / `loadFromBlob`. A `.excalidraw` file is copied byte for byte; PNG/SVG scenes
+  are restored and re-serialized. The file picker is a hidden `<input type=file>` (same `File`
+  path as drag and drop, so no new fs scope). Drops: every file on Home; only `.excalidraw`
+  files over a note or diagram, so images still insert and a drawing is never replaced.
+- Export: `DiagramExportService` (`src/features/diagram-export`) maps options to Excalidraw
+  parameters. The only Excalidraw calls are `diagramImageRenderer` in `thumbnail-renderer.ts`.
+  `ExportButton` and `use-export-keys` are shared with notes. One path: the header popover.
+  `DiagramCanvas` closes Excalidraw's own `imageExport`/`jsonExport` dialogs and hands over;
+  `excalidraw-environment.ts` makes `showSaveFilePicker` reject with `AbortError`, so Excalidraw's
+  save-to-disk can never open a picker or download (Ctrl+Shift+S saves a copy instead).
+- Clipboard images use the Tauri plugin's `writeImage` with PNG bytes (tauri feature
+  `image-png`); the WebView clipboard needs focus and a permission prompt. Permission:
+  `clipboard-manager:allow-write-image`. `write_note_export` now also allows `png`, `svg` and
+  `excalidraw`.
+- SVG fonts: Excalidraw subsets fonts with WebAssembly that needs `eval`, which the CSP refuses,
+  so every export logged errors. `vite.config.ts` swaps its two subset chunks for pass-through
+  stubs (`font-subset-*-stub.ts`): whole font files (split by unicode range) are embedded.
+  `scripts/check-startup-chunks.mjs` fails if the real subsetting code ships again.
+- New E2E specs: `e2e/diagram-import.spec.ts`, `e2e/diagram-export.spec.ts`. `save-dialog.ps1`
+  takes the dialog title; `clipboard-image.ps1` reads the clipboard as another app would.
 
 ## Workflow
 

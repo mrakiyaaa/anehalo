@@ -2,11 +2,20 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 
+/** Fills in the native Save dialog; `title` is the dialog's title, by default the note's. */
 export async function saveNativeDialog(
   applicationProcessId: number,
   destination: string,
+  title = 'Save as Markdown',
 ): Promise<void> {
-  await runNativeDialog('save-dialog.ps1', applicationProcessId, '-Destination', destination);
+  await runNativeDialog(
+    'save-dialog.ps1',
+    applicationProcessId,
+    '-Destination',
+    destination,
+    '-Title',
+    title,
+  );
 }
 
 export async function selectNativeFolder(
@@ -19,8 +28,7 @@ export async function selectNativeFolder(
 async function runNativeDialog(
   script: string,
   applicationProcessId: number,
-  argument: string,
-  value: string,
+  ...scriptArguments: string[]
 ): Promise<void> {
   await promisify(execFile)(
     'powershell.exe',
@@ -32,8 +40,7 @@ async function runNativeDialog(
       resolve('e2e/support', script),
       '-ApplicationProcessId',
       String(applicationProcessId),
-      argument,
-      value,
+      ...scriptArguments,
     ],
     { windowsHide: true, timeout: 20_000 },
   );

@@ -11,6 +11,7 @@ const iconPaths = {
   spark: <path d="M12 3l2.2 5.6L20 11l-5.8 2.4L12 19l-2.2-5.6L4 11l5.8-2.4z" />,
   bolt: <path d="M13 2L4 14h7l-1 8 9-12h-7z" />,
   export: <path d="M12 4v10M8 10l4 4 4-4M5 20h14" />,
+  import: <path d="M12 14V4M8 8l4-4 4 4M5 20h14" />,
   left: <path d="M19 12H5M11 6l-6 6 6 6" />,
   right: <path d="M5 12h14M13 6l6 6-6 6" />,
   search: (

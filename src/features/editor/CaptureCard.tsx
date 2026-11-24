@@ -1,6 +1,7 @@
 ﻿import { Icon } from '@/components/ui/Icon';
 import { pathName } from '@/features/storage/storage-paths';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
+import { useDiagramImport } from '@/features/diagram-import/import-context';
 
 export function CaptureCard() {
   const startQuickNote = useWorkspaceStore((state) => state.startQuickNote);
@@ -9,6 +10,7 @@ export function CaptureCard() {
   const vaultReady = useWorkspaceStore((state) => Boolean(state.tree.vaultPath));
   const newDiagram = useWorkspaceStore((state) => state.newDiagram);
   const diagramsAvailable = useWorkspaceStore((state) => state.diagramsAvailable);
+  const importer = useDiagramImport();
   return (
     <div className="capture-card">
       <button
@@ -43,6 +45,17 @@ export function CaptureCard() {
           >
             <Icon name="shapes" />
             New diagram
+          </button>
+        )}
+        {importer && (
+          <button
+            type="button"
+            className="capture-action"
+            disabled={!vaultReady || isMutating}
+            onClick={() => importer.chooseFiles(folder)}
+          >
+            <Icon name="import" />
+            Import diagram…
           </button>
         )}
       </div>

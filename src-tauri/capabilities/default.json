@@ -50,6 +50,7 @@
     "dialog:allow-save",
     "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-write-html",
+    "clipboard-manager:allow-write-image",
     "opener:allow-reveal-item-in-dir",
     {
       "identifier": "opener:allow-open-url",

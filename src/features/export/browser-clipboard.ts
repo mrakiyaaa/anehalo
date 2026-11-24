@@ -43,6 +43,17 @@ export async function writeBrowserClipboard(text: string, html?: string): Promis
   }
 }
 
+/** Copies a PNG where the Tauri clipboard plugin is not available (development in a browser). */
+export async function writeBrowserImage(png: Uint8Array): Promise<void> {
+  if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined')
+    throw new Error('Image clipboard access is unavailable.');
+  await clipboardWithTimeout(
+    navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': new Blob([png as BlobPart], { type: 'image/png' }) }),
+    ]),
+  );
+}
+
 async function clipboardWithTimeout(operation: Promise<void>): Promise<void> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {

@@ -53,7 +53,12 @@ export async function renderWorkspace(seed: readonly MemoryEntry[], ui: ReactNod
     <AppServicesContext.Provider value={services}>
       <WorkspaceContext.Provider value={store}>
         <ExportContext.Provider
-          value={{ progress: null, run: vi.fn(), registerEditor: vi.fn(() => () => undefined) }}
+          value={{
+            progress: null,
+            run: vi.fn(),
+            runDiagram: vi.fn(),
+            registerEditor: vi.fn(() => () => undefined),
+          }}
         >
           {ui}
         </ExportContext.Provider>

@@ -1,4 +1,13 @@
+import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
+import type { AppState } from '@excalidraw/excalidraw/types';
 import type { DiagramScene } from '@/features/diagrams/diagram-codec';
+import { canvasTooLargeError } from '@/features/diagram-export/diagram-export-errors';
+import {
+  excalidrawExportAppState,
+  exceedsCanvasLimits,
+  imageMimeTypes,
+  type DiagramExportOptions,
+} from '@/features/diagram-export/diagram-export-options';
 import type { Thumbnail } from './thumbnail-cache';
 
 /** Home cards (at most 480 px wide, drawn at 2×) and previews embedded in notes. */
@@ -32,6 +41,25 @@ interface ExcalidrawExport {
       scale: number;
     };
   }) => Promise<Blob>;
+}
+
+/** The part of Excalidraw's full-size export functions that Anehalo uses (same typing gap). */
+interface ExcalidrawFullExport {
+  exportToBlob: (options: {
+    elements: readonly ExcalidrawElement[];
+    files: DiagramScene['files'];
+    appState: Partial<AppState>;
+    mimeType: string;
+    getDimensions: (
+      width: number,
+      height: number,
+    ) => { width: number; height: number; scale: number };
+  }) => Promise<Blob>;
+  exportToSvg: (options: {
+    elements: readonly ExcalidrawElement[];
+    files: DiagramScene['files'];
+    appState: Partial<AppState>;
+  }) => Promise<SVGSVGElement>;
 }
 
 /**
@@ -72,3 +100,57 @@ export const renderThumbnail: ThumbnailRenderer = (scene, size) =>
 export function renderExportImage(scene: DiagramScene): Promise<Thumbnail> {
   return drawDiagram(scene, 'preview', 'image/png');
 }
+
+/** A drawing and the elements of it to export (a selection, or every visible element). */
+export interface DiagramImageInput {
+  readonly scene: DiagramScene;
+  readonly elements: readonly ExcalidrawElement[];
+  readonly options: DiagramExportOptions;
+}
+
+export interface DiagramImageRenderer {
+  png(input: DiagramImageInput): Promise<Blob>;
+  svg(input: DiagramImageInput): Promise<string>;
+}
+
+async function loadExcalidrawExport(): Promise<ExcalidrawFullExport> {
+  await import('@/features/diagrams/excalidraw-environment');
+  const excalidraw: unknown = await import('@excalidraw/excalidraw');
+  return excalidraw as ExcalidrawFullExport;
+}
+
+function exportAppState({ scene, options }: DiagramImageInput): Partial<AppState> {
+  return { ...scene.appState, ...excalidrawExportAppState(options) };
+}
+
+/**
+ * Draws a diagram for export with Excalidraw's own functions: PNG at a chosen scale, and SVG
+ * with its fonts inlined from the bundled copy (never a CDN). Excalidraw loads here on demand.
+ */
+export const diagramImageRenderer: DiagramImageRenderer = {
+  async png(input) {
+    const { exportToBlob } = await loadExcalidrawExport();
+    const { scale } = input.options;
+    return exportToBlob({
+      elements: input.elements,
+      files: input.scene.files,
+      appState: exportAppState(input),
+      mimeType: imageMimeTypes.png,
+      getDimensions: (width, height) => {
+        const scaled = { width: Math.round(width * scale), height: Math.round(height * scale) };
+        if (exceedsCanvasLimits(scaled.width, scaled.height))
+          throw canvasTooLargeError(input.options);
+        return { ...scaled, scale };
+      },
+    });
+  },
+  async svg(input) {
+    const { exportToSvg } = await loadExcalidrawExport();
+    const svg = await exportToSvg({
+      elements: input.elements,
+      files: input.scene.files,
+      appState: exportAppState(input),
+    });
+    return new XMLSerializer().serializeToString(svg);
+  },
+};

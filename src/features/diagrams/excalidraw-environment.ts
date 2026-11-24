@@ -16,3 +16,12 @@ export const DIAGRAM_SOURCE = 'https://github.com/mrakiyaaa/anehalo';
 // Without the asset path, fonts would come from a public CDN.
 window.EXCALIDRAW_ASSET_PATH = excalidrawAssetPath;
 window.EXCALIDRAW_EXPORT_SOURCE = DIAGRAM_SOURCE;
+
+// Excalidraw's own "Save to disk" (a command-palette entry and Ctrl+Shift+S) would open the
+// browser's save picker or start a download, around Anehalo's Export. A picker that always
+// refuses, the way a cancelled one does, turns it off for good. Excalidraw's file library
+// decides at load time whether pickers exist, so this must be set before it loads.
+Object.defineProperty(window, 'showSaveFilePicker', {
+  configurable: true,
+  value: () => Promise.reject(new DOMException('Saving files is done from Export.', 'AbortError')),
+});

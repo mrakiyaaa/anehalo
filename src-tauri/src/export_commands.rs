@@ -15,6 +15,17 @@ struct AssetRequest {
     length: usize,
 }
 
+/// Notes export as `.md` or `.pdf`; diagrams as `.png`, `.svg` or a `.excalidraw` copy.
+fn is_exportable_extension(path: &std::path::Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|value| value.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some("md" | "pdf" | "png" | "svg" | "excalidraw")
+    )
+}
+
 #[tauri::command]
 pub async fn write_note_export(
     app: tauri::AppHandle,
@@ -42,14 +53,8 @@ pub async fn write_note_export(
     {
         return Err("Choose the export file with Anehalo's save dialog first.".into());
     }
-    if !matches!(
-        path.extension()
-            .and_then(|value| value.to_str())
-            .map(str::to_ascii_lowercase)
-            .as_deref(),
-        Some("md" | "pdf")
-    ) {
-        return Err("Choose a Markdown or PDF destination.".into());
+    if !is_exportable_extension(&path) {
+        return Err("Choose a Markdown, PDF, PNG, SVG or Excalidraw destination.".into());
     }
     let parent = path
         .parent()
@@ -80,4 +85,31 @@ pub async fn write_note_export(
     tauri::async_runtime::spawn_blocking(move || commit_export(&destination, &content, &assets))
         .await
         .map_err(|error| error.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_exportable_extension;
+    use std::path::Path;
+
+    #[test]
+    fn allows_note_and_diagram_exports_in_any_letter_case() {
+        for name in [
+            "a.md",
+            "a.PDF",
+            "a.png",
+            "a.Svg",
+            "a.excalidraw",
+            "a b.EXCALIDRAW",
+        ] {
+            assert!(is_exportable_extension(Path::new(name)), "{name}");
+        }
+    }
+
+    #[test]
+    fn refuses_other_destinations() {
+        for name in ["a.exe", "a.png.exe", "a", "a.", "a.json", ".png"] {
+            assert!(!is_exportable_extension(Path::new(name)), "{name}");
+        }
+    }
 }

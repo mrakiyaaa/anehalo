@@ -76,6 +76,12 @@ node scripts/check-version.mjs
 
 The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, and both lockfiles. Commit those with a changelog entry. GitHub Actions runs strict lint/typecheck, coverage, audits, Rust checks, native E2E, and the installer build on branch pushes and pull requests. Pushing a matching `v<version>` tag runs a separate release workflow that builds the installer and attaches it to a **draft** GitHub Release for manual testing and publishing; see [Releasing](docs/RELEASING.md). Once a release is published, installed copies find it themselves: they check shortly after start and every six hours (Settings → Updates), verify the update's signature, and install it after saving your notes. Releases need the updater signing key, and losing that key strands every installed copy, so read the warning in [Releasing](docs/RELEASING.md) first. Manual checks remain a separate release sign-off.
 
+## Importing and exporting diagrams
+
+**Import.** Use _Import diagram…_ on Home, in the sidebar, or _Import diagram here_ in a folder's menu, or drag files onto the Home screen. Anehalo imports `.excalidraw` files (from any Excalidraw version) and PNG or SVG images exported with **Embed scene**. Files are copied into the folder under their own name (a number is added if the name is taken); the originals are never changed. A file that is not a readable drawing is skipped and nothing is written for it, and one summary says what came in and why anything was left out. Files over 50 MB ask first. One imported file opens; several leave you where you are. Dropping a `.excalidraw` file onto an open note or diagram imports it too, but never loads it over the open drawing.
+
+**Export.** The diagram header's **Export** button (or `Ctrl+Shift+E`) opens one popover: PNG or SVG, background, light or dark, scale (PNG, 1× to 3×), _Embed scene_ (so Anehalo or excalidraw.com can open the image as a drawing again), and _Selection only_ while something is selected. It can save a file, copy a PNG or the SVG markup to the clipboard, or save a copy as `.excalidraw` for sharing outside the vault (`Ctrl+Shift+S`). The last options are remembered. SVGs embed their fonts, so they look the same anywhere and need no network. A drawing too large for the chosen scale says so and suggests a lower one. Excalidraw's own export dialog and its browser download are switched off, so Export is the only way out.
+
 ## Shortcuts
 
 | Shortcut                       | Action                                        |
@@ -86,10 +92,10 @@ The bump script synchronizes `package.json`, `Cargo.toml`, `tauri.conf.json`, an
 | `Ctrl+K`                       | Search all notes                              |
 | `Ctrl+F`                       | Find in the current note                      |
 | `Ctrl+B` / `Ctrl+I` / `Ctrl+U` | Bold / italic / underline                     |
-| `Ctrl+Shift+S`                 | Strikethrough                                 |
+| `Ctrl+Shift+S`                 | Strikethrough; on a diagram, save a copy      |
 | `Ctrl+Shift+K` or `/page`      | Insert a page link                            |
 | `Ctrl+Shift+C`                 | Copy as Markdown                              |
-| `Ctrl+Shift+E`                 | Open Export                                   |
+| `Ctrl+Shift+E`                 | Open Export (notes and diagrams)              |
 | `Alt+Left` / `Alt+Right`       | Back / forward through notes and diagrams     |
 | `Ctrl+`                        | Collapse or expand the sidebar                |
 | `Ctrl+Z` / `Ctrl+Y`            | Undo / redo                                   |

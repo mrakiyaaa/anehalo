@@ -20,11 +20,18 @@ interface DiagramCanvasProps {
   readonly onElementLink: (link: string) => void;
   /** Called once the drawing is on the canvas, so elements can be focused. */
   readonly onSceneReady?: () => void;
+  /**
+   * Called when Excalidraw itself tries to open its export dialog (from its command palette).
+   * The dialog is closed again: exports go through Anehalo's Export popover only.
+   */
+  readonly onExportRequested?: () => void;
 }
 
 export interface DiagramCanvasHandle {
   /** Brings an element into view and selects it briefly; false when it is not in the scene. */
   focusElement(elementId: string): boolean;
+  /** The ids of the selected elements right now (for "selection only" exports). */
+  selectedElementIds(): readonly string[];
 }
 
 /** Long enough to see which shape was found, short enough not to get in the way of editing. */
@@ -32,7 +39,10 @@ const FOCUS_SELECTION_MS = 2_000;
 
 /** The only module that imports Excalidraw, so it stays in a chunk loaded on demand. */
 export const DiagramCanvas = forwardRef<DiagramCanvasHandle, DiagramCanvasProps>(
-  function DiagramCanvas({ scene, onDocumentChange, onElementLink, onSceneReady }, ref) {
+  function DiagramCanvas(
+    { scene, onDocumentChange, onElementLink, onSceneReady, onExportRequested },
+    ref,
+  ) {
     const theme = useThemeStore((state) => state.theme);
     const savedFingerprint = useRef(diagramFingerprint(scene, hashElementsVersion));
     const { toggleFrom } = useAnimatedThemeToggle();
@@ -75,6 +85,10 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, DiagramCanvasProps>
           }, FOCUS_SELECTION_MS);
           return true;
         },
+        selectedElementIds() {
+          const selected = api.current?.getAppState().selectedElementIds ?? {};
+          return Object.keys(selected).filter((id) => selected[id]);
+        },
       }),
       [],
     );
@@ -88,6 +102,13 @@ export const DiagramCanvas = forwardRef<DiagramCanvasHandle, DiagramCanvasProps>
           }}
           initialData={{ elements: scene.elements, appState: scene.appState, files: scene.files }}
           onChange={(elements, appState, files) => {
+            if (
+              appState.openDialog?.name === 'imageExport' ||
+              appState.openDialog?.name === 'jsonExport'
+            ) {
+              api.current?.updateScene({ appState: { openDialog: null } });
+              onExportRequested?.();
+            }
             if (!isReady.current && (elements.length > 0 || scene.elements.length === 0)) {
               isReady.current = true;
               onSceneReady?.();

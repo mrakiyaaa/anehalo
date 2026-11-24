@@ -1,4 +1,5 @@
 import type { DiagramSummary, Folder, Note, VaultTree } from '@/types/notes';
+import type { ImportCandidate, ImportReport } from '@/features/diagram-import/DiagramImportService';
 import type { DiagramDraft } from '@/features/diagrams/DiagramAutoSaver';
 import type { DiagramScene } from '@/features/diagrams/diagram-codec';
 import type { DiagramCodec } from '@/features/diagrams/DiagramRepository';
@@ -108,6 +109,15 @@ export interface WorkspaceState {
   renderDiagramImage: (
     path: string,
   ) => Promise<RepositoryResult<import('@/features/export/export-types').ExportImage>>;
+  /**
+   * Copies diagram files into a folder (the vault root for null) and refreshes the list. Files
+   * that cannot be imported are reported in the result, never written. One imported file opens.
+   */
+  importDiagramFiles: (
+    candidates: readonly ImportCandidate[],
+    folder: string | null,
+    confirmLarge: (candidate: ImportCandidate) => Promise<boolean>,
+  ) => Promise<RepositoryResult<ImportReport>>;
   renameDiagram: (path: string, title: string) => Promise<RepositoryResult<DiagramSummary>>;
   moveDiagram: (path: string, folder: string | null) => Promise<RepositoryResult<DiagramSummary>>;
 }

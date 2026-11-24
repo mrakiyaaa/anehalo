@@ -1,14 +1,21 @@
 import { failure, success } from '@/features/storage/repository-result';
-import type { ExportBundle, ExportImage, ExportPlatform } from './export-types';
+import type { ExportBundle, ExportExtension, ExportImage, ExportPlatform } from './export-types';
+
+const clipboardFailure = failure({
+  code: 'unavailable',
+  message: 'The clipboard is busy or unavailable. Try again.',
+});
 
 export class InMemoryExportPlatform implements ExportPlatform {
   destination: string | null = null;
   failWrites = false;
   readonly bundles: ExportBundle[] = [];
+  failClipboard = false;
   readonly clipboard: { text: string; html?: string }[] = [];
+  readonly clipboardImages: Uint8Array[] = [];
   readonly dialogs: { fileName: string; extension: string; lastFolder: string | null }[] = [];
   readonly images = new Map<string, ExportImage>();
-  chooseDestination(fileName: string, extension: 'md' | 'pdf', lastFolder: string | null) {
+  chooseDestination(fileName: string, extension: ExportExtension, lastFolder: string | null) {
     this.dialogs.push({ fileName, extension, lastFolder });
     return Promise.resolve(success(this.destination));
   }
@@ -24,7 +31,13 @@ export class InMemoryExportPlatform implements ExportPlatform {
     return Promise.resolve(success(undefined));
   }
   writeClipboard(text: string, html?: string) {
+    if (this.failClipboard) return Promise.resolve(clipboardFailure);
     this.clipboard.push({ text, ...(html !== undefined ? { html } : {}) });
+    return Promise.resolve(success(undefined));
+  }
+  writeClipboardImage(png: Uint8Array) {
+    if (this.failClipboard) return Promise.resolve(clipboardFailure);
+    this.clipboardImages.push(png);
     return Promise.resolve(success(undefined));
   }
   loadImage(_notePath: string, reference: string) {

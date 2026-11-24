@@ -26,6 +26,15 @@ for (const file of await readdir(join(distribution, 'assets')))
   if (textToDiagramCode.test(file))
     failures.push(`assets/${file} is Mermaid code, which must not ship.`);
 
+// Excalidraw's font subsetting needs eval, which the CSP refuses; vite.config.ts replaces it with
+// code that embeds whole fonts. Its error message in a chunk means the real code shipped again.
+for (const file of await readdir(join(distribution, 'assets'))) {
+  if (!file.endsWith('.js')) continue;
+  const content = await readFile(join(distribution, 'assets', file), 'utf8');
+  if (content.includes('Skipped glyph subsetting'))
+    failures.push(`assets/${file} holds Excalidraw's font subsetting, which needs eval.`);
+}
+
 const fontFolder = join(distribution, 'excalidraw', 'fonts', 'Excalifont');
 try {
   if (!(await stat(fontFolder)).isDirectory()) failures.push(`${fontFolder} is not a folder.`);

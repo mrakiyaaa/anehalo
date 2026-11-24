@@ -13,6 +13,7 @@ import type { ThumbnailService } from '@/features/thumbnails/thumbnail-service';
 import type { LinkRename } from '@/features/note-links/NoteLinkRewriter';
 import { renderExportImage } from '@/features/thumbnails/thumbnail-renderer';
 import { describeStorageError } from '@/features/storage/repository-result';
+import { DiagramImportService } from '@/features/diagram-import/DiagramImportService';
 
 type DiagramActions = Pick<
   WorkspaceState,
@@ -29,6 +30,7 @@ type DiagramActions = Pick<
   | 'renderDiagramImage'
   | 'renameDiagram'
   | 'moveDiagram'
+  | 'importDiagramFiles'
 >;
 
 interface DiagramActionContext {
@@ -218,6 +220,27 @@ export function createDiagramActions({
         } catch (error) {
           return failure(describeStorageError(error, 'This diagram could not be drawn.'));
         }
+      }),
+    importDiagramFiles: (candidates, folder, confirmLarge) =>
+      withDiagrams(async (diagrams) => {
+        const importer = new DiagramImportService({
+          decode: (kind, bytes) => diagrams.decodeImport(kind, bytes),
+          // One write at a time in the workspace queue, so a confirmation dialog between files
+          // never holds the queue.
+          write: (target, title, text) =>
+            enqueue(() => diagrams.importDiagram(target, title, text)),
+          confirmLarge,
+        });
+        const report = await importer.importFiles(candidates, folder);
+        const [first] = report.imported;
+        if (!first) return success(report);
+        // The list refreshes once; the shared scan then reads the new files for links and search.
+        await enqueue(async () => {
+          await refreshTree();
+          return success(undefined);
+        });
+        if (candidates.length === 1) await getState().openDiagramFile(first.relativePath);
+        return success(report);
       }),
     openDiagramFile: (path) =>
       withDiagrams((diagrams, autoSaver) => enqueue(() => open(diagrams, autoSaver, path, true))),
