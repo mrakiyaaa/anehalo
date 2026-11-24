@@ -122,7 +122,8 @@ function SearchResults({ close }: { close: () => void }) {
         aria-busy={searching}
       >
         {!results.length && (
-          <p className="palette-empty">
+          // A listbox must hold options, so the message is a disabled one.
+          <p className="palette-empty" role="option" aria-disabled="true" aria-selected="false">
             {searching || index.isRefreshing ? 'Searching…' : 'Nothing found. Try another word.'}
           </p>
         )}

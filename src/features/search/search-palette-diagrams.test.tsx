@@ -41,6 +41,19 @@ async function settledResults() {
   return results();
 }
 
+describe('the results list when nothing is found', () => {
+  it('holds a disabled option, so the listbox is never empty of options', async () => {
+    const { user, input } = await openPalette();
+    await user.type(input, 'zzzznothing');
+    const list = await settledResults();
+    await waitFor(() => expect(within(list).getByRole('option')).toBeInTheDocument());
+    const message = within(list).getByRole('option');
+    expect(message).toHaveTextContent('Nothing found. Try another word.');
+    expect(message).toHaveAttribute('aria-disabled', 'true');
+    expect(input).not.toHaveAttribute('aria-activedescendant');
+  });
+});
+
 describe('diagrams in Ctrl+K', () => {
   it('shows a diagram row with its icon, folder and highlighted snippet', async () => {
     const { user, input } = await openPalette();
