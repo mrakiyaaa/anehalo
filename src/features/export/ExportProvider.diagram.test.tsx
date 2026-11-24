@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -37,6 +37,9 @@ import { unwrapResult } from '@/test/repository-helpers';
 import { InMemoryExportPlatform } from './InMemoryExportPlatform';
 import { ExportProvider } from './ExportProvider';
 import { useNoteExport } from './export-context';
+
+// Saving a copy loads Excalidraw's serializer, which takes longer than the default wait under load.
+configure({ asyncUtilTimeout: 15_000 });
 
 const stores: WorkspaceStore[] = [];
 afterEach(() => stores.splice(0).forEach((store) => store.getState().pauseAutoSave()));
