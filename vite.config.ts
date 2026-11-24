@@ -42,12 +42,17 @@ const fontSubsetStubs: Readonly<Record<string, string>> = {
   ),
 };
 
+const subsetWorkerFlag = /=\s*typeof Worker\s*(?:<\s*"u"|!==\s*"undefined")/;
+
 /**
  * SVG export embeds fonts, and Excalidraw first subsets them with WebAssembly code that creates
  * functions from strings, which the app's CSP refuses (and must keep refusing). That logged
  * errors on every export before Excalidraw fell back to whole fonts. The two chunks that do the
  * subsetting are replaced by ones that pass fonts through unchanged: the same result, without
- * the errors, and without shipping the WebAssembly.
+ * the errors, and without shipping the WebAssembly. Excalidraw also sends each font to a worker
+ * that must answer within a second, and logs an error when a slow machine misses that, so its
+ * worker is turned off: a pass-through needs none. Fails loudly after an upgrade that changes
+ * this code.
  */
 function plainExcalidrawFonts(): Plugin {
   return {
@@ -56,6 +61,13 @@ function plainExcalidrawFonts(): Plugin {
     resolveId(source, importer) {
       const stub = fontSubsetStubs[source];
       return stub && importer && excalidrawPackage.test(importer) ? stub : null;
+    },
+    transform(code, id) {
+      if (!excalidrawPackage.test(id) || !code.includes('Failed to use workers for subsetting'))
+        return null;
+      const patched = code.replace(subsetWorkerFlag, '=!1');
+      if (patched === code) this.error(`Excalidraw's font worker switch was not found in ${id}.`);
+      return { code: patched, map: null };
     },
   };
 }

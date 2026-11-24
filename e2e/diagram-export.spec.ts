@@ -49,11 +49,17 @@ async function saveThroughDialog(
   ]);
   await expect
     .poll(
-      () =>
-        stat(destination).then(
+      async () => {
+        const saved = await stat(destination).then(
           () => true,
           () => false,
-        ),
+        );
+        if (saved) return true;
+        // A failed export says why in its notice; report that instead of a bare timeout.
+        const notices = await application.page.getByRole('alert').allInnerTexts();
+        if (notices.length > 0) throw new Error(`The export failed: ${notices.join(' | ')}`);
+        return false;
+      },
       // The first export of a launch loads Excalidraw and draws the whole drawing.
       { timeout: 30_000 },
     )
