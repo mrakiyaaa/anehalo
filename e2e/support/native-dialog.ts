@@ -18,6 +18,28 @@ export async function saveNativeDialog(
   );
 }
 
+/** The application's windows (a dialog that never closed shows up here), for failure messages. */
+export async function describeNativeWindows(applicationProcessId: number): Promise<string> {
+  try {
+    const { stdout } = await promisify(execFile)(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        resolve('e2e/support', 'describe-windows.ps1'),
+        '-ApplicationProcessId',
+        String(applicationProcessId),
+      ],
+      { windowsHide: true, timeout: 20_000 },
+    );
+    return stdout.trim();
+  } catch (error) {
+    return `unavailable (${String(error)})`;
+  }
+}
+
 export async function selectNativeFolder(
   applicationProcessId: number,
   directory: string,

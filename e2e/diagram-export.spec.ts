@@ -1,12 +1,12 @@
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { Sidebar } from './pages/sidebar';
 import { Diagram } from './pages/diagram';
 import { readDiagramFile, textDiagram } from './support/diagram-files';
 import { readClipboardImage, excalidrawComFixture } from './support/diagram-transfer';
-import { saveNativeDialog } from './support/native-dialog';
+import { describeNativeWindows, saveNativeDialog } from './support/native-dialog';
 import type { TauriApplication } from './support/tauri-application';
 
 const dialogTitles = {
@@ -59,8 +59,12 @@ async function saveThroughDialog(
         // A failed export says why in its notice; report that instead of a bare timeout.
         const notices = await application.page.getByRole('alert').allInnerTexts();
         if (notices.length > 0) throw new Error(`The export failed: ${notices.join(' | ')}`);
-        const log = (await application.log()).split(NEWLINE).slice(-8).join(NEWLINE);
-        timedOutWith = log;
+        timedOutWith = [
+          `Windows: ${(await describeNativeWindows(application.processIdentifier)).replaceAll(NEWLINE, ' ; ')}`,
+          `Folder: ${(await readdir(dirname(destination))).join(', ')}`,
+          `Page: ${(await application.page.locator('body').innerText()).slice(0, 300).replaceAll(NEWLINE, ' | ')}`,
+          (await application.log()).split(NEWLINE).slice(-6).join(NEWLINE),
+        ].join(NEWLINE);
         return false;
       },
       // The first export of a launch loads Excalidraw and draws the whole drawing.
@@ -234,15 +238,14 @@ test('Excalidraw’s browser save flow is switched off, and Ctrl+Shift+S saves a
     ),
   ).toBe('AbortError');
 
-  const destination = exported(application, 'Copy.excalidraw');
-  await Promise.all([
-    page.keyboard.press('Control+Shift+S'),
-    saveNativeDialog(application.processIdentifier, destination, dialogTitles.excalidraw),
-  ]);
+  const destination = await saveThroughDialog(
+    application,
+    'excalidraw',
+    () => page.keyboard.press('Control+Shift+S'),
+    'Copy.excalidraw',
+  );
   await expect(page.getByText('Saved a copy of the diagram')).toBeVisible();
-  await expect
-    .poll(async () => elementIds(await readFile(destination, 'utf8')))
-    .toEqual(elementIds(fixture));
+  expect(elementIds(await readFile(destination, 'utf8'))).toEqual(elementIds(fixture));
   await expect(diagram.title()).toHaveValue('Flow');
 });
 
