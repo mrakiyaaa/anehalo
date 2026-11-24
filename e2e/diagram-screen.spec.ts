@@ -81,6 +81,23 @@ test('back and forward move between a note and a diagram', async ({ application 
   await expect(editor.title).toHaveValue('Untitled note');
 });
 
+test('Alt+Left pressed as soon as a new note shows goes back to the diagram', async ({
+  application,
+}) => {
+  const { sidebar, diagram } = await startWorkspace(application);
+  const editor = new Editor(application.page);
+  await diagram.create();
+  await sidebar.createNote();
+  await expect(editor.title).toHaveValue('Untitled note');
+
+  await application.page.keyboard.press('Alt+ArrowLeft');
+  await diagram.ready();
+  await expect(diagram.title()).toHaveValue('Untitled diagram');
+
+  await application.page.keyboard.press('Alt+ArrowRight');
+  await expect(editor.title).toHaveValue('Untitled note');
+});
+
 test('app shortcuts work on a diagram but stay quiet while typing diagram text', async ({
   application,
 }) => {

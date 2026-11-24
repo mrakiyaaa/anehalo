@@ -9,6 +9,7 @@ import { appShortcuts } from '@/features/shortcuts/app-shortcuts';
 export function HistoryNavigation() {
   const navigation = useWorkspaceStore((state) => state.navigation);
   const navigate = useWorkspaceStore((state) => state.navigateHistory);
+  const isClosing = useWorkspaceStore((state) => state.isClosing);
   const disabled = useWorkspaceStore((state) => state.isClosing || state.isMutating);
   const position = useStore(navigation, (state) => state.position);
   const length = useStore(navigation, (state) => state.paths.length);
@@ -22,11 +23,13 @@ export function HistoryNavigation() {
       if (direction === null || isTypingInDiagramText(event.target)) return;
       event.preventDefault();
       event.stopPropagation();
-      if (!disabled) void navigate(direction);
+      // A note is on screen before its open finishes, so a key pressed then would be lost.
+      // History moves are queued behind that change instead.
+      if (!isClosing) void navigate(direction);
     };
     window.addEventListener('keydown', handleKey, true);
     return () => window.removeEventListener('keydown', handleKey, true);
-  }, [navigate, disabled]);
+  }, [navigate, isClosing]);
   return (
     <span className="history-navigation" role="group" aria-label="History">
       <button
