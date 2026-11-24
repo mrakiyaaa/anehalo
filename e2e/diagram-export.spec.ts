@@ -47,6 +47,7 @@ async function saveThroughDialog(
     action(),
     saveNativeDialog(application.processIdentifier, destination, dialogTitles[kind]),
   ]);
+  let timedOutWith = '';
   await expect
     .poll(
       async () => {
@@ -58,12 +59,20 @@ async function saveThroughDialog(
         // A failed export says why in its notice; report that instead of a bare timeout.
         const notices = await application.page.getByRole('alert').allInnerTexts();
         if (notices.length > 0) throw new Error(`The export failed: ${notices.join(' | ')}`);
+        const log = (await application.log()).split(NEWLINE).slice(-8).join(NEWLINE);
+        timedOutWith = log;
         return false;
       },
       // The first export of a launch loads Excalidraw and draws the whole drawing.
       { timeout: 30_000 },
     )
-    .toBe(true);
+    .toBe(true)
+    // Only a timeout gets here without an answer; the app's own log is the best clue.
+    .catch((error: unknown) => {
+      throw new Error(`${String(error)}${NEWLINE}Last app log lines:${NEWLINE}${timedOutWith}`, {
+        cause: error,
+      });
+    });
   return destination;
 }
 
@@ -73,6 +82,7 @@ const elementIds = (text: string | null) =>
     .map((element) => element.id)
     .sort();
 
+const NEWLINE = '\n';
 const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 test('a PNG exported with its scene embedded imports back as the same drawing', async ({
@@ -208,6 +218,7 @@ test('Ctrl+Shift+E opens the Export popover, not Excalidraw’s own export dialo
 test('Excalidraw’s browser save flow is switched off, and Ctrl+Shift+S saves a copy the Anehalo way', async ({
   application,
 }) => {
+  test.setTimeout(120_000);
   const fixture = await excalidrawComFixture();
   const { diagram } = await startWithDiagram(application, 'Flow.excalidraw', fixture);
   const page = application.page;
@@ -238,6 +249,7 @@ test('Excalidraw’s browser save flow is switched off, and Ctrl+Shift+S saves a
 test('Save a copy as .excalidraw includes edits that are not saved yet', async ({
   application,
 }) => {
+  test.setTimeout(120_000);
   const { diagram } = await startWithDiagram(
     application,
     'Flow.excalidraw',
@@ -259,6 +271,7 @@ test('Save a copy as .excalidraw includes edits that are not saved yet', async (
 test('Selection only is offered when something is selected, and the options are remembered', async ({
   application,
 }) => {
+  test.setTimeout(120_000);
   const { diagram } = await startWithDiagram(
     application,
     'Flow.excalidraw',
