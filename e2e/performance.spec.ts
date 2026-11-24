@@ -4,7 +4,9 @@ import { test, expect } from './fixtures';
 import { Sidebar } from './pages/sidebar';
 import { SearchPalette } from './pages/search-palette';
 import { selectedE2eBuild } from './support/e2e-build';
-import { smallDiagram } from './support/diagram-files';
+import { textDiagram } from './support/diagram-files';
+import { longestTaskBetweenMarks } from './support/main-thread-monitor';
+import { startupMarks } from '../src/features/diagnostics/startup-marks';
 import { startupBudgets } from './support/startup-budgets';
 import { startupProfileAttachment } from './support/startup-profile-reporter';
 import {
@@ -35,7 +37,7 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
       ),
     ),
   );
-  // Diagrams are listed by name only, so they must not slow startup down.
+  // Diagrams with text, as search indexes it after first paint; it must not slow startup down.
   await mkdir(join(application.vault, 'Diagrams'));
   await Promise.all(
     Array.from({ length: diagramCount }, (_, index) =>
@@ -45,7 +47,17 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
           'Diagrams',
           `Diagram ${index.toString().padStart(3, '0')}.excalidraw`,
         ),
-        smallDiagram(),
+        textDiagram(
+          [
+            { id: 'title', text: `Release flow ${index}` },
+            {
+              id: 'label',
+              text: index === diagramCount - 1 ? 'diagram-needle checkout' : 'Payment step',
+              inBox: 'box',
+            },
+          ],
+          20,
+        ),
       ),
     ),
   );
@@ -67,6 +79,25 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
   const medianStartupMilliseconds = median(startupSamples);
   const appSamples = [firstLaunch, ...launches].map(appMilliseconds);
   const medianAppMilliseconds = median(appSamples);
+  // Each launch waits for its index build to finish, so every warm launch has a sample.
+  const indexSamples = launches.map(
+    ({ marks }) =>
+      (marks[startupMarks.searchIndexFinished] ?? Number.NaN) -
+      (marks[startupMarks.searchIndexStarted] ?? Number.NaN),
+  );
+  const medianBackgroundIndexMilliseconds = median(indexSamples);
+
+  // The last launch's index build, which reads and indexes every note and diagram.
+  await expect
+    .poll(async () => (await application.pageMarkTimes())[startupMarks.searchIndexFinished], {
+      timeout: 60_000,
+    })
+    .toBeDefined();
+  const longestIndexTaskMilliseconds = await longestTaskBetweenMarks(
+    application.page,
+    startupMarks.searchIndexStarted,
+    startupMarks.searchIndexFinished,
+  );
 
   const search = new SearchPalette(application.page);
   await search.open();
@@ -78,6 +109,13 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
     const latency = await search.measureQuery('unique-needle');
     await search.expectResult('Note 1999');
     searchSamples.push(latency);
+  }
+  const diagramSearchSamples: number[] = [];
+  for (let index = 0; index < 5; index++) {
+    await search.query(`missing-${index}`);
+    const latency = await search.measureQuery('diagram-needle');
+    await search.expectResult('Diagram 499');
+    diagramSearchSamples.push(latency);
   }
   const session = await application.page.context().newCDPSession(application.page);
   const heap = await session.send('Runtime.getHeapUsage');
@@ -94,6 +132,9 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
     medianStages: medianStages(launches),
     launches: launches.map((timestamps) => ({ timestamps, stages: measureStages(timestamps) })),
     searchMilliseconds: searchSamples,
+    diagramSearchMilliseconds: diagramSearchSamples,
+    longestIndexTaskMilliseconds,
+    medianBackgroundIndexMilliseconds,
     javascriptHeapMegabytes: heap.usedSize / 1024 / 1024,
     nativeProcesses: await application.memory(),
   };
@@ -112,4 +153,10 @@ test('a generated vault of 2,000 notes and 500 diagrams meets startup and search
     `normal start, median of ${startupSamples.join(', ')} ms`,
   ).toBeLessThan(budget.warmMedianMilliseconds);
   expect(Math.max(...searchSamples)).toBeLessThan(100);
+  expect(Math.max(...diagramSearchSamples)).toBeLessThan(100);
+  expect(longestIndexTaskMilliseconds, 'longest task while indexing').toBeLessThan(100);
+  expect(
+    medianBackgroundIndexMilliseconds,
+    `background index build, median of ${indexSamples.join(', ')} ms`,
+  ).toBeLessThan(budget.backgroundIndexMilliseconds);
 });

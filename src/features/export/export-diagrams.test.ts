@@ -23,9 +23,10 @@ function setup(draw: (path: string) => Promise<RepositoryResult<ExportImage>>) {
   ]);
   const platform = new InMemoryExportPlatform();
   platform.destination = 'C:/Exports/Plan.md';
-  const engine: PdfExporter = {
-    generate: vi.fn<PdfExporter['generate']>().mockResolvedValue(success(new Uint8Array([1]))),
-  };
+  const generatePdf = vi
+    .fn<PdfExporter['generate']>()
+    .mockResolvedValue(success(new Uint8Array([1])));
+  const engine: PdfExporter = { generate: generatePdf };
   const drawDiagram = vi.fn(draw);
   const service = new ExportService(
     repository,
@@ -35,7 +36,7 @@ function setup(draw: (path: string) => Promise<RepositoryResult<ExportImage>>) {
     { lastFolder: () => null, rememberFolder: () => Promise.resolve(success(undefined)) },
     drawDiagram,
   );
-  return { repository, platform, engine, service, drawDiagram };
+  return { repository, platform, generatePdf, service, drawDiagram };
 }
 
 afterEach(() => logFailure.mockClear());
@@ -67,14 +68,12 @@ describe('exporting notes with embedded diagrams', () => {
   });
 
   it('copies rich text and prints PDFs with the diagram as an image', async () => {
-    const { service, platform, engine } = setup(() => Promise.resolve(success(png)));
+    const { service, platform, generatePdf } = setup(() => Promise.resolve(success(png)));
     unwrapResult(await service.execute('Work/Plan.md', 'copy-rich-text'));
     expect(platform.clipboard[0]?.html).toMatch(/<img[^>]+src="data:image\/png;base64,/);
     platform.destination = 'C:/Exports/Plan.pdf';
     unwrapResult(await service.execute('Work/Plan.md', 'save-pdf'));
-    expect(vi.mocked(engine.generate).mock.calls[0]?.[0]).toMatch(
-      /<img[^>]+src="data:image\/png;base64,/,
-    );
+    expect(generatePdf.mock.calls[0]?.[0]).toMatch(/<img[^>]+src="data:image\/png;base64,/);
   });
 
   it('finishes the export with a placeholder when a diagram cannot be drawn', async () => {

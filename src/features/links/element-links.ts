@@ -1,6 +1,8 @@
 import { decodeItemPath, encodeNotePath } from '@/features/note-links/note-link-paths';
 import { mayReferTo, renamedLink, type LinkRename } from '@/features/note-links/NoteLinkRewriter';
 import { isWebLink } from './web-links';
+import type { StoredElement } from '@/features/diagrams/DiagramContentScan';
+import { storedElements } from '@/features/diagrams/stored-elements';
 
 /** What a link on a diagram element points at, and so how Anehalo may open it. */
 export type ElementLink =
@@ -20,13 +22,8 @@ export function classifyElementLink(link: string): ElementLink {
   return { kind: 'blocked' };
 }
 
-interface LinkedElement {
-  link?: unknown;
-  readonly isDeleted?: unknown;
-}
-
 /** The vault notes and diagrams that a diagram's elements link to. */
-export function sceneElementLinks(elements: readonly LinkedElement[]): readonly string[] {
+export function sceneElementLinks(elements: readonly StoredElement[]): readonly string[] {
   const paths = new Set<string>();
   for (const element of elements) {
     if (element.isDeleted === true || typeof element.link !== 'string') continue;
@@ -34,20 +31,6 @@ export function sceneElementLinks(elements: readonly LinkedElement[]): readonly 
     if (link.kind === 'item') paths.add(link.path);
   }
   return [...paths];
-}
-
-function storedElements(text: string): { parsed: object; elements: LinkedElement[] } | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    // A corrupt diagram is reported where it is opened; for links it simply has none.
-    return null;
-  }
-  if (typeof parsed !== 'object' || parsed === null || !('elements' in parsed)) return null;
-  return Array.isArray(parsed.elements)
-    ? { parsed, elements: parsed.elements as LinkedElement[] }
-    : null;
 }
 
 /**

@@ -5,6 +5,7 @@ import { fakeDiagramCodec, diagramFile } from '@/test/diagram-helpers';
 import { unwrapResult } from '@/test/repository-helpers';
 import { LinkedNoteRepository } from './LinkedNoteRepository';
 import { NoteLinkIndex } from './NoteLinkIndex';
+import { DiagramContentScan } from '@/features/diagrams/DiagramContentScan';
 import { mayReferTo, rewriteNoteLinks, scanVaultLinks } from './NoteLinkRewriter';
 import { decodeItemPath, decodeNotePath } from './note-link-paths';
 import type { MemoryEntry } from '@/features/storage/InMemoryVaultFileSystem';
@@ -16,7 +17,8 @@ function linkedDiagram(link: string) {
 function vault(seed: readonly MemoryEntry[]) {
   const notes = new InMemoryNoteRepository(seed);
   const diagrams = new DiagramRepository(notes.storage, () => Promise.resolve(fakeDiagramCodec));
-  const index = new NoteLinkIndex(undefined, diagrams);
+  const index = new NoteLinkIndex();
+  const scan = new DiagramContentScan(diagrams, [index]);
   const linked = new LinkedNoteRepository(
     notes,
     index,
@@ -26,7 +28,12 @@ function vault(seed: readonly MemoryEntry[]) {
     },
     diagrams,
   );
-  return { notes, diagrams, index, linked, files: notes.memoryFileSystem };
+  /** Notes through the link index's rebuild, diagrams through the shared scan, as in the app. */
+  async function indexAll() {
+    unwrapResult(await index.rebuild(notes));
+    unwrapResult(await scan.scan(unwrapResult(await notes.listTree()).diagrams));
+  }
+  return { notes, diagrams, index, linked, indexAll, files: notes.memoryFileSystem };
 }
 
 describe('paths to notes and diagrams', () => {
@@ -89,23 +96,23 @@ describe('paths to notes and diagrams', () => {
 
 describe('links across notes and diagrams', () => {
   it('indexes diagrams as sources, so notes get backlinks from diagrams', async () => {
-    const { notes, index } = vault([
+    const { index, indexAll } = vault([
       { relativePath: 'Plan.md', type: 'file', content: '![Flow](Flow.excalidraw)' },
       { relativePath: 'Flow.excalidraw', type: 'file', content: linkedDiagram('Plan.md') },
     ]);
-    unwrapResult(await index.rebuild(notes));
+    await indexAll();
     const snapshot = index.snapshot();
     expect(snapshot.backlinks.get('Plan.md')).toEqual(['Flow.excalidraw']);
     expect(snapshot.backlinks.get('Flow.excalidraw')).toEqual(['Plan.md']);
   });
 
   it('renaming a note updates links inside diagrams and re-indexes them', async () => {
-    const { linked, index, files, notes } = vault([
+    const { linked, index, files, indexAll } = vault([
       { relativePath: 'Plan.md', type: 'file', content: 'A plan' },
       { relativePath: 'Flow.excalidraw', type: 'file', content: linkedDiagram('Plan.md') },
       { relativePath: 'Other.excalidraw', type: 'file', content: diagramFile('x') },
     ]);
-    unwrapResult(await index.rebuild(notes));
+    await indexAll();
     const otherBefore = await files.readText('Other.excalidraw');
     unwrapResult(await linked.renameNote('Plan.md', 'Final plan'));
     expect(await files.readText('Flow.excalidraw')).toContain('"link": "Final plan.md"');
@@ -114,7 +121,7 @@ describe('links across notes and diagrams', () => {
   });
 
   it('renaming a diagram updates note links and embeds, and its own index entry', async () => {
-    const { linked, index, notes, diagrams } = vault([
+    const { linked, index, notes, diagrams, indexAll } = vault([
       {
         relativePath: 'Plan.md',
         type: 'file',
@@ -122,7 +129,7 @@ describe('links across notes and diagrams', () => {
       },
       { relativePath: 'Flow.excalidraw', type: 'file', content: linkedDiagram('Plan.md') },
     ]);
-    unwrapResult(await index.rebuild(notes));
+    await indexAll();
     const renamed = unwrapResult(await diagrams.renameDiagram('Flow.excalidraw', 'Pipeline'));
     await linked.rewriteLinks({ previousPath: 'Flow.excalidraw', nextPath: renamed.relativePath });
     expect(unwrapResult(await notes.readNote('Plan.md')).content).toBe(

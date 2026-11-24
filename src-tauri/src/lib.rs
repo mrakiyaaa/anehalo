@@ -89,7 +89,13 @@ pub fn run() {
         )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(tauri_plugin_opener::init())
+        // Its injected click handler would send `_blank` links straight to the browser, around
+        // the window's new-window guard and openWebLink's checks and logging.
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             attachment_scope::prepare_attachment_scope,
             export_commands::write_note_export,
@@ -100,7 +106,8 @@ pub fn run() {
             vault_snapshot::read_vault_snapshot,
             vault_access::pick_vault_location,
             vault_access::prepare_vault,
-            vault_access::read_vault_directory
+            vault_access::read_vault_directory,
+            vault_access::read_vault_files
         ]);
 
     #[cfg(desktop)]

@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useWorkspaceStore } from '@/store/use-workspace-store';
 import { folderTone } from '@/lib/folder-tone';
 import { formatRelativeTime } from '@/lib/relative-time';
-import type { SearchResult } from './SearchEngine';
+import type { SearchFilter, SearchResult } from './SearchEngine';
+import { Icon } from '@/components/ui/Icon';
+import { FilterChips } from '@/features/notes/FilterChips';
 import { isTypingInDiagramText } from '@/features/shortcuts/typing-target';
 import { appShortcuts } from '@/features/shortcuts/app-shortcuts';
 
@@ -30,16 +32,17 @@ function SearchResults({ close }: { close: () => void }) {
   const currentTime = useCurrentTime();
   const index = useWorkspaceStore((state) => state.searchIndex);
   const revision = useWorkspaceStore((state) => state.searchRevision);
-  const openNote = useWorkspaceStore((state) => state.openNote);
+  const openSearchResult = useWorkspaceStore((state) => state.openSearchResult);
   const query = useWorkspaceStore((state) => state.searchText);
   const setQuery = useWorkspaceStore((state) => state.setSearchText);
   const [results, setResults] = useState<readonly SearchResult[]>([]);
   const [selected, setSelected] = useState(0);
   const [searching, setSearching] = useState(true);
+  const [filter, setFilter] = useState<SearchFilter>('all');
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
-      void index.search(query).then((found) => {
+      void index.search(query, filter).then((found) => {
         if (!cancelled) {
           setResults(found);
           setSelected(0);
@@ -51,15 +54,19 @@ function SearchResults({ close }: { close: () => void }) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [index, query, revision]);
+  }, [index, query, filter, revision]);
   useEffect(() => {
     document.getElementById(`search-result-${selected}`)?.scrollIntoView({ block: 'nearest' });
   }, [selected]);
   async function choose(result: SearchResult) {
-    const opened = await openNote(result.note.relativePath);
+    const { item } = result;
+    const elementId =
+      item.kind === 'diagram' ? index.matchedElement(item.relativePath, query) : null;
+    const opened = await openSearchResult(item.relativePath, elementId);
     if (opened.ok) {
       close();
-      requestAnimationFrame(() => document.querySelector<HTMLElement>('.note-prose')?.focus());
+      if (item.kind === 'note')
+        requestAnimationFrame(() => document.querySelector<HTMLElement>('.note-prose')?.focus());
     }
   }
   return (
@@ -68,8 +75,8 @@ function SearchResults({ close }: { close: () => void }) {
         autoFocus
         type="search"
         className="palette-input"
-        placeholder="Search all your notes…"
-        aria-label="Search all notes"
+        placeholder="Search notes and diagrams…"
+        aria-label="Search notes and diagrams"
         role="combobox"
         aria-expanded="true"
         aria-controls="search-results"
@@ -96,25 +103,33 @@ function SearchResults({ close }: { close: () => void }) {
           }
         }}
       />
+      <FilterChips
+        value={filter}
+        onChange={(next) => {
+          setFilter(next);
+          setSearching(true);
+        }}
+      />
       <p className="palette-caption">
-        {query.trim() ? 'Matching notes' : 'Recently edited'}
+        {query.trim() ? 'Matches' : 'Recently edited'}
         <span>↑ ↓ to move · Enter to open · Esc to close</span>
       </p>
       <div
         id="search-results"
         role="listbox"
-        aria-label="Notes"
+        aria-label="Search results"
         className="search-results"
         aria-busy={searching}
       >
         {!results.length && (
           <p className="palette-empty">
-            {searching || index.isRefreshing ? 'Searching…' : 'No notes found. Try another word.'}
+            {searching || index.isRefreshing ? 'Searching…' : 'Nothing found. Try another word.'}
           </p>
         )}
         {results.map((result, position) => (
           <div
-            key={result.note.relativePath}
+            key={result.item.relativePath}
+            data-kind={result.item.kind}
             role="option"
             aria-selected={position === selected}
             id={`search-result-${position}`}
@@ -126,13 +141,21 @@ function SearchResults({ close }: { close: () => void }) {
           >
             <div className="search-result-content">
               <span className="search-result-heading">
-                <strong>{result.note.title}</strong>
-                <time dateTime={new Date(result.note.modifiedAt).toISOString()}>
-                  {formatRelativeTime(result.note.modifiedAt, currentTime.getTime())}
+                <strong>
+                  {result.item.kind === 'diagram' && (
+                    <>
+                      <Icon name="shapes" />
+                      <span className="sr-only">Diagram: </span>
+                    </>
+                  )}
+                  {result.item.title}
+                </strong>
+                <time dateTime={new Date(result.item.modifiedAt).toISOString()}>
+                  {formatRelativeTime(result.item.modifiedAt, currentTime.getTime())}
                 </time>
               </span>
-              <span className={`folder-chip tone-${folderTone(result.note.folder)}`}>
-                {result.note.folder ?? 'Vault root'}
+              <span className={`folder-chip tone-${folderTone(result.item.folder)}`}>
+                {result.item.folder ?? 'Vault root'}
               </span>
               <span className="search-snippet">
                 <HighlightedSnippet snippet={result.snippet} />
@@ -186,7 +209,7 @@ export function SearchPalette() {
             document.querySelector<HTMLElement>('.note-prose')?.focus();
           }}
         >
-          <Dialog.Title className="sr-only">Search notes</Dialog.Title>
+          <Dialog.Title className="sr-only">Search notes and diagrams</Dialog.Title>
           <SearchResults close={close} />
         </Dialog.Content>
       </Dialog.Portal>

@@ -8,7 +8,11 @@ import { describeStorageError } from '@/features/storage/repository-result';
 export class TauriSettingsRepository extends FileSettingsRepository {
   constructor() {
     const files = new VaultFileService(
-      new TauriVaultFileSystem(async () => (await runtimePaths()).settings),
+      new TauriVaultFileSystem(
+        async () => (await runtimePaths()).settings,
+        true,
+        'file-system-plugin',
+      ),
     );
     super(
       {

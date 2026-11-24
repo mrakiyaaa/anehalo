@@ -9,11 +9,13 @@ import {
   type RepositoryError,
   type RepositoryResult,
 } from '@/features/storage/repository-result';
-import { NoteLinkIndex, type DiagramTextSource } from './NoteLinkIndex';
+import { NoteLinkIndex } from './NoteLinkIndex';
+import type { DiagramTextSource } from '@/features/diagrams/DiagramContentScan';
 import { diagramElementLinks, rewriteElementLinks } from '@/features/links/element-links';
 
 /** Reads and writes diagram files' text, so links inside them follow renames. */
 export interface DiagramLinkStore extends DiagramTextSource {
+  readDiagramText(path: string): Promise<RepositoryResult<string>>;
   writeDiagramText(path: string, text: string): Promise<RepositoryResult<void>>;
 }
 import { rewriteNoteLinks, type LinkRename } from './NoteLinkRewriter';

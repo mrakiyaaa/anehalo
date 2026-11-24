@@ -1,4 +1,10 @@
-import { storageFailure } from '@/features/storage/repository-result';
+import {
+  describeStorageError,
+  failure,
+  storageFailure,
+  success,
+  type RepositoryResult,
+} from '@/features/storage/repository-result';
 import {
   isInsideFolder,
   parentPath,
@@ -97,6 +103,18 @@ export class InMemoryVaultFileSystem implements VaultFileSystem {
 
   readText(path: string): Promise<string> {
     return Promise.resolve(this.require(path, 'file').content);
+  }
+
+  async readTexts(paths: readonly string[]): Promise<readonly RepositoryResult<string>[]> {
+    return Promise.all(
+      paths.map(async (path) => {
+        try {
+          return success(await this.readText(path));
+        } catch (error) {
+          return failure(describeStorageError(error, ''));
+        }
+      }),
+    );
   }
 
   failNext(operation: MemoryOperation, message = 'Simulated disk failure'): void {

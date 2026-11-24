@@ -18,7 +18,7 @@ function withModifiers(event: KeyboardEvent, { ctrl = false, alt = false }: Modi
 
 export const appShortcuts = {
   search: {
-    label: 'Search all notes',
+    label: 'Search notes and diagrams',
     keys: 'Ctrl+K',
     matches: (event) => withModifiers(event, { ctrl: true }) && event.key.toLowerCase() === 'k',
   },

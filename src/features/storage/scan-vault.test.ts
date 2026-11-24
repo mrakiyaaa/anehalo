@@ -23,6 +23,7 @@ describe('bounded vault scanning', () => {
       metadata: (path) => disk.metadata(prefix(path)),
       readDirectory: (path, maximumEntries) => disk.readDirectory(prefix(path), maximumEntries),
       readText: (path) => disk.readText(prefix(path)),
+      readTexts: (paths) => disk.readTexts(paths.map(prefix)),
       writeText: (path, content) => disk.writeText(prefix(path), content),
       createDirectory: (path) => disk.createDirectory(prefix(path)),
       rename: (source, destination) => disk.rename(prefix(source), prefix(destination)),

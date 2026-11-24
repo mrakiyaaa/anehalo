@@ -108,10 +108,10 @@ export class ThumbnailService {
   ): Promise<Thumbnail> {
     const loaded = await this.diagrams.readDiagram(path);
     if (!loaded.ok) {
-      // Only a corrupt file is remembered as an error; a read that failed may work next time.
+      // Only a corrupt file is remembered; a read that failed may work next time.
       if (loaded.error.code !== 'invalid-diagram') return { state: 'error' };
       logFailure('thumbnail-failed', loaded.error.code);
-      return this.keep(path, version, { state: 'error' }, size);
+      return this.keep(path, version, { state: 'corrupt' }, size);
     }
     return this.keep(path, version, await this.draw(loaded.value.scene, size), size);
   }

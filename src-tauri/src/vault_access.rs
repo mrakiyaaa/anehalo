@@ -2,7 +2,7 @@ use crate::vault_error::{VaultError, VaultResult};
 use std::{
     collections::HashSet,
     fs,
-    io::Write,
+    io::{Read, Write},
     path::{Component, Path, PathBuf},
     sync::Mutex,
 };
@@ -291,6 +291,37 @@ pub struct DirectoryEntry {
     r#type: &'static str,
 }
 
+/// The vault root the web UI passes, accepted only when it is the authorized vault.
+fn authorized_vault_root(app: &tauri::AppHandle, vault_path: String) -> VaultResult<PathBuf> {
+    let root = PathBuf::from(vault_path);
+    validate_path(&root)?;
+    if !app.fs_scope().is_allowed(&root) {
+        return Err(VaultError::new(
+            "permission-denied",
+            "The vault is not authorized.",
+        ));
+    }
+    Ok(root)
+}
+
+/// Joins a vault-relative path made only of plain names: no root, drive, `..`, `.`, or `:`
+/// (which would name an alternate data stream on Windows).
+fn vault_child(root: &Path, relative_path: &str) -> VaultResult<PathBuf> {
+    let relative = Path::new(relative_path);
+    if relative.is_absolute()
+        || relative.components().any(|part| match part {
+            Component::Normal(name) => name.to_string_lossy().contains(':'),
+            _ => true,
+        })
+    {
+        return Err(VaultError::new(
+            "invalid-path",
+            "The path must stay inside the vault.",
+        ));
+    }
+    Ok(root.join(relative))
+}
+
 #[tauri::command]
 pub async fn read_vault_directory(
     app: tauri::AppHandle,
@@ -299,26 +330,8 @@ pub async fn read_vault_directory(
     maximum_entries: usize,
 ) -> VaultResult<Vec<DirectoryEntry>> {
     tauri::async_runtime::spawn_blocking(move || {
-        let root = PathBuf::from(vault_path);
-        validate_path(&root)?;
-        if !app.fs_scope().is_allowed(&root) {
-            return Err(VaultError::new(
-                "permission-denied",
-                "The vault is not authorized.",
-            ));
-        }
-        let relative = Path::new(&relative_path);
-        if relative.is_absolute()
-            || relative
-                .components()
-                .any(|part| !matches!(part, Component::Normal(_)))
-        {
-            return Err(VaultError::new(
-                "invalid-path",
-                "The directory must be inside the vault.",
-            ));
-        }
-        let directory = root.join(relative);
+        let root = authorized_vault_root(&app, vault_path)?;
+        let directory = vault_child(&root, &relative_path)?;
         require_real_directory(&directory)?;
         fs::read_dir(directory)?
             .take(maximum_entries.min(20_001))
@@ -340,6 +353,138 @@ pub async fn read_vault_directory(
     })
     .await
     .map_err(|_| VaultError::new("unavailable", "The vault directory could not be read."))?
+}
+
+/// Opens a file for reading without following a final symbolic link or junction, so the
+/// handle's own metadata says whether the path itself is a link.
+pub fn open_without_following_links(path: &Path) -> std::io::Result<fs::File> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x00200000;
+        options.custom_flags(FILE_FLAG_OPEN_REPARSE_POINT);
+    }
+    options.open(path)
+}
+
+fn link_inside_vault() -> VaultError {
+    VaultError::new(
+        "invalid-path",
+        "Symbolic links and junctions are not supported inside the vault.",
+    )
+}
+
+fn file_not_found(error: VaultError) -> VaultError {
+    if error.code == "not-found" {
+        VaultError::new("not-found", "The file no longer exists.")
+    } else {
+        error
+    }
+}
+
+fn require_regular_file(metadata: &fs::Metadata) -> VaultResult<()> {
+    if is_link(metadata) {
+        return Err(link_inside_vault());
+    }
+    if !metadata.is_file() {
+        return Err(VaultError::new(
+            "invalid-type",
+            "The path has the wrong file type.",
+        ));
+    }
+    Ok(())
+}
+
+/// Reads one vault file with the same rules as every other vault access: a plain relative
+/// path, real directories all the way down, and a regular file that is not itself a link.
+fn read_vault_file(root: &Path, relative_path: &str) -> VaultResult<Vec<u8>> {
+    if relative_path.is_empty() {
+        return Err(VaultError::new(
+            "invalid-path",
+            "The path must name a file.",
+        ));
+    }
+    let path = vault_child(root, relative_path)?;
+    let parent = path.parent().unwrap_or(root);
+    match require_real_directory(parent) {
+        Err(error) if error.code == "invalid-path" => return Err(link_inside_vault()),
+        result => result.map_err(file_not_found)?,
+    }
+    let missing = |error: std::io::Error| file_not_found(error.into());
+    // Checked before opening because Windows refuses to open a directory for reading at all,
+    // and again on the open handle, because the path can change in between.
+    require_regular_file(&fs::symlink_metadata(&path).map_err(missing)?)?;
+    let mut file = open_without_following_links(&path).map_err(missing)?;
+    let metadata = file.metadata()?;
+    require_regular_file(&metadata)?;
+    let mut content = Vec::with_capacity(usize::try_from(metadata.len()).unwrap_or_default());
+    file.read_to_end(&mut content)?;
+    Ok(content)
+}
+
+/// Most files one call reads; the web UI asks again for the rest.
+pub const READ_BATCH_FILES: usize = 64;
+
+fn push_read_result(reply: &mut Vec<u8>, status: u8, payload: &[u8]) -> VaultResult<()> {
+    let length = u32::try_from(payload.len())
+        .map_err(|_| VaultError::new("invalid-type", "The file is too large to open."))?;
+    reply.push(status);
+    reply.extend_from_slice(&length.to_le_bytes());
+    reply.extend_from_slice(payload);
+    Ok(())
+}
+
+/// Reads files in order until `maximum_bytes` of content has been read, so one call never
+/// holds the vault's operation queue (or the window, decoding the reply) for long. The first
+/// file is always read. Each result is `[status: u8][length: u32 LE][payload]`: status 0 is
+/// the file's bytes, status 1 a JSON `VaultError`, so one bad file does not fail the others.
+fn read_vault_files_from(
+    root: &Path,
+    relative_paths: &[String],
+    maximum_bytes: u64,
+) -> VaultResult<Vec<u8>> {
+    let mut reply = Vec::new();
+    let mut content_bytes = 0u64;
+    for (index, relative_path) in relative_paths.iter().take(READ_BATCH_FILES).enumerate() {
+        if index > 0 && content_bytes >= maximum_bytes {
+            break;
+        }
+        let read = read_vault_file(root, relative_path).and_then(|content| {
+            let start = reply.len();
+            push_read_result(&mut reply, 0, &content).inspect_err(|_| reply.truncate(start))?;
+            Ok(content.len())
+        });
+        match read {
+            Ok(length) => content_bytes += length as u64,
+            Err(error) => {
+                let payload = serde_json::to_vec(&error).map_err(|_| {
+                    VaultError::new("io-error", "A file's read error could not be reported.")
+                })?;
+                push_read_result(&mut reply, 1, &payload)?;
+            }
+        }
+    }
+    Ok(reply)
+}
+
+/// One round trip for many vault files. Each IPC call costs a few milliseconds in WebView2
+/// whatever its work, so checking every path component from the web UI made one small read
+/// cost about 20 ms.
+#[tauri::command]
+pub async fn read_vault_files(
+    app: tauri::AppHandle,
+    vault_path: String,
+    relative_paths: Vec<String>,
+    maximum_bytes: u64,
+) -> VaultResult<tauri::ipc::Response> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = authorized_vault_root(&app, vault_path)?;
+        read_vault_files_from(&root, &relative_paths, maximum_bytes).map(tauri::ipc::Response::new)
+    })
+    .await
+    .map_err(|_| VaultError::new("unavailable", "The vault files could not be read."))?
 }
 
 #[cfg(test)]
@@ -522,5 +667,135 @@ mod tests {
 
         assert_eq!(error.code, "not-found");
         assert!(!vault.exists());
+    }
+
+    /// Splits a `read_vault_files` reply into each file's content or error code.
+    fn decode_reads(reply: &[u8]) -> Vec<Result<String, String>> {
+        let mut results = Vec::new();
+        let mut offset = 0;
+        while offset < reply.len() {
+            let status = reply[offset];
+            let length_bytes: [u8; 4] = reply[offset + 1..offset + 5].try_into().expect("a length");
+            let length = u32::from_le_bytes(length_bytes) as usize;
+            let payload = &reply[offset + 5..offset + 5 + length];
+            offset += 5 + length;
+            results.push(if status == 0 {
+                Ok(String::from_utf8(payload.to_vec()).expect("UTF-8 content"))
+            } else {
+                let error: serde_json::Value =
+                    serde_json::from_slice(payload).expect("a JSON error");
+                Err(error["code"].as_str().expect("an error code").to_owned())
+            });
+        }
+        results
+    }
+
+    fn vault_with_files(files: &[(&str, &str)]) -> (TestDirectory, PathBuf) {
+        let test_directory = TestDirectory::new();
+        let vault = test_directory.0.join("Anehalo");
+        for (path, content) in files {
+            let file = vault.join(path);
+            fs::create_dir_all(file.parent().expect("a parent")).expect("create a folder");
+            fs::write(file, content).expect("write a file");
+        }
+        (test_directory, vault)
+    }
+
+    fn paths(paths: &[&str]) -> Vec<String> {
+        paths.iter().map(|path| (*path).to_owned()).collect()
+    }
+
+    #[test]
+    fn reads_many_files_in_one_reply_and_reports_each_failure_on_its_own() {
+        let (_directory, vault) =
+            vault_with_files(&[("Diagrams/Plan.excalidraw", "සිංහල 🌼"), ("Top.md", "# Top")]);
+        fs::create_dir_all(vault.join("Diagrams/Folder.excalidraw")).expect("create a folder");
+
+        let reply = read_vault_files_from(
+            &vault,
+            &paths(&[
+                "Diagrams/Plan.excalidraw",
+                "Diagrams/Missing.excalidraw",
+                "Gone/Missing.md",
+                "../Outside.md",
+                "Top.md:stream",
+                "Diagrams/Folder.excalidraw",
+                "Top.md",
+            ]),
+            u64::MAX,
+        )
+        .expect("a reply");
+
+        assert_eq!(
+            decode_reads(&reply),
+            vec![
+                Ok("සිංහල 🌼".to_owned()),
+                Err("not-found".to_owned()),
+                Err("not-found".to_owned()),
+                Err("invalid-path".to_owned()),
+                Err("invalid-path".to_owned()),
+                Err("invalid-type".to_owned()),
+                Ok("# Top".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn stops_after_the_byte_budget_but_always_reads_the_first_file() {
+        let (_directory, vault) =
+            vault_with_files(&[("A.md", "aaaa"), ("B.md", "bbbb"), ("C.md", "cccc")]);
+        let requested = paths(&["A.md", "B.md", "C.md"]);
+
+        let one = read_vault_files_from(&vault, &requested, 1).expect("a reply");
+        let two = read_vault_files_from(&vault, &requested, 5).expect("a reply");
+
+        assert_eq!(decode_reads(&one), vec![Ok("aaaa".to_owned())]);
+        assert_eq!(
+            decode_reads(&two),
+            vec![Ok("aaaa".to_owned()), Ok("bbbb".to_owned())]
+        );
+    }
+
+    #[cfg(windows)]
+    fn create_junction(link: &Path, target: &Path) {
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(link)
+            .arg(target)
+            .stdout(std::process::Stdio::null())
+            .status()
+            .expect("run mklink");
+        assert!(status.success(), "mklink /J failed");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn refuses_files_reached_through_a_junction_and_junctions_named_like_files() {
+        let (directory, vault) = vault_with_files(&[("Real/Plan.excalidraw", "inside")]);
+        let outside = directory.0.join("Outside");
+        fs::create_dir_all(&outside).expect("create the outside folder");
+        fs::write(outside.join("Secret.excalidraw"), "secret").expect("write outside");
+        create_junction(&vault.join("Linked"), &outside);
+        create_junction(&vault.join("Trap.excalidraw"), &outside);
+
+        let reply = read_vault_files_from(
+            &vault,
+            &paths(&[
+                "Linked/Secret.excalidraw",
+                "Trap.excalidraw",
+                "Real/Plan.excalidraw",
+            ]),
+            u64::MAX,
+        )
+        .expect("a reply");
+
+        assert_eq!(
+            decode_reads(&reply),
+            vec![
+                Err("invalid-path".to_owned()),
+                Err("invalid-path".to_owned()),
+                Ok("inside".to_owned()),
+            ]
+        );
     }
 }

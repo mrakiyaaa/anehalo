@@ -88,6 +88,24 @@ export class DiagramRepository {
     );
   }
 
+  /**
+   * The stored text of several diagrams in one queued operation, each with its own result. It
+   * may read only a leading part of the list (always at least one), so a long list never holds
+   * the queue for long.
+   */
+  async readDiagramTexts(
+    relativePaths: readonly string[],
+  ): Promise<readonly RepositoryResult<string>[]> {
+    const action = 'Could not read the diagram.';
+    const result = await this.storage.operations.run(action, async () =>
+      this.files.fileSystem.readTexts(relativePaths.map((path) => this.validate(path))),
+    );
+    if (!result.ok) return [result];
+    return result.value.map((read) =>
+      read.ok ? read : failure({ ...read.error, message: `${action} ${read.error.message}` }),
+    );
+  }
+
   /** Replaces the file's text atomically; used to update links inside it after a rename. */
   writeDiagramText(relativePath: string, text: string): Promise<RepositoryResult<void>> {
     return this.storage.operations.run('Could not update the diagram.', async () => {

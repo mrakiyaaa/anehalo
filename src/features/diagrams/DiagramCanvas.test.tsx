@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { PropsWithChildren, ReactNode } from 'react';
+import { createRef, type PropsWithChildren, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useThemeStore } from '@/store/theme-store';
 import { sceneWith } from '@/test/diagram-helpers';
@@ -59,6 +59,7 @@ vi.mock('@excalidraw/excalidraw', () => {
 });
 
 const { DiagramCanvas } = await import('./DiagramCanvas');
+type DiagramCanvasHandle = import('./DiagramCanvas').DiagramCanvasHandle;
 
 type ChangeHandler = (
   elements: DiagramScene['elements'],
@@ -130,5 +131,86 @@ describe('DiagramCanvas', () => {
     onChange(moved, start.appState, {});
     onChange(moved, { ...start.appState, selectedElementIds: { start: true } } as never, {});
     expect(changes.map((scene) => scene.elements)).toEqual([moved]);
+  });
+
+  describe('focusing a search match', () => {
+    function fakeApi(selected: Record<string, true> = {}) {
+      const state = { selectedElementIds: selected };
+      return {
+        getSceneElements: vi.fn(() => [
+          { id: 'box', isDeleted: false },
+          { id: 'gone', isDeleted: true },
+        ]),
+        getAppState: vi.fn(() => state),
+        updateScene: vi.fn((update: { appState: { selectedElementIds: Record<string, true> } }) => {
+          state.selectedElementIds = update.appState.selectedElementIds;
+        }),
+        scrollToContent: vi.fn(),
+      };
+    }
+
+    function renderFocusable() {
+      const handle = createRef<DiagramCanvasHandle>();
+      const onSceneReady = vi.fn();
+      render(
+        <DiagramCanvas
+          ref={handle}
+          scene={sceneWith('box')}
+          onDocumentChange={() => undefined}
+          onElementLink={() => undefined}
+          onSceneReady={onSceneReady}
+        />,
+      );
+      const api = fakeApi();
+      const connect = excalidraw.lastProps?.excalidrawAPI;
+      if (typeof connect !== 'function') throw new Error('Excalidraw received no excalidrawAPI.');
+      act(() => (connect as (api: unknown) => void)(api));
+      const onChange = excalidraw.lastProps?.onChange as ChangeHandler;
+      return { handle, api, onSceneReady, onChange };
+    }
+
+    afterEach(() => vi.useRealTimers());
+
+    it('says once when the drawing is on the canvas', () => {
+      const { onSceneReady, onChange } = renderFocusable();
+      const scene = sceneWith('box');
+      onChange([], scene.appState, {});
+      expect(onSceneReady).not.toHaveBeenCalled();
+      onChange(scene.elements, scene.appState, {});
+      onChange(scene.elements, scene.appState, {});
+      expect(onSceneReady).toHaveBeenCalledOnce();
+    });
+
+    it('selects the element, brings it into view, and clears only its own highlight', () => {
+      vi.useFakeTimers();
+      const { handle, api } = renderFocusable();
+      expect(handle.current?.focusElement('box')).toBe(true);
+      expect(api.updateScene).toHaveBeenCalledWith({
+        appState: { selectedElementIds: { box: true } },
+      });
+      expect(api.scrollToContent).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'box' }),
+        expect.objectContaining({ fitToViewport: true, animate: true }),
+      );
+      expect(screen.getByTestId('excalidraw').parentElement).toHaveAttribute(
+        'data-focused-element',
+        'box',
+      );
+      vi.advanceTimersByTime(2_000);
+      expect(api.updateScene).toHaveBeenLastCalledWith({ appState: { selectedElementIds: {} } });
+
+      expect(handle.current?.focusElement('box')).toBe(true);
+      api.getAppState.mockReturnValue({ selectedElementIds: { other: true } });
+      api.updateScene.mockClear();
+      vi.advanceTimersByTime(2_000);
+      expect(api.updateScene).not.toHaveBeenCalled();
+    });
+
+    it('reports elements that are not in the drawing', () => {
+      const { handle, api } = renderFocusable();
+      expect(handle.current?.focusElement('gone')).toBe(false);
+      expect(handle.current?.focusElement('missing')).toBe(false);
+      expect(api.scrollToContent).not.toHaveBeenCalled();
+    });
   });
 });

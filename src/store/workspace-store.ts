@@ -12,6 +12,7 @@ import {
 import { isInsideFolder } from '@/features/storage/storage-paths';
 import { NoteAutoSaver } from '@/features/editor/NoteAutoSaver';
 import type { WorkspaceOptions, WorkspaceState } from '@/store/workspace-state';
+import { DiagramContentScan } from '@/features/diagrams/DiagramContentScan';
 import { NoteLinkIndex, emptyLinkIndex } from '@/features/note-links/NoteLinkIndex';
 import { LinkedNoteRepository } from '@/features/note-links/LinkedNoteRepository';
 import { createNavigationHistory } from '@/store/navigation-history';
@@ -30,7 +31,6 @@ import { createDiagramActions } from '@/store/diagram-actions';
 import { ThumbnailCache } from '@/features/thumbnails/thumbnail-cache';
 import { ThumbnailService } from '@/features/thumbnails/thumbnail-service';
 import { itemKind } from '@/features/storage/vault-items';
-import { sceneElementLinks } from '@/features/links/element-links';
 import { renamedLink } from '@/features/note-links/NoteLinkRewriter';
 
 export function createWorkspaceStore(
@@ -42,19 +42,21 @@ export function createWorkspaceStore(
     sourceRepository instanceof FileSystemNoteRepository
       ? new DiagramRepository(sourceRepository.storage, options.diagramCodec)
       : null;
-  const linkIndex = new NoteLinkIndex(
-    (links) => store.setState({ links }),
-    diagramRepository ?? undefined,
-  );
+  const linkIndex = new NoteLinkIndex((links) => store.setState({ links }));
   const searchIndex = new SearchIndex(
     () => store.setState((state) => ({ searchRevision: state.searchRevision + 1 })),
     (error) => store.setState({ error }),
   );
+  // The only reader of diagram files for indexing: links and search share each read.
+  const diagramScan = diagramRepository
+    ? new DiagramContentScan(diagramRepository, [linkIndex, searchIndex])
+    : null;
   const indexedRepository = new IndexedNoteRepository(sourceRepository, searchIndex);
   const repository = new LinkedNoteRepository(
     indexedRepository,
     linkIndex,
     (rename, notes) => {
+      if (rename.folder) diagramScan?.relocate(rename.previousPath, rename.nextPath);
       autoSaver.acceptLinkRename(rename, notes);
       navigation.getState().rename(rename);
       // Links inside the open diagram may have been rewritten on disk; reload it if it is clean.
@@ -89,11 +91,12 @@ export function createWorkspaceStore(
 
     function indexTree(tree: VaultTree, rebuildLinks: boolean) {
       markStartupOnce(startupMarks.searchIndexStarted);
-      void searchIndex
-        .refresh(sourceRepository, tree.notes)
-        .then((indexed) => {
+      const scanned = diagramScan?.scan(tree.diagrams) ?? Promise.resolve(success(undefined));
+      void Promise.all([searchIndex.refresh(sourceRepository, tree.notes), scanned])
+        .then((results) => {
           markStartupOnce(startupMarks.searchIndexFinished);
-          if (!indexed.ok && active) set({ error: indexed.error });
+          const failed = results.find((result) => !result.ok);
+          if (failed && !failed.ok && active) set({ error: failed.error });
         })
         .catch((error: unknown) => {
           if (active) set({ error: describeStorageError(error, 'Could not update note search.') });
@@ -106,6 +109,7 @@ export function createWorkspaceStore(
 
     function reportHydrationError(error: RepositoryError) {
       searchIndex.cancel();
+      diagramScan?.cancel();
       if (!hasLoadedVault) linkIndex.cancel();
       const hasUnsavedDraft =
         get().openDraft?.dirty || get().pendingDrafts.some((draft) => draft.dirty);
@@ -270,6 +274,16 @@ export function createWorkspaceStore(
         rewrite: (rename) => repository.rewriteLinks(rename),
         removed: (path) => linkIndex.remove(path),
       },
+      content: {
+        relocated: (previousPath, diagram) => {
+          diagramScan?.relocate(previousPath, diagram.relativePath);
+          searchIndex.relocateDiagram(previousPath, diagram);
+        },
+        trashed: (path) => {
+          diagramScan?.forget(path);
+          searchIndex.remove(path);
+        },
+      },
       history: {
         visit: (path) => navigation.getState().visit(path),
         rename: (previousPath, nextPath) =>
@@ -339,7 +353,7 @@ export function createWorkspaceStore(
           const indexing = tree.ok
             ? (sourceRepository.hydrateTree?.() ?? Promise.resolve(tree)).then((hydrated) =>
                 hydrated.ok && active
-                  ? linkIndex.rebuild(sourceRepository, get().tree.notes, get().tree.diagrams)
+                  ? linkIndex.rebuild(sourceRepository, get().tree.notes)
                   : hydrated.ok
                     ? success(undefined)
                     : hydrated,
@@ -359,6 +373,14 @@ export function createWorkspaceStore(
       openNote: (path) => enqueue(() => loadNote(path)),
       openItem: (path) =>
         itemKind(path) === 'diagram' ? get().openDiagramFile(path) : get().openNote(path),
+      elementFocus: null,
+      openSearchResult: async (path, elementId) => {
+        set({ elementFocus: elementId ? { path, elementId } : null });
+        const opened = await get().openItem(path);
+        if (!opened.ok) set({ elementFocus: null });
+        return opened;
+      },
+      clearElementFocus: () => set({ elementFocus: null }),
       navigateHistory: (direction) =>
         enqueue(async () => {
           const history = navigation.getState();
@@ -482,6 +504,7 @@ export function createWorkspaceStore(
           () => repository.deleteFolder(path),
           () => {
             autoSaver.forgetDeletedPath(path);
+            diagramScan?.forget(path);
             if (diagramSaver?.forgetInside(path) && get().view === 'diagram') set({ view: 'home' });
             void thumbnails?.removed(path);
             if (lastOpenedPath && isInsideFolder(lastOpenedPath, path)) void rememberNote(null);
@@ -530,7 +553,7 @@ export function createWorkspaceStore(
       lastWritten?.identifier === identifier && lastWritten.modifiedAt !== summary.modifiedAt;
     lastWritten = { identifier, modifiedAt: summary.modifiedAt };
     if (!written || diagram.dirty) return;
-    linkIndex.updateDiagram(summary.relativePath, sceneElementLinks(diagram.scene.elements));
+    diagramScan?.saved(summary, diagram.scene.elements);
     thumbnails?.sceneSaved(summary.relativePath, diagram.scene);
   });
   return store;
