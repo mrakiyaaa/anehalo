@@ -2,6 +2,7 @@ param([Parameter(Mandatory=$true)][int]$ApplicationProcessId, [Parameter(Mandato
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'find-native-dialog.ps1')
 $dialog = Find-AnehaloDialog -ApplicationProcessId $ApplicationProcessId -Title $Title
+Write-Output "step: found the '$Title' dialog"
 $handle = [IntPtr]$dialog.Current.NativeWindowHandle
 # The dialog window appears before its controls do, and on a slow machine the File name box can
 # take a moment; typing blind before it exists sent the keys elsewhere and left the dialog open.
@@ -14,6 +15,7 @@ while ($null -eq $fileName -and [DateTime]::UtcNow -lt $controlsDeadline) {
   if ($null -eq $fileName) { Start-Sleep -Milliseconds 100 }
 }
 if ($null -eq $fileName) {
+  Write-Output 'step: no File name box after 10 s; typing into the dialog instead'
   Add-Type -AssemblyName System.Windows.Forms
   $applicationShell = New-Object -ComObject WScript.Shell
   if (-not $applicationShell.AppActivate($ApplicationProcessId)) { throw 'The isolated native dialog could not be activated.' }
@@ -25,6 +27,7 @@ if ($null -eq $fileName) {
   if (-not (Wait-AnehaloDialogClosed -Handle $handle -Seconds 10)) { throw 'The native dialog did not accept the destination typed into it.' }
   exit 0
 }
+Write-Output 'step: found the File name box'
 $value = $fileName.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)
 $save = $dialog.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
   [System.Windows.Automation.AndCondition]::new(
@@ -36,3 +39,4 @@ Complete-AnehaloDialog -Dialog $dialog -Description 'destination' -Attempt {
   $value.SetValue($Destination)
   if ($value.Current.Value -eq $Destination) { $invoke.Invoke() }
 }
+Write-Output 'step: the dialog closed'

@@ -52,18 +52,32 @@ async function runNativeDialog(
   applicationProcessId: number,
   ...scriptArguments: string[]
 ): Promise<void> {
-  await promisify(execFile)(
-    'powershell.exe',
-    [
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-File',
-      resolve('e2e/support', script),
-      '-ApplicationProcessId',
-      String(applicationProcessId),
-      ...scriptArguments,
-    ],
-    { windowsHide: true, timeout: 20_000 },
-  );
+  try {
+    await promisify(execFile)(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        resolve('e2e/support', script),
+        '-ApplicationProcessId',
+        String(applicationProcessId),
+        ...scriptArguments,
+      ],
+      // Longer than the script's own waits added up (find, controls, retries), so the script
+      // always gets to report what went wrong instead of being cut off.
+      { windowsHide: true, timeout: 60_000 },
+    );
+  } catch (error) {
+    // The script reports each step it reached; without them a failure only names the command.
+    const output =
+      typeof error === 'object' && error !== null && 'stdout' in error && 'stderr' in error
+        ? `${String(error.stdout)} ${String(error.stderr)}`.replace(/\s+/g, ' ').trim()
+        : '';
+    const killed = typeof error === 'object' && error !== null && 'killed' in error && error.killed;
+    throw new Error(`${script} failed${killed ? ' (timed out)' : ''}: ${output || String(error)}`, {
+      cause: error,
+    });
+  }
 }
