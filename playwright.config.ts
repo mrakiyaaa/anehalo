@@ -7,6 +7,7 @@ export default defineConfig({
   testDir: './e2e',
   // Helper unit tests under e2e/support run in Vitest, not against the desktop app.
   testMatch: '**/*.spec.ts',
+  globalSetup: './e2e/support/warm-up.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,

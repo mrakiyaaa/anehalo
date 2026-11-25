@@ -35,6 +35,8 @@ export class TauriApplication {
   private nativeOutput = '';
 
   private launchCount = 0;
+  /** How long a launch may take to open WebView2's DevTools port; see warm-up.ts. */
+  devtoolsWaitMilliseconds = 20_000;
 
   /** @param traceDirectory Where to keep a Playwright trace of each launch, or null for none. */
   constructor(
@@ -193,7 +195,7 @@ export class TauriApplication {
   }
 
   private async waitForDevtools(launchError: () => Error | undefined): Promise<string> {
-    const deadline = performance.now() + 20_000;
+    const deadline = performance.now() + this.devtoolsWaitMilliseconds;
     while (performance.now() < deadline) {
       const error = launchError();
       if (error) throw error;
@@ -217,7 +219,7 @@ export class TauriApplication {
     const exitCode = this.process?.exitCode;
     const state =
       exitCode === null || exitCode === undefined
-        ? 'still running after 20 s'
+        ? `still running after ${this.devtoolsWaitMilliseconds / 1000} s`
         : `exited with code ${exitCode}`;
     let runtimeLog: string;
     try {
