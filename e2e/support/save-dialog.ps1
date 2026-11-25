@@ -2,10 +2,17 @@ param([Parameter(Mandatory=$true)][int]$ApplicationProcessId, [Parameter(Mandato
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'find-native-dialog.ps1')
 $dialog = Find-AnehaloDialog -ApplicationProcessId $ApplicationProcessId -Title $Title
-$edits = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants,
-  [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit))
+$handle = [IntPtr]$dialog.Current.NativeWindowHandle
+# The dialog window appears before its controls do, and on a slow machine the File name box can
+# take a moment; typing blind before it exists sent the keys elsewhere and left the dialog open.
 $fileName = $null
-foreach ($edit in $edits) { if ($edit.Current.Name -match '^File name') { $fileName = $edit; break } }
+$controlsDeadline = [DateTime]::UtcNow.AddSeconds(10)
+while ($null -eq $fileName -and [DateTime]::UtcNow -lt $controlsDeadline) {
+  $edits = $dialog.FindAll([System.Windows.Automation.TreeScope]::Descendants,
+    [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit))
+  foreach ($edit in $edits) { if ($edit.Current.Name -match '^File name') { $fileName = $edit; break } }
+  if ($null -eq $fileName) { Start-Sleep -Milliseconds 100 }
+}
 if ($null -eq $fileName) {
   Add-Type -AssemblyName System.Windows.Forms
   $applicationShell = New-Object -ComObject WScript.Shell
@@ -15,6 +22,7 @@ if ($null -eq $fileName) {
   $escapedDestination = [regex]::Replace($Destination, '[+^%~(){}\[\]]', { param($match) '{' + $match.Value + '}' })
   [System.Windows.Forms.SendKeys]::SendWait($escapedDestination)
   [System.Windows.Forms.SendKeys]::SendWait('%s')
+  if (-not (Wait-AnehaloDialogClosed -Handle $handle -Seconds 10)) { throw 'The native dialog did not accept the destination typed into it.' }
   exit 0
 }
 $value = $fileName.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern)

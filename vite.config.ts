@@ -72,11 +72,43 @@ function plainExcalidrawFonts(): Plugin {
   };
 }
 
+const canvasUnloadListener =
+  /(\(\s*window\s*,\s*)"unload"(\s*\/\*\s*UNLOAD\s*\*\/)?(\s*,\s*this\.onUnload\b)/;
+
+/**
+ * Chromium (WebView2 158 and later) refuses `unload` listeners by default and logs a
+ * permissions-policy violation for each. Excalidraw's canvas registers one only to reset its
+ * "holding space" state, which `pagehide` (the event browsers recommend instead) does as well.
+ * Fails loudly after an upgrade that changes this code.
+ */
+function noExcalidrawUnloadListener(): Plugin {
+  return {
+    name: 'anehalo-no-excalidraw-unload-listener',
+    enforce: 'pre',
+    transform(code, id) {
+      if (!excalidrawPackage.test(id) || !code.includes('this.onUnload')) return null;
+      const patched = code.replace(canvasUnloadListener, '$1"pagehide"$2$3');
+      if (patched === code) this.error(`Excalidraw's unload listener was not found in ${id}.`);
+      if (/["`]unload["`]/.test(patched))
+        this.error(`Excalidraw registers another unload listener in ${id}.`);
+      return { code: patched, map: null };
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [offlineExcalidrawFonts(), plainExcalidrawFonts(), react(), tailwindcss()],
+  plugins: [
+    offlineExcalidrawFonts(),
+    plainExcalidrawFonts(),
+    noExcalidrawUnloadListener(),
+    react(),
+    tailwindcss(),
+  ],
   // Development pre-bundles dependencies without the plugins above.
   optimizeDeps: {
-    rolldownOptions: { plugins: [offlineExcalidrawFonts(), plainExcalidrawFonts()] },
+    rolldownOptions: {
+      plugins: [offlineExcalidrawFonts(), plainExcalidrawFonts(), noExcalidrawUnloadListener()],
+    },
   },
   resolve: {
     alias: {

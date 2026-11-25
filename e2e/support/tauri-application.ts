@@ -11,6 +11,20 @@ import { parseNativeTimeline, type StartupTimestamps } from './startup-profile';
 
 const executeFile = promisify(execFile);
 
+/** Whether the process exits (or has exited) within the time, by its exit event. */
+async function exitsWithin(child: ChildProcess, milliseconds: number): Promise<boolean> {
+  if (child.exitCode !== null || child.signalCode !== null) return true;
+  let timer: NodeJS.Timeout | undefined;
+  const exited = await Promise.race([
+    once(child, 'exit').then(() => true),
+    new Promise<boolean>((resolveTimeout) => {
+      timer = setTimeout(() => resolveTimeout(false), milliseconds);
+    }),
+  ]);
+  clearTimeout(timer);
+  return exited;
+}
+
 export class TauriApplication {
   private process: ChildProcess | undefined;
   private browser: Browser | undefined;
@@ -272,8 +286,10 @@ export class TauriApplication {
           timeout: 10_000,
         });
       } catch (error) {
-        // WebView children can exit between taskkill's enumeration and termination.
-        if (running.exitCode === null) throw error;
+        // WebView children can exit between taskkill's enumeration and termination, and the
+        // parent's exit event can arrive just after taskkill reports that. Only a process that
+        // is still running afterwards is a failure.
+        if (!(await exitsWithin(running, 5_000))) throw error;
       }
     }
     await this.browser?.close();

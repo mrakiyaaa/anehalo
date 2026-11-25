@@ -10,18 +10,19 @@ real app through WebView2, and `cargo test`.
 
 ## Current status
 
-v0.2.0 is in progress on `claude/anehalo-v0-2-milestone-b` (Milestone B).
+v0.2.0 is in progress. Branches: only `master` and `develop`. Work happens on `develop` (keep it
+merged up with `master`); `master` takes `develop` when CI is green. No per-task branches.
 
 | Phase | Scope                                                  | State              |
 | ----- | ------------------------------------------------------ | ------------------ |
 | 0–4   | Stabilize, offline Excalidraw, storage, screen, Home   | Done, merged       |
-| 5     | Notes ↔ diagrams: links, embeds, backlinks, safe links | Done on the branch |
-| 6     | Search inside diagrams                                 | Done on the branch |
-| 7     | Import / export                                        | Done on the branch |
+| 5     | Notes ↔ diagrams: links, embeds, backlinks, safe links | Done, on `master`  |
+| 6     | Search inside diagrams                                 | Done, on `master`  |
+| 7     | Import / export                                        | Done, on `master`  |
 | 8     | Libraries / templates                                  | Next (Milestone C) |
 | 9     | Polish + release                                       | To do (release PR) |
 
-Milestone B (Phases 5–7) is complete on the branch and goes to `master` as one PR.
+Milestone B (Phases 5–7) is on `master`.
 
 Phase 5 notes:
 
@@ -75,6 +76,11 @@ Phase 7 notes:
   so every export logged errors. `vite.config.ts` swaps its two subset chunks for pass-through
   stubs (`font-subset-*-stub.ts`): whole font files (split by unicode range) are embedded.
   `scripts/check-startup-chunks.mjs` fails if the real subsetting code ships again.
+- WebView2 158 refuses `unload` listeners and logs a permissions-policy violation, which fails
+  every E2E test (no console errors allowed). Excalidraw's canvas registered one; `vite.config.ts`
+  switches it to `pagehide` and fails the build if Excalidraw changes that code.
+- `save-dialog.ps1` waits for the dialog's File name box before typing, and checks the dialog
+  closed. Typing blind on a slow CI runner left the dialog open with an error box on top.
 - New E2E specs: `e2e/diagram-import.spec.ts`, `e2e/diagram-export.spec.ts`. `save-dialog.ps1`
   takes the dialog title; `clipboard-image.ps1` reads the clipboard as another app would.
 
